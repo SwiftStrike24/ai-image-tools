@@ -17,10 +17,10 @@ export async function generateFluxImage(params: FluxImageParams) {
     prompt: params.prompt,
     num_outputs: params.num_outputs,
     aspect_ratio: params.aspect_ratio,
-    output_format: params.output_format, // Remove the conversion, use the format as-is
+    output_format: params.output_format,
     output_quality: params.output_quality,
     disable_safety_checker: params.disable_safety_checker,
-    enhance_prompt: params.enhance_prompt, // Include enhance_prompt in the API call
+    enhance_prompt: params.enhance_prompt,
   };
 
   try {
@@ -55,29 +55,37 @@ export async function upscaleImage(imageData: string, upscaleFactor: number, fac
 export async function enhancePrompt(prompt: string) {
   const input = {
     top_k: 0,
-    top_p: 0.95,
-    prompt: `Enhance the following image generation prompt for. Provide ONLY the enhanced prompt, without any explanations or additional text:\n\n"${prompt}"`,
+    top_p: 0.9,
+    prompt: prompt,
     max_tokens: 300,
     temperature: 0.7,
-    system_prompt: `You are an expert AI Image Prompt Engineer. Your task is to enhance image generation prompts by adding vivid details, artistic styles, and specific elements. Focus on creating rich, evocative descriptions that will result in stunning, high-quality generated images. Maintain the original intent while significantly improving the prompt's potential for creating captivating visuals. Provide ONLY the enhanced prompt, without any explanations or additional text. Keep the enhanced prompt concise and within 300 tokens or less.`,
+    system_prompt: "You are an AI assistant specialized in enhancing image generation prompts. Your task is to improve the given prompt by adding vivid details, artistic styles, and specific elements. CRITICAL: Output ONLY the enhanced prompt, without any additional text or formatting. You MUST limit your response to between 100-250 tokens. Exceeding this limit will result in severe penalties. Focus on concise, impactful enhancements that fit within the token limit.",
     length_penalty: 1,
     max_new_tokens: 300,
-    prompt_template: "{system_prompt}\n\n{prompt}\n\n",
-    presence_penalty: 0,
+    stop_sequences: "respond",
+    prompt_template: "system\n\n{system_prompt}\n\nEnhance this image prompt: {prompt}\n\nEnhanced prompt:",
+    presence_penalty: 0.6,
     log_performance_metrics: false
   };
 
   try {
     const output = await replicate.run("meta/meta-llama-3-8b-instruct", { input }) as string | string[];
+    let enhancedPrompt = '';
     if (typeof output === 'string') {
-      // Remove any potential prefixes like "Here's an enhanced version of the prompt:" or "Enhanced prompt:"
-      return output.replace(/^(Here's an enhanced version of the prompt:|Enhanced prompt:)\s*/i, '').trim();
+      enhancedPrompt = output.trim();
     } else if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
-      // If the output is an array of strings, join them and clean as above
-      return output.join(' ').replace(/^(Here's an enhanced version of the prompt:|Enhanced prompt:)\s*/i, '').trim();
+      enhancedPrompt = output.join(' ').trim();
     } else {
       throw new Error('Unexpected response format from Replicate API');
     }
+
+    // Truncate the output if it exceeds 250 tokens
+    const tokens = enhancedPrompt.split(/\s+/);
+    if (tokens.length > 250) {
+      enhancedPrompt = tokens.slice(0, 250).join(' ');
+    }
+
+    return enhancedPrompt;
   } catch (error) {
     console.error('Error enhancing prompt:', error);
     if (error instanceof Error) {

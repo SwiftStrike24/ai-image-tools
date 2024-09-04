@@ -156,6 +156,18 @@ export default function FluxAIImageGenerator() {
     }
   }
 
+  const aspectRatioOptions = [
+    { value: "1:1", label: "1:1 (Square)" },
+    { value: "16:9", label: "16:9 (Widescreen)" },
+    { value: "9:16", label: "9:16 (Vertical)" },
+    { value: "4:5", label: "4:5" },
+    { value: "21:9", label: "21:9 (Ultrawide)" },
+    { value: "2:3", label: "2:3" },
+    { value: "3:2", label: "3:2" },
+    { value: "5:4", label: "5:4" },
+    { value: "9:21", label: "9:21 (Vertical Ultrawide)" }
+  ];
+
   return (
     <div className="flex items-start justify-center bg-gradient-to-br from-gray-900 to-purple-900 min-h-[calc(100vh-80px)] p-4 relative overflow-hidden">
       <div className="absolute inset-0 bg-purple-900 opacity-10 blur-3xl"></div>
@@ -199,11 +211,11 @@ export default function FluxAIImageGenerator() {
                     <SelectValue placeholder="Select aspect ratio" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1:1">1:1 (Square)</SelectItem>
-                    <SelectItem value="4:3">4:3</SelectItem>
-                    <SelectItem value="3:4">3:4</SelectItem>
-                    <SelectItem value="16:9">16:9</SelectItem>
-                    <SelectItem value="9:16">9:16</SelectItem>
+                    {aspectRatioOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
