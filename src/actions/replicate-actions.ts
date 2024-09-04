@@ -56,28 +56,25 @@ export async function enhancePrompt(prompt: string) {
   const input = {
     top_k: 0,
     top_p: 0.95,
-    prompt: `Enhance the following image generation prompt. Provide ONLY the enhanced prompt, without any explanations or additional text: "${prompt}"`,
+    prompt: `Enhance the following image generation prompt for. Provide ONLY the enhanced prompt, without any explanations or additional text:\n\n"${prompt}"`,
     max_tokens: 300,
     temperature: 0.7,
-    system_prompt: `You are an expert AI Image Prompt Engineer. Your task is to enhance image generation prompts by adding vivid details, artistic styles, and specific elements. Focus on creating rich, evocative descriptions that will result in stunning, high-quality generated images. Maintain the original intent while significantly improving the prompt's potential for creating captivating visuals. Provide ONLY the enhanced prompt, without any explanations or additional text. Keep the enhanced prompt concise and within 300 tokens.`,
+    system_prompt: `You are an expert AI Image Prompt Engineer. Your task is to enhance image generation prompts by adding vivid details, artistic styles, and specific elements. Focus on creating rich, evocative descriptions that will result in stunning, high-quality generated images. Maintain the original intent while significantly improving the prompt's potential for creating captivating visuals. Provide ONLY the enhanced prompt, without any explanations or additional text. Keep the enhanced prompt concise and within 300 tokens or less.`,
     length_penalty: 1,
     max_new_tokens: 300,
-    stop_sequences: "respond", // Changed to a string
-    prompt_template: "system\n\n{system_prompt}user\n\n{prompt}assistant\n\n",
+    prompt_template: "{system_prompt}\n\n{prompt}\n\n",
     presence_penalty: 0,
     log_performance_metrics: false
   };
 
   try {
-    const output = await replicate.run("meta/meta-llama-3-8b-instruct", { input });
+    const output = await replicate.run("meta/meta-llama-3-8b-instruct", { input }) as string | string[];
     if (typeof output === 'string') {
       // Remove any potential prefixes like "Here's an enhanced version of the prompt:" or "Enhanced prompt:"
-      const cleanedOutput = output.replace(/^(Here's an enhanced version of the prompt:|Enhanced prompt:)\s*/i, '').trim();
-      return cleanedOutput;
+      return output.replace(/^(Here's an enhanced version of the prompt:|Enhanced prompt:)\s*/i, '').trim();
     } else if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
       // If the output is an array of strings, join them and clean as above
-      const joinedOutput = output.join(' ').replace(/^(Here's an enhanced version of the prompt:|Enhanced prompt:)\s*/i, '').trim();
-      return joinedOutput;
+      return output.join(' ').replace(/^(Here's an enhanced version of the prompt:|Enhanced prompt:)\s*/i, '').trim();
     } else {
       throw new Error('Unexpected response format from Replicate API');
     }

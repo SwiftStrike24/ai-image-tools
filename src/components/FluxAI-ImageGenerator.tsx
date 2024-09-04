@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils"
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
+  const [enhancedPrompt, setEnhancedPrompt] = useState('') // New state for enhanced prompt
   const [isLoading, setIsLoading] = useState(false)
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -40,9 +41,10 @@ export default function FluxAIImageGenerator() {
       let finalPrompt = prompt;
 
       if (isEnhancePromptEnabled) {
-        const enhancedPrompt = await enhancePrompt(prompt);
-        finalPrompt = enhancedPrompt;
-        setPrompt(enhancedPrompt); // Update the prompt state with the enhanced version
+        const enhancedPromptResult = await enhancePrompt(prompt);
+        setEnhancedPrompt(enhancedPromptResult); // Store the enhanced prompt
+        finalPrompt = enhancedPromptResult;
+        // Note: We're not updating the 'prompt' state here
       }
 
       const result = await generateFluxImage({
@@ -62,6 +64,13 @@ export default function FluxAIImageGenerator() {
           title: "Images Generated",
           description: `Successfully generated ${result.length} image(s).`,
         })
+        if (isEnhancePromptEnabled) {
+          toast({
+            title: "Prompt Enhanced",
+            description: "Your prompt was enhanced for better results.",
+            duration: 5000,
+          })
+        }
       } else {
         throw new Error('Unexpected response from generate API')
       }
@@ -80,6 +89,7 @@ export default function FluxAIImageGenerator() {
 
   const handleNewImage = useCallback(() => {
     setPrompt('')
+    setEnhancedPrompt('') // Reset enhanced prompt
     setImageUrls([])
     setError(null)
   }, [])
