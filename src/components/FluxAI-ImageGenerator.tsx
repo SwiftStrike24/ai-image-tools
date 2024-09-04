@@ -172,7 +172,10 @@ export default function FluxAIImageGenerator() {
     <div className="flex items-start justify-center bg-gradient-to-br from-gray-900 to-purple-900 min-h-[calc(100vh-80px)] p-4 relative overflow-hidden">
       <div className="absolute inset-0 bg-purple-900 opacity-10 blur-3xl"></div>
       <div className="max-w-4xl w-full space-y-8 relative z-10 mt-8">
-        <h1 className="text-4xl font-bold text-center text-purple-300 mb-8">FluxAI Image Generator</h1>
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-purple-300 mb-2">Image Generator</h1>
+          <p className="text-sm text-purple-200 opacity-80">Powered by FLUX.1</p>
+        </div>
         <AnimatePresence>
           {error && (
             <motion.div
