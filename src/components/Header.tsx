@@ -19,6 +19,7 @@ export default function Header() {
   const [indicatorWidth, setIndicatorWidth] = useState(0)
   const [indicatorOffset, setIndicatorOffset] = useState(0)
   const [prevIndicatorOffset, setPrevIndicatorOffset] = useState(0)
+  const [slideDirection, setSlideDirection] = useState(1)
 
   useEffect(() => {
     const currentTab = tabs.find(tab => tab.path === pathname) || tabs[0]
@@ -44,6 +45,11 @@ export default function Header() {
     const currentIndex = tabs.findIndex(tab => tab.id === activeTab)
     const newIndex = tabs.findIndex(tab => tab.id === newTab)
     return newIndex > currentIndex ? 1 : -1
+  }
+
+  const handleTabChange = (newTab: string) => {
+    setSlideDirection(getSlideDirection(newTab))
+    setActiveTab(newTab)
   }
 
   return (
@@ -75,7 +81,7 @@ export default function Header() {
                       : "text-gray-400 hover:text-purple-300"
                   )}
                   aria-current={activeTab === tab.id ? 'page' : undefined}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                 >
                   {tab.label}
                 </Link>
@@ -106,22 +112,22 @@ export default function Header() {
             </AnimatePresence>
           </nav>
         </div>
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, x: getSlideDirection(activeTab) * 50 }}
+            initial={{ opacity: 0, x: slideDirection * 50 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: getSlideDirection(activeTab) * -50 }}
+            exit={{ opacity: 0, x: slideDirection * -50 }}
             transition={{ duration: 0.3 }}
             className="text-center"
           >
             <h2 className="text-2xl md:text-3xl font-semibold mb-4 text-purple-300">
-              {activeTab === 'upscaler' ? 'Enhance Your Images' : 'Create Unique Visuals'}
+              {activeTab === 'upscaler' ? 'Advanced Image Enhancement' : 'AI-Powered Visual Creation'}
             </h2>
             <p className="text-gray-300 max-w-2xl mx-auto text-lg">
               {activeTab === 'upscaler'
-                ? 'Upload your images and watch them transform with our AI-powered upscaling technology.'
-                : 'Describe your vision, and our AI will bring it to life with stunning, original imagery.'}
+                ? 'Elevate your images with cutting-edge AI upscaling technology, bringing unparalleled clarity and detail to your visuals.'
+                : 'Transform your ideas into stunning, high-resolution imagery using state-of-the-art AI generation techniques.'}
             </p>
           </motion.div>
         </AnimatePresence>

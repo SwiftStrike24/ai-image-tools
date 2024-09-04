@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2, AlertCircle, Download, RefreshCw, Sparkles, X } from "lucide-react"
@@ -14,10 +14,12 @@ import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog"
+import { useMediaQuery } from "@/hooks/use-media-query"
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
-  const [enhancedPrompt, setEnhancedPrompt] = useState('') // New state for enhanced prompt
+  const [enhancedPrompt, setEnhancedPrompt] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -32,6 +34,8 @@ export default function FluxAIImageGenerator() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const { toast } = useToast()
 
+  const isMobile = useMediaQuery("(max-width: 640px)")
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -42,9 +46,8 @@ export default function FluxAIImageGenerator() {
 
       if (isEnhancePromptEnabled) {
         const enhancedPromptResult = await enhancePrompt(prompt);
-        setEnhancedPrompt(enhancedPromptResult); // Store the enhanced prompt
+        setEnhancedPrompt(enhancedPromptResult);
         finalPrompt = enhancedPromptResult;
-        // Note: We're not updating the 'prompt' state here
       }
 
       const result = await generateFluxImage({
@@ -89,7 +92,7 @@ export default function FluxAIImageGenerator() {
 
   const handleNewImage = useCallback(() => {
     setPrompt('')
-    setEnhancedPrompt('') // Reset enhanced prompt
+    setEnhancedPrompt('')
     setImageUrls([])
     setError(null)
   }, [])
@@ -130,9 +133,9 @@ export default function FluxAIImageGenerator() {
     setSelectedImage(url)
   }
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setSelectedImage(null)
-  }
+  }, [])
 
   const getAspectRatioClass = (ratio: string) => {
     switch (ratio) {
@@ -141,18 +144,30 @@ export default function FluxAIImageGenerator() {
       case '3:4': return 'aspect-3/4'
       case '16:9': return 'aspect-16/9'
       case '9:16': return 'aspect-9/16'
+      case '4:5': return 'aspect-4/5'
+      case '21:9': return 'aspect-[21/9]'
+      case '2:3': return 'aspect-2/3'
+      case '3:2': return 'aspect-3/2'
+      case '5:4': return 'aspect-5/4'
+      case '9:21': return 'aspect-[9/21]'
       default: return 'aspect-square'
     }
   }
 
   const getModalSizeClass = (ratio: string) => {
     switch (ratio) {
-      case '1:1': return 'w-full max-w-xl h-full max-h-xl'
-      case '4:3': return 'w-full max-w-2xl h-full max-h-[75vh]'
-      case '3:4': return 'w-full max-w-lg h-full max-h-[133vh]'
-      case '16:9': return 'w-full max-w-4xl h-full max-h-[56.25vh]'
-      case '9:16': return 'w-full max-w-sm h-full max-h-[177.78vh]'
-      default: return 'w-full max-w-xl h-full max-h-xl'
+      case '1:1': return 'w-full max-w-xl h-auto'
+      case '4:3': return 'w-full max-w-2xl h-auto'
+      case '3:4': return 'w-full max-w-lg h-auto'
+      case '16:9': return 'w-full max-w-4xl h-auto'
+      case '9:16': return 'w-full max-w-sm h-auto'
+      case '4:5': return 'w-full max-w-lg h-auto'
+      case '21:9': return 'w-full max-w-5xl h-auto'
+      case '2:3': return 'w-full max-w-md h-auto'
+      case '3:2': return 'w-full max-w-2xl h-auto'
+      case '5:4': return 'w-full max-w-xl h-auto'
+      case '9:21': return 'w-full max-w-sm h-auto'
+      default: return 'w-full max-w-xl h-auto'
     }
   }
 
@@ -373,36 +388,21 @@ export default function FluxAIImageGenerator() {
         </div>
       </div>
 
-      {/* Image Modal */}
-      <AnimatePresence>
-        {selectedImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
-            onClick={closeModal}
-          >
-            <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              className={`relative ${getModalSizeClass(generatedAspectRatio)} m-4 flex items-center justify-center`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <img src={selectedImage} alt="Selected" className={`w-full h-full object-contain rounded-lg ${getAspectRatioClass(generatedAspectRatio)}`} />
-              <Button
-                className="absolute top-2 right-2"
-                size="sm"
-                variant="secondary"
-                onClick={closeModal}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-hidden bg-transparent border-none">
+          <div className={`relative ${getModalSizeClass(generatedAspectRatio)} mx-auto`}>
+            <img 
+              src={selectedImage || ''} 
+              alt="Selected" 
+              className={`w-full h-full object-contain rounded-lg ${getAspectRatioClass(generatedAspectRatio)}`}
+            />
+            <DialogClose className="absolute top-2 right-2 rounded-full bg-black bg-opacity-50 p-2 text-white hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 transition-all duration-200">
+              <X className="h-6 w-6" />
+              <span className="sr-only">Close</span>
+            </DialogClose>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
