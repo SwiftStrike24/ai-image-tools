@@ -2,17 +2,39 @@
 
 import replicate from "@/lib/replicate";
 
-export async function generateFluxImage(prompt: string) {
+interface FluxImageParams {
+  prompt: string;
+  aspect_ratio: string;
+  num_outputs: number;
+  output_format: string;
+  output_quality: number;
+  enhance_prompt: boolean;
+  disable_safety_checker: boolean;
+}
+
+export async function generateFluxImage(params: FluxImageParams) {
   const input = {
-    prompt: prompt,
-    num_outputs: 1,
-    aspect_ratio: "1:1",
-    output_format: "webp",
-    output_quality: 80
+    prompt: params.prompt,
+    num_outputs: params.num_outputs,
+    aspect_ratio: params.aspect_ratio,
+    output_format: params.output_format,
+    output_quality: params.output_quality,
+    disable_safety_checker: params.disable_safety_checker,
+    // We'll ignore enhance_prompt for now as requested
   };
 
-  const output = await replicate.run("black-forest-labs/flux-schnell", { input });
-  return output;
+  try {
+    const output = await replicate.run("black-forest-labs/flux-schnell", { input });
+    
+    if (Array.isArray(output) && output.length > 0) {
+      return output[0]; // Return the first image URL
+    } else {
+      throw new Error('Unexpected response format from Replicate API');
+    }
+  } catch (error) {
+    console.error('Error generating image:', error);
+    throw error; // Re-throw the error to be handled by the component
+  }
 }
 
 export async function upscaleImage(imageData: string, upscaleFactor: number, faceEnhance: boolean) {
