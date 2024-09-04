@@ -27,6 +27,7 @@ export default function FluxAIImageGenerator() {
   const [outputFormat, setOutputFormat] = useState("webp")
   const [outputQuality, setOutputQuality] = useState(80)
   const [enhancePrompt, setEnhancePrompt] = useState(false)
+  const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null)
   const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,14 +74,37 @@ export default function FluxAIImageGenerator() {
     setError(null)
   }, [])
 
-  const handleDownload = useCallback((url: string, index: number) => {
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `generated-image-${index + 1}.${outputFormat}`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }, [outputFormat])
+  const handleDownload = useCallback(async (url: string, index: number) => {
+    setDownloadingIndex(index)
+    try {
+      const response = await fetch(url)
+      const blob = await response.blob()
+      const blobUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = `generated-image-${index + 1}.${outputFormat}`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(blobUrl)
+      
+      toast({
+        title: "Image Downloaded",
+        description: `Your image has been successfully downloaded.`,
+        duration: 3000,
+      })
+    } catch (error) {
+      console.error('Download error:', error)
+      toast({
+        title: "Download Failed",
+        description: "There was an error downloading your image. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      })
+    } finally {
+      setDownloadingIndex(null)
+    }
+  }, [outputFormat, toast])
 
   return (
     <div className="flex items-start justify-center bg-gradient-to-br from-gray-900 to-purple-900 min-h-[calc(100vh-80px)] p-4 relative overflow-hidden">
@@ -139,9 +163,9 @@ export default function FluxAIImageGenerator() {
                   {[1, 2, 3, 4].map((num) => (
                     <Button
                       key={num}
-                      type="button" // Add this line
+                      type="button"
                       onClick={(e) => {
-                        e.preventDefault(); // Add this line
+                        e.preventDefault();
                         setNumOutputs(num);
                       }}
                       variant={numOutputs === num ? "default" : "secondary"}
@@ -155,12 +179,12 @@ export default function FluxAIImageGenerator() {
               <div className="space-y-2">
                 <Label className="text-white">Output Format</Label>
                 <div className="grid grid-cols-3 gap-2">
-                  {['webp', 'jpg', 'png'].map((format) => ( // Changed 'jpeg' to 'jpg'
+                  {['webp', 'jpg', 'png'].map((format) => (
                     <Button
                       key={format}
-                      type="button" // Add this line
+                      type="button"
                       onClick={(e) => {
-                        e.preventDefault(); // Add this line
+                        e.preventDefault();
                         setOutputFormat(format);
                       }}
                       variant={outputFormat === format ? "default" : "secondary"}
@@ -247,8 +271,13 @@ export default function FluxAIImageGenerator() {
                         onClick={() => handleDownload(url, index)}
                         className="absolute bottom-2 right-2"
                         size="sm"
+                        disabled={downloadingIndex === index}
                       >
-                        <Download className="h-4 w-4" />
+                        {downloadingIndex === index ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
                       </Button>
                     </div>
                   ))}
