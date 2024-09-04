@@ -54,25 +54,39 @@ export async function upscaleImage(imageData: string, upscaleFactor: number, fac
 
 export async function enhancePrompt(prompt: string) {
   const input = {
-    top_k: 0,  // Keep it deterministic with most probable completions
-    top_p: 0.9,  // Focus on top 90% of likely outcomes, improving coherence
+    top_k: 50,  // Increased to allow for more diverse word choices
+    top_p: 0.95,  // Slightly increased to allow for more creative outputs
     prompt: prompt,
-    max_tokens: 200,  // Reduced token limit to minimize cost and focus on brevity
-    temperature: 0.5,  // Lowered to control creativity and ensure precision
+    max_tokens: 512,  // Increased to allow for more detailed descriptions
+    temperature: 0.7,  // Increased to encourage more creative outputs
     system_prompt: `
-      You are an AI assistant specialized in enhancing image generation prompts. 
-      Your task is to improve the given prompt by adding vivid details, artistic styles, and specific elements. 
-      CRITICAL: Output ONLY the enhanced prompt, with no additional explanation, formatting, or text. 
-      The response MUST be between 100-200 tokens.
-      Focus on concise, impactful enhancements, avoiding repetition or irrelevant details.`,
-    length_penalty: 1.2,  // Encourages concise output, penalizing overly long responses
-    max_new_tokens: 200,  // Matches max_tokens to control total output size
-    stop_sequences: "respond",  // Changed from array to string
+      You are an AI expert in creating vivid, detailed image generation prompts.
+      Your task is to enhance the given prompt by:
+      1. Adding rich, sensory details (visual, auditory, olfactory, tactile)
+      2. Incorporating artistic styles or techniques
+      3. Suggesting specific elements to include
+      4. Describing lighting, atmosphere, and mood
+      5. Mentioning composition or perspective
+
+      CRITICAL INSTRUCTIONS:
+      - Output ONLY the enhanced prompt, with no additional explanation or text
+      - The response MUST be between 150-250 tokens
+      - Focus on impactful, concise enhancements
+      - Avoid repetition or irrelevant details
+      - Maintain the core essence and theme of the original prompt
+      - Use varied and vivid vocabulary to create a compelling scene`,
+    length_penalty: 1.0,  // Adjusted to be more neutral
+    max_new_tokens: 512,  // Matches max_tokens
+    stop_sequences: "END",  // Clear stop sequence to prevent early cutoff
     prompt_template: `
-      system\n\n{system_prompt}\n\nEnhance this image prompt: {prompt}\n\nEnhanced prompt:`,
-    presence_penalty: 0.6,  // Reduces repetition to promote creativity and uniqueness in details
-    frequency_penalty: 0.5,  // Added to ensure varied vocabulary and prevent redundancy
-    log_performance_metrics: false  // Disable logging to reduce unnecessary overhead
+      {system_prompt}
+
+      Original prompt: {prompt}
+
+      Enhanced prompt:`,
+    presence_penalty: 0.3,  // Reduced to allow for some repetition of important elements
+    frequency_penalty: 0.7,  // Increased to encourage more diverse vocabulary
+    log_performance_metrics: false
   };
 
   try {
@@ -86,9 +100,14 @@ export async function enhancePrompt(prompt: string) {
       throw new Error('Unexpected response format from Replicate API');
     }
 
-    // Truncate the output if it exceeds 250 tokens
+    // Remove any potential "Enhanced prompt:" prefix
+    enhancedPrompt = enhancedPrompt.replace(/^Enhanced prompt:\s*/i, '');
+
+    // Ensure the output is within the desired token range
     const tokens = enhancedPrompt.split(/\s+/);
-    if (tokens.length > 250) {
+    if (tokens.length < 150) {
+      throw new Error('Generated prompt is too short');
+    } else if (tokens.length > 250) {
       enhancedPrompt = tokens.slice(0, 250).join(' ');
     }
 
