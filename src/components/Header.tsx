@@ -1,17 +1,27 @@
+"use client";
+
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useWindowSize } from 'react-use'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 const tabs = [
-  { id: 'upscaler', label: 'Image Upscaler' },
-  { id: 'generator', label: 'Image Generator' },
+  { id: 'upscaler', label: 'Image Upscaler', path: '/upscaler' },
+  { id: 'generator', label: 'Image Generator', path: '/generator' },
 ]
 
-export default function Component() {
+export default function Header() {
+  const pathname = usePathname()
   const [activeTab, setActiveTab] = useState(tabs[0].id)
   const { width } = useWindowSize()
   const [indicatorWidth, setIndicatorWidth] = useState(0)
   const [indicatorOffset, setIndicatorOffset] = useState(0)
+
+  useEffect(() => {
+    const currentTab = tabs.find(tab => tab.path === pathname) || tabs[0]
+    setActiveTab(currentTab.id)
+  }, [pathname])
 
   useEffect(() => {
     const activeElement = document.getElementById(activeTab)
@@ -27,24 +37,24 @@ export default function Component() {
       <div className="relative z-10 max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-center mb-6 md:mb-8">
           <h1 className="text-2xl md:text-3xl font-bold mb-4 md:mb-0">
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
+            <Link href="/" className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">
               AI Image Tools
-            </span>
+            </Link>
           </h1>
           <nav className="relative">
             <div className="flex space-x-1 bg-gray-800 rounded-lg p-1">
               {tabs.map((tab) => (
-                <button
+                <Link
                   key={tab.id}
+                  href={tab.path}
                   id={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
                   className={`${
                     activeTab === tab.id ? 'text-white' : 'text-gray-400'
                   } relative z-20 px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-opacity-75`}
                   aria-current={activeTab === tab.id ? 'page' : undefined}
                 >
                   {tab.label}
-                </button>
+                </Link>
               ))}
             </div>
             <motion.div

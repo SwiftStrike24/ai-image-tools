@@ -41,8 +41,9 @@ export default function ImageUpscaler() {
   const upscaleOptions = ['2x', '4x', '6x', '8x', '10x']
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4">
-      <div className="max-w-4xl w-full space-y-8">
+    <div className="flex items-start justify-center bg-gray-900 min-h-[calc(100vh-80px)] p-4 relative overflow-hidden">
+      <div className="absolute inset-0 bg-purple-900 opacity-10 blur-3xl"></div>
+      <div className="max-w-4xl w-full space-y-8 relative z-10 mt-8">
         <h1 className="text-3xl font-bold text-center text-purple-400 mb-8">Image Upscaler</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-4">
@@ -53,13 +54,14 @@ export default function ImageUpscaler() {
               onDragOver={(e) => e.preventDefault()}
             >
               <Upload className="mx-auto h-12 w-12 text-purple-400 mb-4" />
-              <p>Drag and drop an image here, or click to select</p>
+              <p className="text-white">Drag and drop an image here, or click to select</p>
               <input
                 type="file"
                 ref={fileInputRef}
                 className="hidden"
                 onChange={handleFileChange}
                 accept="image/*"
+                aria-label="Upload image"
               />
             </div>
             {uploadedImage && (
@@ -87,7 +89,7 @@ export default function ImageUpscaler() {
             <button
               onClick={handleUpscale}
               disabled={!uploadedImage || isLoading}
-              className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-900/50 rounded-lg py-2 px-4 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 focus:ring-offset-gray-900"
+              className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-900/50 rounded-lg py-2 px-4 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 focus:ring-offset-gray-900 text-white"
             >
               {isLoading ? (
                 <Loader2 className="animate-spin mx-auto" />
@@ -103,7 +105,7 @@ export default function ImageUpscaler() {
                 <a
                   href={upscaledImage}
                   download="upscaled_image.jpg"
-                  className="block w-full bg-purple-600 hover:bg-purple-700 rounded-lg py-2 px-4 font-semibold text-center transition-colors focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 focus:ring-offset-gray-900"
+                  className="block w-full bg-purple-600 hover:bg-purple-700 rounded-lg py-2 px-4 font-semibold text-center transition-colors focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 focus:ring-offset-gray-900 text-white"
                 >
                   Download Upscaled Image
                 </a>

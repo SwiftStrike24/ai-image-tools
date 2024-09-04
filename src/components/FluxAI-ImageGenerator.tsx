@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2 } from "lucide-react"
 
-export default function Component() {
+export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [imageUrl, setImageUrl] = useState('')
@@ -30,10 +30,11 @@ export default function Component() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 p-4">
-      <div className="w-full max-w-md space-y-8">
+    <div className="flex items-start justify-center bg-gray-900 min-h-[calc(100vh-80px)] p-4 relative overflow-hidden">
+      <div className="absolute inset-0 bg-purple-900 opacity-10 blur-3xl"></div>
+      <div className="w-full max-w-md space-y-8 relative z-10 mt-8">
         <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold text-white">AI Image Generator</h2>
+          <h2 className="text-3xl font-bold text-white">AI Image Generator</h2>
           <p className="mt-2 text-sm text-purple-300">Enter a prompt to generate your image</p>
         </div>
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
