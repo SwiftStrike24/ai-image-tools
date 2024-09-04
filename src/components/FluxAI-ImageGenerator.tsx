@@ -34,8 +34,8 @@ export default function FluxAIImageGenerator() {
       <div className="absolute inset-0 bg-purple-900 opacity-10 blur-3xl"></div>
       <div className="w-full max-w-md space-y-8 relative z-10 mt-8">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-white">AI Image Generator</h2>
-          <p className="mt-2 text-sm text-purple-300">Enter a prompt to generate your image</p>
+          <h2 className="text-3xl font-bold text-purple-400">AI Image Generator</h2>
+          <p className="mt-2 text-sm text-white">Enter a prompt to generate your image</p>
         </div>
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
           <div className="rounded-md shadow-sm -space-y-px">
