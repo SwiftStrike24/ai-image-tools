@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, AlertCircle, Download, RefreshCw, Sparkles } from "lucide-react"
+import { Loader2, AlertCircle, Download, RefreshCw, Sparkles, X } from "lucide-react"
 import { generateFluxImage } from "@/actions/replicate-actions"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -13,7 +13,6 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
 
 export default function FluxAIImageGenerator() {
@@ -23,11 +22,13 @@ export default function FluxAIImageGenerator() {
   const [error, setError] = useState<string | null>(null)
   const [showGlow, setShowGlow] = useState(false)
   const [aspectRatio, setAspectRatio] = useState("1:1")
+  const [generatedAspectRatio, setGeneratedAspectRatio] = useState("1:1")
   const [numOutputs, setNumOutputs] = useState(1)
   const [outputFormat, setOutputFormat] = useState("webp")
   const [outputQuality, setOutputQuality] = useState(80)
   const [enhancePrompt, setEnhancePrompt] = useState(false)
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null)
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,6 +49,7 @@ export default function FluxAIImageGenerator() {
       if (Array.isArray(result)) {
         setImageUrls(result)
         setShowGlow(true)
+        setGeneratedAspectRatio(aspectRatio)
         toast({
           title: "Images Generated",
           description: `Successfully generated ${result.length} image(s).`,
@@ -105,6 +107,36 @@ export default function FluxAIImageGenerator() {
       setDownloadingIndex(null)
     }
   }, [outputFormat, toast])
+
+  const handleImageClick = (url: string) => {
+    setSelectedImage(url)
+  }
+
+  const closeModal = () => {
+    setSelectedImage(null)
+  }
+
+  const getAspectRatioClass = (ratio: string) => {
+    switch (ratio) {
+      case '1:1': return 'aspect-square'
+      case '4:3': return 'aspect-4/3'
+      case '3:4': return 'aspect-3/4'
+      case '16:9': return 'aspect-16/9'
+      case '9:16': return 'aspect-9/16'
+      default: return 'aspect-square'
+    }
+  }
+
+  const getModalSizeClass = (ratio: string) => {
+    switch (ratio) {
+      case '1:1': return 'w-full max-w-xl h-full max-h-xl'
+      case '4:3': return 'w-full max-w-2xl h-full max-h-[75vh]'
+      case '3:4': return 'w-full max-w-lg h-full max-h-[133vh]'
+      case '16:9': return 'w-full max-w-4xl h-full max-h-[56.25vh]'
+      case '9:16': return 'w-full max-w-sm h-full max-h-[177.78vh]'
+      default: return 'w-full max-w-xl h-full max-h-xl'
+    }
+  }
 
   return (
     <div className="flex items-start justify-center bg-gradient-to-br from-gray-900 to-purple-900 min-h-[calc(100vh-80px)] p-4 relative overflow-hidden">
@@ -252,11 +284,17 @@ export default function FluxAIImageGenerator() {
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.3 }}
                   className={`grid gap-4 ${
-                    imageUrls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'
+                    imageUrls.length === 1 ? 'grid-cols-1' :
+                    imageUrls.length === 2 ? 'grid-cols-2' :
+                    'grid-cols-2'
                   }`}
                 >
                   {imageUrls.map((url, index) => (
-                    <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center">
+                    <div 
+                      key={index} 
+                      className={`relative ${getAspectRatioClass(generatedAspectRatio)} rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer group`}
+                      onClick={() => handleImageClick(url)}
+                    >
                       {showGlow && (
                         <motion.div
                           className="absolute inset-0 bg-purple-500 opacity-20"
@@ -266,11 +304,15 @@ export default function FluxAIImageGenerator() {
                           transition={{ duration: 1 }}
                         />
                       )}
-                      <img src={url} alt={`Generated ${index + 1}`} className="max-w-full max-h-full object-contain" />
+                      <img src={url} alt={`Generated ${index + 1}`} className="w-full h-full object-cover" />
                       <Button
-                        onClick={() => handleDownload(url, index)}
-                        className="absolute bottom-2 right-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownload(url, index);
+                        }}
+                        className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                         size="sm"
+                        variant="secondary"
                         disabled={downloadingIndex === index}
                       >
                         {downloadingIndex === index ? (
@@ -297,6 +339,37 @@ export default function FluxAIImageGenerator() {
           </div>
         </div>
       </div>
+
+      {/* Image Modal */}
+      <AnimatePresence>
+        {selectedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
+            onClick={closeModal}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              className={`relative ${getModalSizeClass(generatedAspectRatio)} m-4 flex items-center justify-center`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img src={selectedImage} alt="Selected" className={`w-full h-full object-contain rounded-lg ${getAspectRatioClass(generatedAspectRatio)}`} />
+              <Button
+                className="absolute top-2 right-2"
+                size="sm"
+                variant="secondary"
+                onClick={closeModal}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
