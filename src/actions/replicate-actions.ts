@@ -51,3 +51,42 @@ export async function upscaleImage(imageData: string, upscaleFactor: number, fac
   const output = await replicate.run("nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa", { input });
   return output;
 }
+
+export async function enhancePrompt(prompt: string) {
+  const input = {
+    top_k: 0,
+    top_p: 0.95,
+    prompt: `Enhance the following image generation prompt. Provide ONLY the enhanced prompt, without any explanations or additional text: "${prompt}"`,
+    max_tokens: 300,
+    temperature: 0.7,
+    system_prompt: `You are an expert AI Image Prompt Engineer. Your task is to enhance image generation prompts by adding vivid details, artistic styles, and specific elements. Focus on creating rich, evocative descriptions that will result in stunning, high-quality generated images. Maintain the original intent while significantly improving the prompt's potential for creating captivating visuals. Provide ONLY the enhanced prompt, without any explanations or additional text. Keep the enhanced prompt concise and within 300 tokens.`,
+    length_penalty: 1,
+    max_new_tokens: 300,
+    stop_sequences: "respond", // Changed to a string
+    prompt_template: "system\n\n{system_prompt}user\n\n{prompt}assistant\n\n",
+    presence_penalty: 0,
+    log_performance_metrics: false
+  };
+
+  try {
+    const output = await replicate.run("meta/meta-llama-3-8b-instruct", { input });
+    if (typeof output === 'string') {
+      // Remove any potential prefixes like "Here's an enhanced version of the prompt:" or "Enhanced prompt:"
+      const cleanedOutput = output.replace(/^(Here's an enhanced version of the prompt:|Enhanced prompt:)\s*/i, '').trim();
+      return cleanedOutput;
+    } else if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
+      // If the output is an array of strings, join them and clean as above
+      const joinedOutput = output.join(' ').replace(/^(Here's an enhanced version of the prompt:|Enhanced prompt:)\s*/i, '').trim();
+      return joinedOutput;
+    } else {
+      throw new Error('Unexpected response format from Replicate API');
+    }
+  } catch (error) {
+    console.error('Error enhancing prompt:', error);
+    if (error instanceof Error) {
+      throw new Error(`Failed to enhance prompt: ${error.message}`);
+    } else {
+      throw new Error('An unknown error occurred while enhancing the prompt');
+    }
+  }
+}

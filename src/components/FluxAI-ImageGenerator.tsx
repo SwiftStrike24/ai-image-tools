@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2, AlertCircle, Download, RefreshCw, Sparkles, X } from "lucide-react"
-import { generateFluxImage } from "@/actions/replicate-actions"
+import { generateFluxImage, enhancePrompt } from "@/actions/replicate-actions"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { motion, AnimatePresence } from "framer-motion"
@@ -26,7 +26,7 @@ export default function FluxAIImageGenerator() {
   const [numOutputs, setNumOutputs] = useState(1)
   const [outputFormat, setOutputFormat] = useState("webp")
   const [outputQuality, setOutputQuality] = useState(80)
-  const [enhancePrompt, setEnhancePrompt] = useState(false)
+  const [isEnhancePromptEnabled, setIsEnhancePromptEnabled] = useState(false)
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const { toast } = useToast()
@@ -37,13 +37,21 @@ export default function FluxAIImageGenerator() {
     setError(null)
 
     try {
+      let finalPrompt = prompt;
+
+      if (isEnhancePromptEnabled) {
+        const enhancedPrompt = await enhancePrompt(prompt);
+        finalPrompt = enhancedPrompt;
+        setPrompt(enhancedPrompt); // Update the prompt state with the enhanced version
+      }
+
       const result = await generateFluxImage({
-        prompt,
+        prompt: finalPrompt,
         aspect_ratio: aspectRatio,
         num_outputs: numOutputs,
         output_format: outputFormat,
         output_quality: outputQuality,
-        enhance_prompt: enhancePrompt,
+        enhance_prompt: isEnhancePromptEnabled,
         disable_safety_checker: true,
       })
       if (Array.isArray(result)) {
@@ -242,8 +250,8 @@ export default function FluxAIImageGenerator() {
               <div className="flex items-center space-x-2 text-white">
                 <Switch
                   id="enhance-prompt"
-                  checked={enhancePrompt}
-                  onCheckedChange={setEnhancePrompt}
+                  checked={isEnhancePromptEnabled}
+                  onCheckedChange={setIsEnhancePromptEnabled}
                 />
                 <Label htmlFor="enhance-prompt">Enhance Prompt</Label>
                 <TooltipProvider>
