@@ -15,10 +15,11 @@ export async function generateFluxImage(prompt: string) {
   return output;
 }
 
-export async function upscaleImage(imagePath: string, upscaleFactor: number) {
+export async function upscaleImage(imageData: string, upscaleFactor: number, faceEnhance: boolean) {
   const input = {
-    image: imagePath,
-    scale: upscaleFactor
+    image: imageData,
+    scale: upscaleFactor,
+    face_enhance: faceEnhance
   };
 
   const output = await replicate.run("nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa", { input });

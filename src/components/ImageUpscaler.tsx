@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { upscaleImage } from "@/actions/replicate-actions"
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MIN_ZOOM = 1;
@@ -66,25 +67,36 @@ export default function ImageUpscaler() {
     }
   }, [])
 
-  const handleUpscale = useCallback(() => {
+  const handleUpscale = useCallback(async () => {
+    if (!uploadedImage) return;
+
     setIsLoading(true)
     setError(null)
-    // Simulating upscale process
-    setTimeout(() => {
-      if (Math.random() > 0.9) { // 10% chance of error for demonstration
-        setError("Upscaling failed. Please try again.")
-        setIsLoading(false)
-        return
+
+    try {
+      const scale = parseInt(upscaleOption.replace('x', ''))
+      const result = await upscaleImage(uploadedImage, scale, faceEnhance)
+      
+      if (typeof result === 'string') {
+        setUpscaledImage(result)
+        toast({
+          title: "Upscaling Complete",
+          description: "Your image has been successfully upscaled.",
+        })
+      } else {
+        throw new Error('Unexpected response from upscale API')
       }
-      setUpscaledImage(uploadedImage) // In a real scenario, this would be the upscaled image
-      setIsLoading(false)
+    } catch (error) {
+      console.error('Upscaling error:', error)
+      setError("Upscaling failed. Please try again.")
       toast({
-        title: "Upscaling Complete",
-        description: "Your image has been successfully upscaled.",
+        title: "Upscaling Failed",
+        description: "There was an error while upscaling your image.",
+        variant: "destructive",
       })
-    }, 2000)
-    // Here you would call your API with the selected options
-    console.log(`Upscaling with: ${upscaleOption}, Face Enhance: ${faceEnhance}`)
+    } finally {
+      setIsLoading(false)
+    }
   }, [uploadedImage, upscaleOption, faceEnhance, toast])
 
   const handleClearImage = useCallback(() => {
