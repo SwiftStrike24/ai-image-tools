@@ -54,18 +54,25 @@ export async function upscaleImage(imageData: string, upscaleFactor: number, fac
 
 export async function enhancePrompt(prompt: string) {
   const input = {
-    top_k: 0,
-    top_p: 0.9,
+    top_k: 0,  // Keep it deterministic with most probable completions
+    top_p: 0.9,  // Focus on top 90% of likely outcomes, improving coherence
     prompt: prompt,
-    max_tokens: 300,
-    temperature: 0.7,
-    system_prompt: "You are an AI assistant specialized in enhancing image generation prompts. Your task is to improve the given prompt by adding vivid details, artistic styles, and specific elements. CRITICAL: Output ONLY the enhanced prompt, without any additional text or formatting. You MUST limit your response to between 100-250 tokens. Exceeding this limit will result in severe penalties. Focus on concise, impactful enhancements that fit within the token limit.",
-    length_penalty: 1,
-    max_new_tokens: 300,
-    stop_sequences: "respond",
-    prompt_template: "system\n\n{system_prompt}\n\nEnhance this image prompt: {prompt}\n\nEnhanced prompt:",
-    presence_penalty: 0.6,
-    log_performance_metrics: false
+    max_tokens: 200,  // Reduced token limit to minimize cost and focus on brevity
+    temperature: 0.5,  // Lowered to control creativity and ensure precision
+    system_prompt: `
+      You are an AI assistant specialized in enhancing image generation prompts. 
+      Your task is to improve the given prompt by adding vivid details, artistic styles, and specific elements. 
+      CRITICAL: Output ONLY the enhanced prompt, with no additional explanation, formatting, or text. 
+      The response MUST be between 100-200 tokens.
+      Focus on concise, impactful enhancements, avoiding repetition or irrelevant details.`,
+    length_penalty: 1.2,  // Encourages concise output, penalizing overly long responses
+    max_new_tokens: 200,  // Matches max_tokens to control total output size
+    stop_sequences: "respond",  // Changed from array to string
+    prompt_template: `
+      system\n\n{system_prompt}\n\nEnhance this image prompt: {prompt}\n\nEnhanced prompt:`,
+    presence_penalty: 0.6,  // Reduces repetition to promote creativity and uniqueness in details
+    frequency_penalty: 0.5,  // Added to ensure varied vocabulary and prevent redundancy
+    log_performance_metrics: false  // Disable logging to reduce unnecessary overhead
   };
 
   try {
