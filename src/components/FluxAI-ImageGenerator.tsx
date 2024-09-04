@@ -135,25 +135,41 @@ export default function FluxAIImageGenerator() {
               </div>
               <div className="space-y-2">
                 <Label className="text-white">Number of Outputs</Label>
-                <RadioGroup value={numOutputs.toString()} onValueChange={(value) => setNumOutputs(parseInt(value))} className="flex space-x-2">
+                <div className="grid grid-cols-4 gap-2">
                   {[1, 2, 3, 4].map((num) => (
-                    <div key={num} className="flex items-center space-x-2">
-                      <RadioGroupItem value={num.toString()} id={`num-outputs-${num}`} />
-                      <Label htmlFor={`num-outputs-${num}`} className="text-white">{num}</Label>
-                    </div>
+                    <Button
+                      key={num}
+                      type="button" // Add this line
+                      onClick={(e) => {
+                        e.preventDefault(); // Add this line
+                        setNumOutputs(num);
+                      }}
+                      variant={numOutputs === num ? "default" : "secondary"}
+                      className="w-full"
+                    >
+                      {num}
+                    </Button>
                   ))}
-                </RadioGroup>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label className="text-white">Output Format</Label>
-                <RadioGroup value={outputFormat} onValueChange={setOutputFormat} className="flex space-x-2">
-                  {['webp', 'jpeg', 'png'].map((format) => (
-                    <div key={format} className="flex items-center space-x-2">
-                      <RadioGroupItem value={format} id={`output-format-${format}`} />
-                      <Label htmlFor={`output-format-${format}`} className="text-white">{format.toUpperCase()}</Label>
-                    </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {['webp', 'jpg', 'png'].map((format) => ( // Changed 'jpeg' to 'jpg'
+                    <Button
+                      key={format}
+                      type="button" // Add this line
+                      onClick={(e) => {
+                        e.preventDefault(); // Add this line
+                        setOutputFormat(format);
+                      }}
+                      variant={outputFormat === format ? "default" : "secondary"}
+                      className="w-full"
+                    >
+                      {format.toUpperCase()}
+                    </Button>
                   ))}
-                </RadioGroup>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label className="text-white">Output Quality: {outputQuality}</Label>

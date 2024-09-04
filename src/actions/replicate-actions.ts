@@ -17,10 +17,10 @@ export async function generateFluxImage(params: FluxImageParams) {
     prompt: params.prompt,
     num_outputs: params.num_outputs,
     aspect_ratio: params.aspect_ratio,
-    output_format: params.output_format,
+    output_format: params.output_format, // Remove the conversion, use the format as-is
     output_quality: params.output_quality,
     disable_safety_checker: params.disable_safety_checker,
-    // We'll ignore enhance_prompt for now as requested
+    enhance_prompt: params.enhance_prompt, // Include enhance_prompt in the API call
   };
 
   try {
@@ -33,7 +33,11 @@ export async function generateFluxImage(params: FluxImageParams) {
     }
   } catch (error) {
     console.error('Error generating image:', error);
-    throw error; // Re-throw the error to be handled by the component
+    if (error instanceof Error) {
+      throw new Error(`Failed to generate image: ${error.message}`);
+    } else {
+      throw new Error('An unknown error occurred while generating the image');
+    }
   }
 }
 
