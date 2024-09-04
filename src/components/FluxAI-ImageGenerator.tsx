@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils"
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [imageUrl, setImageUrl] = useState('')
+  const [imageUrls, setImageUrls] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [showGlow, setShowGlow] = useState(false)
   const [aspectRatio, setAspectRatio] = useState("1:1")
@@ -44,22 +44,22 @@ export default function FluxAIImageGenerator() {
         enhance_prompt: enhancePrompt,
         disable_safety_checker: true,
       })
-      if (typeof result === 'string') {
-        setImageUrl(result)
+      if (Array.isArray(result)) {
+        setImageUrls(result)
         setShowGlow(true)
         toast({
-          title: "Image Generated",
-          description: "Your image has been successfully generated.",
+          title: "Images Generated",
+          description: `Successfully generated ${result.length} image(s).`,
         })
       } else {
         throw new Error('Unexpected response from generate API')
       }
     } catch (error) {
       console.error('Image generation error:', error)
-      setError(error instanceof Error ? error.message : "Failed to generate image. Please try again.")
+      setError(error instanceof Error ? error.message : "Failed to generate image(s). Please try again.")
       toast({
         title: "Generation Failed",
-        description: "There was an error while generating your image.",
+        description: "There was an error while generating your image(s).",
         variant: "destructive",
       })
     } finally {
@@ -69,20 +69,18 @@ export default function FluxAIImageGenerator() {
 
   const handleNewImage = useCallback(() => {
     setPrompt('')
-    setImageUrl('')
+    setImageUrls([])
     setError(null)
   }, [])
 
-  const handleDownload = useCallback(() => {
-    if (imageUrl) {
-      const link = document.createElement('a')
-      link.href = imageUrl
-      link.download = `generated-image.${outputFormat}`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    }
-  }, [imageUrl, outputFormat])
+  const handleDownload = useCallback((url: string, index: number) => {
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `generated-image-${index + 1}.${outputFormat}`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }, [outputFormat])
 
   return (
     <div className="flex items-start justify-center bg-gradient-to-br from-gray-900 to-purple-900 min-h-[calc(100vh-80px)] p-4 relative overflow-hidden">
@@ -201,52 +199,55 @@ export default function FluxAIImageGenerator() {
                 {isLoading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
-                {isLoading ? 'Generating...' : 'Generate Image'}
+                {isLoading ? 'Generating...' : 'Generate Image(s)'}
               </Button>
             </form>
           </div>
           <div className="space-y-4">
             <AnimatePresence>
-              {imageUrl && (
+              {imageUrls.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.3 }}
-                  className="relative aspect-square rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center"
+                  className={`grid gap-4 ${
+                    imageUrls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'
+                  }`}
                 >
-                  {showGlow && (
-                    <motion.div
-                      className="absolute inset-0 bg-purple-500 opacity-20"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 0.2 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 1 }}
-                    />
-                  )}
-                  <img src={imageUrl} alt="Generated" className="max-w-full max-h-full object-contain" />
+                  {imageUrls.map((url, index) => (
+                    <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center">
+                      {showGlow && (
+                        <motion.div
+                          className="absolute inset-0 bg-purple-500 opacity-20"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 0.2 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 1 }}
+                        />
+                      )}
+                      <img src={url} alt={`Generated ${index + 1}`} className="max-w-full max-h-full object-contain" />
+                      <Button
+                        onClick={() => handleDownload(url, index)}
+                        className="absolute bottom-2 right-2"
+                        size="sm"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </motion.div>
               )}
             </AnimatePresence>
-            {imageUrl && (
-              <div className="flex space-x-4">
-                <Button
-                  onClick={handleNewImage}
-                  className="flex-1"
-                  variant="secondary"
-                >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  New Image
-                </Button>
-                <Button
-                  onClick={handleDownload}
-                  className="flex-1"
-                  disabled={!imageUrl}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download
-                </Button>
-              </div>
+            {imageUrls.length > 0 && (
+              <Button
+                onClick={handleNewImage}
+                className="w-full"
+                variant="secondary"
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                New Image(s)
+              </Button>
             )}
           </div>
         </div>

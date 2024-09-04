@@ -27,7 +27,7 @@ export async function generateFluxImage(params: FluxImageParams) {
     const output = await replicate.run("black-forest-labs/flux-schnell", { input });
     
     if (Array.isArray(output) && output.length > 0) {
-      return output[0]; // Return the first image URL
+      return output; // Return all image URLs
     } else {
       throw new Error('Unexpected response format from Replicate API');
     }
