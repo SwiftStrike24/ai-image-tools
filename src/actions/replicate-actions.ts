@@ -78,8 +78,14 @@ export async function enhancePrompt(prompt: string) {
       - Do not repeat the original prompt verbatim; instead, expand and enhance it`,
     length_penalty: 1.0,
     max_new_tokens: 512,
-    stop_sequences: "END",
-    prompt_template: "{system_prompt}\n\nOriginal prompt: {prompt}\n\nEnhanced prompt:",
+    stop_sequences: "<|end_of_text|>,<|eot_id|>",
+    prompt_template: `
+      {system_prompt}
+
+      Original prompt: {prompt}
+
+      Enhanced prompt:
+    `,
     presence_penalty: 0.3,
     frequency_penalty: 0.7,
     log_performance_metrics: false
