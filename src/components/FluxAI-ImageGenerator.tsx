@@ -46,14 +46,21 @@ export default function FluxAIImageGenerator() {
 
       if (isEnhancePromptEnabled) {
         const enhancedPromptResult = await enhancePrompt(prompt);
-        setEnhancedPrompt(enhancedPromptResult);
-        finalPrompt = enhancedPromptResult;
-        
-        toast({
-          title: "Prompt Enhanced",
-          description: "Your prompt was enhanced for better results.",
-          duration: 5000,
-        })
+        if (enhancedPromptResult !== prompt) {
+          setEnhancedPrompt(enhancedPromptResult);
+          finalPrompt = enhancedPromptResult;
+          toast({
+            title: "Prompt Enhanced",
+            description: "Your prompt was enhanced for better results.",
+            duration: 5000,
+          });
+        } else {
+          toast({
+            title: "Prompt Enhancement Skipped",
+            description: "The original prompt was used as the enhanced version was too short.",
+            duration: 5000,
+          });
+        }
       }
 
       const result = await generateFluxImage({

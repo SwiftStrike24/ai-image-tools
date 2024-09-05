@@ -53,17 +53,29 @@ export async function upscaleImage(imageData: string, upscaleFactor: number, fac
 }
 
 export async function enhancePrompt(prompt: string) {
+  const customStopSequence = "<<END_OF_ENHANCED_PROMPT>>";
   const input = {
     top_k: 0,
     top_p: 0.95,
     prompt: prompt,
-    max_tokens: 512,  // Reduced to match our desired output length
+    max_tokens: 300,  // Increased slightly to accommodate the stop sequence
     temperature: 0.7,
-    system_prompt: `You are an AI expert in creating vivid, detailed image generation prompts. Enhance the given prompt by adding rich details, artistic styles, specific elements, lighting, atmosphere, mood, composition, and perspective. Output ONLY the enhanced prompt, with no additional explanation or text. The response MUST be between 150-250 tokens. Focus on impactful, concise enhancements. Avoid repetition or irrelevant details. Maintain the core essence of the original prompt. Use varied and vivid vocabulary.`,
+    system_prompt: `You are an AI expert in creating vivid, detailed image generation prompts. Enhance the given prompt by adding rich details, artistic styles, specific elements, lighting, atmosphere, mood, composition, and perspective. 
+
+CRITICAL INSTRUCTIONS:
+1. Output ONLY the enhanced prompt.
+2. Do not include any explanations, notes, or additional text.
+3. Do not include token counts or code snippets.
+4. The enhanced prompt MUST be between 150-250 tokens.
+5. Focus on impactful, concise enhancements.
+6. Avoid repetition or irrelevant details.
+7. Maintain the core essence of the original prompt.
+8. Use varied and vivid vocabulary.
+9. After completing the enhanced prompt, immediately add the following stop sequence on a new line: ${customStopSequence}`,
     length_penalty: 1,
-    max_new_tokens: 512,  // Reduced to match our desired output length
-    stop_sequences: "respond",  // Changed from array to string
-    prompt_template: "system\n\n{system_prompt}\n\n{prompt}\n\n",
+    max_new_tokens: 300,  // Increased slightly to accommodate the stop sequence
+    stop_sequences: customStopSequence,
+    prompt_template: "system\n\n{system_prompt}\n\nEnhance this prompt: {prompt}\n\n",
     presence_penalty: 0,
     log_performance_metrics: false
   };
@@ -79,10 +91,14 @@ export async function enhancePrompt(prompt: string) {
       throw new Error('Unexpected response format from Replicate API');
     }
 
+    // Remove the custom stop sequence if it's present
+    enhancedPrompt = enhancedPrompt.replace(new RegExp(`\\s*${customStopSequence}.*$`, 's'), '').trim();
+
     // Ensure the output is within the desired token range
     const tokens = enhancedPrompt.split(/\s+/);
     if (tokens.length < 150) {
-      throw new Error('Generated prompt is too short');
+      console.warn('Generated prompt is too short, using original prompt');
+      return prompt; // Return the original prompt if the enhanced one is too short
     } else if (tokens.length > 250) {
       enhancedPrompt = tokens.slice(0, 250).join(' ');
     }
@@ -90,10 +106,7 @@ export async function enhancePrompt(prompt: string) {
     return enhancedPrompt;
   } catch (error) {
     console.error('Error enhancing prompt:', error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to enhance prompt: ${error.message}`);
-    } else {
-      throw new Error('An unknown error occurred while enhancing the prompt');
-    }
+    // If there's an error, return the original prompt
+    return prompt;
   }
 }
