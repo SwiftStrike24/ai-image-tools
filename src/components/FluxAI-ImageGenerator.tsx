@@ -48,6 +48,12 @@ export default function FluxAIImageGenerator() {
         const enhancedPromptResult = await enhancePrompt(prompt);
         setEnhancedPrompt(enhancedPromptResult);
         finalPrompt = enhancedPromptResult;
+        
+        toast({
+          title: "Prompt Enhanced",
+          description: "Your prompt was enhanced for better results.",
+          duration: 5000,
+        })
       }
 
       const result = await generateFluxImage({
@@ -67,13 +73,6 @@ export default function FluxAIImageGenerator() {
           title: "Images Generated",
           description: `Successfully generated ${result.length} image(s).`,
         })
-        if (isEnhancePromptEnabled) {
-          toast({
-            title: "Prompt Enhanced",
-            description: "Your prompt was enhanced for better results.",
-            duration: 5000,
-          })
-        }
       } else {
         throw new Error('Unexpected response from generate API')
       }

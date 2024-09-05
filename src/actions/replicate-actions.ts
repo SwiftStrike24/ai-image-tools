@@ -54,40 +54,17 @@ export async function upscaleImage(imageData: string, upscaleFactor: number, fac
 
 export async function enhancePrompt(prompt: string) {
   const input = {
-    top_k: 50,
+    top_k: 0,
     top_p: 0.95,
     prompt: prompt,
-    max_tokens: 512,
+    max_tokens: 512,  // Reduced to match our desired output length
     temperature: 0.7,
-    system_prompt: `
-      You are an AI expert in creating vivid, detailed image generation prompts.
-      Your task is to enhance the given prompt by:
-      1. Adding rich, sensory details (visual, auditory, olfactory, tactile)
-      2. Incorporating artistic styles or techniques
-      3. Suggesting specific elements to include
-      4. Describing lighting, atmosphere, and mood
-      5. Mentioning composition or perspective
-
-      CRITICAL INSTRUCTIONS:
-      - Output ONLY the enhanced prompt, with no additional explanation or text
-      - The response MUST be between 150-250 tokens
-      - Focus on impactful, concise enhancements
-      - Avoid repetition or irrelevant details
-      - Maintain the core essence and theme of the original prompt
-      - Use varied and vivid vocabulary to create a compelling scene
-      - Do not repeat the original prompt verbatim; instead, expand and enhance it`,
-    length_penalty: 1.0,
-    max_new_tokens: 512,
-    stop_sequences: "END",
-    prompt_template: `
-      {system_prompt}
-
-      Original prompt: {prompt}
-
-      Enhanced prompt:
-    `,
-    presence_penalty: 0.3,
-    frequency_penalty: 0.7,
+    system_prompt: `You are an AI expert in creating vivid, detailed image generation prompts. Enhance the given prompt by adding rich details, artistic styles, specific elements, lighting, atmosphere, mood, composition, and perspective. Output ONLY the enhanced prompt, with no additional explanation or text. The response MUST be between 150-250 tokens. Focus on impactful, concise enhancements. Avoid repetition or irrelevant details. Maintain the core essence of the original prompt. Use varied and vivid vocabulary.`,
+    length_penalty: 1,
+    max_new_tokens: 512,  // Reduced to match our desired output length
+    stop_sequences: "respond",  // Changed from array to string
+    prompt_template: "system\n\n{system_prompt}\n\n{prompt}\n\n",
+    presence_penalty: 0,
     log_performance_metrics: false
   };
 
@@ -101,9 +78,6 @@ export async function enhancePrompt(prompt: string) {
     } else {
       throw new Error('Unexpected response format from Replicate API');
     }
-
-    // Remove any potential "Enhanced prompt:" prefix
-    enhancedPrompt = enhancedPrompt.replace(/^Enhanced prompt:\s*/i, '');
 
     // Ensure the output is within the desired token range
     const tokens = enhancedPrompt.split(/\s+/);
