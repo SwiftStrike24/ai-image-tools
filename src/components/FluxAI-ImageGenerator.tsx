@@ -15,11 +15,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog"
-import { useMediaQuery } from "@/hooks/use-media-query"
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
-  const [enhancedPrompt, setEnhancedPrompt] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [imageUrls, setImageUrls] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -34,12 +32,16 @@ export default function FluxAIImageGenerator() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const { toast } = useToast()
 
-  const isMobile = useMediaQuery("(max-width: 640px)")
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+
+    if (!process.env.REPLICATE_API_TOKEN) {
+      setError("API token is missing. Please check your environment variables.");
+      setIsLoading(false);
+      return;
+    }
 
     try {
       let finalPrompt = prompt;
@@ -47,7 +49,6 @@ export default function FluxAIImageGenerator() {
       if (isEnhancePromptEnabled) {
         const enhancedPromptResult = await enhancePrompt(prompt);
         if (enhancedPromptResult !== prompt) {
-          setEnhancedPrompt(enhancedPromptResult);
           finalPrompt = enhancedPromptResult;
           toast({
             title: "Prompt Enhanced",
@@ -98,7 +99,6 @@ export default function FluxAIImageGenerator() {
 
   const handleNewImage = useCallback(() => {
     setPrompt('')
-    setEnhancedPrompt('')
     setImageUrls([])
     setError(null)
   }, [])
