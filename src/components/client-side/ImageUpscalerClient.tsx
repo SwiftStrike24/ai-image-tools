@@ -11,7 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { upscaleImage } from "@/actions/replicate-actions"
+import { upscaleImage } from "@/actions/replicate/upscaleImage"
 import { convertHeicToJpeg } from "@/utils/imageUtils"
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
