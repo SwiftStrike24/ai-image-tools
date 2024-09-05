@@ -318,15 +318,71 @@ export default function FluxAIImageGenerator() {
                 type="submit"
                 className={cn(
                   "w-full",
-                  isLoading && "animate-pulse"
+                  isLoading && "opacity-50 cursor-not-allowed"
                 )}
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                {isLoading ? 'Generating...' : 'Generate Image(s)'}
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                    <span>Generating...</span>
+                  </div>
+                ) : (
+                  'Generate Image(s)'
+                )}
               </Button>
+              <AnimatePresence>
+                {isLoading && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="flex justify-center items-center py-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <motion.div
+                        className="w-3 h-3 bg-purple-500 rounded-full"
+                        animate={{
+                          scale: [1, 1.5, 1],
+                          opacity: [1, 0.5, 1],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        }}
+                      />
+                      <motion.div
+                        className="w-3 h-3 bg-purple-500 rounded-full"
+                        animate={{
+                          scale: [1, 1.5, 1],
+                          opacity: [1, 0.5, 1],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: 0.2,
+                        }}
+                      />
+                      <motion.div
+                        className="w-3 h-3 bg-purple-500 rounded-full"
+                        animate={{
+                          scale: [1, 1.5, 1],
+                          opacity: [1, 0.5, 1],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: 0.4,
+                        }}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </form>
           </div>
           <div className="space-y-4">
