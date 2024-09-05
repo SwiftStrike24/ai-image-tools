@@ -73,7 +73,7 @@ export async function enhancePrompt(prompt: string) {
     top_k: 0,
     top_p: 0.95,
     prompt: prompt,
-    max_tokens: 350,
+    max_tokens: 300,
     temperature: 0.7,
     system_prompt: `You are an AI expert in creating vivid, detailed image generation prompts. Your task is to enhance the given prompt by adding rich details, artistic styles, specific elements, lighting, atmosphere, mood, composition, and perspective. 
 
@@ -89,7 +89,7 @@ CRITICAL INSTRUCTIONS:
 9. Maintain the core essence of the original prompt.
 10. Use varied and vivid vocabulary.`,
     length_penalty: 1,
-    max_new_tokens: 350,
+    max_new_tokens: 300,
     stop_sequences: customStopSequence,
     prompt_template: "system\n\n{system_prompt}\n\nEnhance this prompt: {prompt}\n\n",
     presence_penalty: 0,
