@@ -43,15 +43,28 @@ export async function generateFluxImage(params: FluxImageParams) {
   }
 }
 
-export async function upscaleImage(imageData: string, upscaleFactor: number, faceEnhance: boolean) {
-  const input = {
-    image: imageData,
-    scale: upscaleFactor,
-    face_enhance: faceEnhance
-  };
+export async function upscaleImage(image: string, scale: number, faceEnhance: boolean): Promise<string> {
+  try {
+    const output = await replicate.run(
+      "nightmareai/real-esrgan:42fed1c4974146d4d2414e2be2c5277c7fcf05fcc3a73abf41610695738c1d7b",
+      {
+        input: {
+          image,
+          scale,
+          face_enhance: faceEnhance,
+        },
+      }
+    );
 
-  const output = await replicate.run("nightmareai/real-esrgan:f121d640bd286e1fdc67f9799164c1d5be36ff74576ee11c803ae5b665dd46aa", { input });
-  return output;
+    if (typeof output === 'string') {
+      return output;
+    } else {
+      throw new Error('Unexpected response from Replicate API');
+    }
+  } catch (error) {
+    console.error('Error in upscaleImage:', error);
+    throw error;
+  }
 }
 
 export async function enhancePrompt(prompt: string) {
