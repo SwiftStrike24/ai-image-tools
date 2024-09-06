@@ -109,9 +109,9 @@ function ImageUpscalerComponent() {
         reader.readAsDataURL(originalFile);
       });
 
-      const jobId = await upscaleImage(base64Image, scale, faceEnhance);
-      setJobId(jobId);
-      pollJobStatus(jobId);
+      const newJobId = await upscaleImage(base64Image, scale, faceEnhance);
+      setJobId(newJobId);
+      pollJobStatus(newJobId);
     } catch (error) {
       console.error('Upscaling error:', error);
       setError(error instanceof Error ? error.message : "Failed to start upscaling job. Please try again.");
@@ -124,9 +124,9 @@ function ImageUpscalerComponent() {
     }
   }, [originalFile, upscaleOption, faceEnhance, toast, isLoading, requestCount, lastRequestTime]);
 
-  const pollJobStatus = useCallback(async (jobId: string) => {
+  const pollJobStatus = useCallback(async (currentJobId: string) => {
     try {
-      const status = await getUpscaleStatus(jobId);
+      const status = await getUpscaleStatus(currentJobId);
       if (status.status === 'completed') {
         setUpscaledImage(status.result!);
         setRequestCount(prevCount => prevCount + 1);
@@ -135,11 +135,12 @@ function ImageUpscalerComponent() {
           description: "Your image has been successfully upscaled.",
         });
         setIsLoading(false);
+        setJobId(null); // Reset job ID after completion
       } else if (status.status === 'failed') {
         throw new Error(status.error || 'Upscaling failed');
       } else {
         // Still pending, poll again after a delay
-        setTimeout(() => pollJobStatus(jobId), 2000);
+        setTimeout(() => pollJobStatus(currentJobId), 2000);
       }
     } catch (error) {
       console.error('Error polling job status:', error);
@@ -150,6 +151,7 @@ function ImageUpscalerComponent() {
         variant: "destructive",
       });
       setIsLoading(false);
+      setJobId(null); // Reset job ID after failure
     }
   }, [toast, setUpscaledImage, setRequestCount, setIsLoading, setError]);
 
@@ -157,15 +159,16 @@ function ImageUpscalerComponent() {
     if (uploadedImage) {
       URL.revokeObjectURL(uploadedImage);
     }
-    setUploadedImage(null)
-    setOriginalFile(null)
-    setUpscaledImage(null)
-    setZoom(1)
-    setError(null)
+    setUploadedImage(null);
+    setOriginalFile(null);
+    setUpscaledImage(null);
+    setZoom(1);
+    setError(null);
+    setJobId(null); // Reset job ID when clearing the image
     if (fileInputRef.current) {
-      fileInputRef.current.value = ''
+      fileInputRef.current.value = '';
     }
-  }, [uploadedImage])
+  }, [uploadedImage]);
 
   const handleZoom = useCallback((newZoom: number) => {
     if (imageContainerRef.current && imageRef.current) {
@@ -439,6 +442,12 @@ function ImageUpscalerComponent() {
             </AnimatePresence>
           </div>
         </div>
+        {isLoading && jobId && (
+          <div className="text-center mt-4">
+            <p className="text-white">Job ID: {jobId}</p>
+            <p className="text-white">Processing your image...</p>
+          </div>
+        )}
       </div>
     </div>
   )
