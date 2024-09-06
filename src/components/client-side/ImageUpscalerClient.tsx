@@ -174,20 +174,23 @@ function ImageUpscalerComponent() {
   }, [uploadedImage]);
 
   const handleZoom = useCallback((newZoom: number) => {
-    if (imageContainerRef.current && imageRef.current) {
+    if (imageContainerRef.current) {
       const container = imageContainerRef.current
-      const image = imageRef.current
-      const containerAspectRatio = container.clientWidth / container.clientHeight
-      const imageAspectRatio = image.naturalWidth / image.naturalHeight
+      const image = container.querySelector('img') // Find the image within the container
 
-      let minZoom = 1
-      if (imageAspectRatio > containerAspectRatio) {
-        minZoom = container.clientWidth / image.naturalWidth
-      } else {
-        minZoom = container.clientHeight / image.naturalHeight
+      if (image) {
+        const containerAspectRatio = container.clientWidth / container.clientHeight
+        const imageAspectRatio = image.naturalWidth / image.naturalHeight
+
+        let minZoom = 1
+        if (imageAspectRatio > containerAspectRatio) {
+          minZoom = container.clientWidth / image.naturalWidth
+        } else {
+          minZoom = container.clientHeight / image.naturalHeight
+        }
+
+        setZoom(Math.max(minZoom, Math.min(newZoom, MAX_ZOOM)))
       }
-
-      setZoom(Math.max(minZoom, Math.min(newZoom, MAX_ZOOM)))
     }
   }, [])
 
