@@ -15,6 +15,10 @@ export async function generateFluxImage(params: FluxImageParams): Promise<string
   };
 
   try {
+    if (!process.env.REPLICATE_API_TOKEN) {
+      throw new Error("REPLICATE_API_TOKEN is not set in the environment variables.");
+    }
+
     console.log("Attempting to run Replicate model...");
     const output = await replicate.run("black-forest-labs/flux-schnell", { input });
     
@@ -26,7 +30,6 @@ export async function generateFluxImage(params: FluxImageParams): Promise<string
   } catch (error) {
     console.error('Error generating image:', error);
     if (error instanceof Error) {
-      console.error('Error details:', error.message);
       throw new Error(`Failed to generate image: ${error.message}`);
     } else {
       throw new Error('An unknown error occurred while generating the image');

@@ -39,12 +39,6 @@ export default function FluxAIImageGenerator() {
     setIsLoading(true)
     setError(null)
 
-    if (!process.env.REPLICATE_API_TOKEN) {
-      setError("API token is missing. Please check your environment variables.");
-      setIsLoading(false);
-      return;
-    }
-
     try {
       let finalPrompt = prompt;
 
