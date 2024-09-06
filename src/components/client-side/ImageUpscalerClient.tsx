@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Upload, Loader2, Info, Trash2, ZoomIn, ZoomOut, Maximize, AlertCircle, X } from 'lucide-react'
+import { Upload, Loader2, Info, Trash2, ZoomIn, ZoomOut, Maximize, AlertCircle, X, Download } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
@@ -234,6 +234,49 @@ function ImageUpscalerComponent() {
       return Math.max(1, Math.min(newZoom, 3)) // Limit zoom between 0.5x and 3x
     })
   }, [])
+
+  const handleDownload = useCallback(async () => {
+    if (!upscaledImage) return;
+
+    try {
+      const response = await fetch(upscaledImage);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Create a more human-readable timestamp
+      const now = new Date();
+      const dateString = now.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).replace(/\//g, '-');
+      
+      const fileExtension = 'jpg';
+      const fileName = `upscaled_${upscaleOption}_${dateString}.${fileExtension}`;
+      
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Image Downloaded",
+        description: `Your ${upscaleOption} upscaled image has been successfully downloaded.`,
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: "Download Failed",
+        description: "There was an error downloading your image. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      });
+    }
+  }, [upscaledImage, upscaleOption, toast]);
 
   useEffect(() => {
     return () => {
@@ -515,15 +558,12 @@ function ImageUpscalerComponent() {
                       <ZoomIn className="absolute text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </div>
                     <Button
-                      asChild
+                      onClick={handleDownload}
                       className="w-full"
+                      disabled={!upscaledImage}
                     >
-                      <a
-                        href={upscaledImage}
-                        download="upscaled_image.jpg"
-                      >
-                        Download Upscaled Image
-                      </a>
+                      <Download className="mr-2 h-4 w-4" />
+                      Download {upscaleOption} Upscaled Image
                     </Button>
                   </motion.div>
                 )}
