@@ -11,7 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { upscaleImage } from "@/actions/replicate/upscaleImage"
+import { upscaleImage, getUpscaleStatus } from "@/actions/replicate/upscaleImage"
 import { convertHeicToJpeg } from "@/utils/imageUtils"
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -36,6 +36,7 @@ function ImageUpscalerComponent() {
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
   const { toast } = useToast()
+  const [jobId, setJobId] = useState<string | null>(null)
 
   const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -108,30 +109,49 @@ function ImageUpscalerComponent() {
         reader.readAsDataURL(originalFile);
       });
 
-      const result = await upscaleImage(base64Image, scale, faceEnhance);
-      
-      if (typeof result === 'string') {
-        setUpscaledImage(result);
+      const jobId = await upscaleImage(base64Image, scale, faceEnhance);
+      setJobId(jobId);
+      pollJobStatus(jobId);
+    } catch (error) {
+      console.error('Upscaling error:', error);
+      setError(error instanceof Error ? error.message : "Failed to start upscaling job. Please try again.");
+      toast({
+        title: "Upscaling Failed",
+        description: "There was an error while starting the upscaling process.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    }
+  }, [originalFile, upscaleOption, faceEnhance, toast, isLoading, requestCount, lastRequestTime]);
+
+  const pollJobStatus = useCallback(async (jobId: string) => {
+    try {
+      const status = await getUpscaleStatus(jobId);
+      if (status.status === 'completed') {
+        setUpscaledImage(status.result!);
         setRequestCount(prevCount => prevCount + 1);
         toast({
           title: "Upscaling Complete",
           description: "Your image has been successfully upscaled.",
         });
+        setIsLoading(false);
+      } else if (status.status === 'failed') {
+        throw new Error(status.error || 'Upscaling failed');
       } else {
-        throw new Error('Unexpected response from upscale API');
+        // Still pending, poll again after a delay
+        setTimeout(() => pollJobStatus(jobId), 2000);
       }
     } catch (error) {
-      console.error('Upscaling error:', error);
+      console.error('Error polling job status:', error);
       setError(error instanceof Error ? error.message : "Failed to upscale image. Please try again.");
       toast({
         title: "Upscaling Failed",
         description: "There was an error while upscaling your image.",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
-  }, [originalFile, upscaleOption, faceEnhance, toast, isLoading, requestCount, lastRequestTime]);
+  }, [toast, setUpscaledImage, setRequestCount, setIsLoading, setError]);
 
   const handleClearImage = useCallback(() => {
     if (uploadedImage) {
