@@ -10,11 +10,12 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogClose, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { upscaleImage, getUpscaleStatus } from "@/actions/replicate/upscaleImage"
 import { convertHeicToJpeg } from "@/utils/imageUtils"
+import { VisuallyHidden } from "@/components/ui/visually-hidden"
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MIN_ZOOM = 1;
@@ -41,6 +42,8 @@ function ImageUpscalerComponent() {
   const [jobId, setJobId] = useState<string | null>(null)
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const [isSimulationMode, setIsSimulationMode] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [modalZoom, setModalZoom] = useState(1)
 
   const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -214,8 +217,43 @@ function ImageUpscalerComponent() {
     }
   }, [])
 
-  const handleImageClick = useCallback(() => {
-    setIsImageModalOpen(true)
+  const handleImageClick = useCallback((url: string) => {
+    setSelectedImage(url);
+    setIsImageModalOpen(true);
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setSelectedImage(null);
+    setIsImageModalOpen(false);
+  }, []);
+
+  const getAspectRatioClass = (ratio: string) => {
+    switch (ratio) {
+      case '1:1': return 'aspect-square'
+      case '4:3': return 'aspect-4/3'
+      case '3:4': return 'aspect-3/4'
+      case '16:9': return 'aspect-16/9'
+      case '9:16': return 'aspect-9/16'
+      default: return 'aspect-square'
+    }
+  }
+
+  const getModalSizeClass = (ratio: string) => {
+    switch (ratio) {
+      case '1:1': return 'w-full max-w-xl h-auto'
+      case '4:3': return 'w-full max-w-2xl h-auto'
+      case '3:4': return 'w-full max-w-lg h-auto'
+      case '16:9': return 'w-full max-w-4xl h-auto'
+      case '9:16': return 'w-full max-w-sm h-auto'
+      default: return 'w-full max-w-xl h-auto'
+    }
+  }
+
+  const handleModalZoom = useCallback((zoomIn: boolean) => {
+    setModalZoom(prev => {
+      const newZoom = zoomIn ? prev * 1.2 : prev / 1.2
+      return Math.max(1, Math.min(newZoom, 3)) // Limit zoom between 0.5x and 3x
+    })
   }, [])
 
   useEffect(() => {
@@ -475,8 +513,8 @@ function ImageUpscalerComponent() {
                   className="space-y-4"
                 >
                   <div 
-                    className="aspect-square rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer"
-                    onClick={handleImageClick}
+                    className={`relative ${getAspectRatioClass(upscaleOption)} rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer group`}
+                    onClick={() => handleImageClick(upscaledImage)}
                   >
                     <Image
                       src={upscaledImage}
@@ -485,6 +523,8 @@ function ImageUpscalerComponent() {
                       objectFit="contain"
                       unoptimized
                     />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity duration-300" />
+                    <ZoomIn className="absolute text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </div>
                   <Button
                     asChild
@@ -513,18 +553,54 @@ function ImageUpscalerComponent() {
       </div>
       
       <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-hidden bg-transparent border-none">
-          <div className="relative w-full h-full">
-            {upscaledImage && (
-              <Image
-                src={upscaledImage}
-                alt="Upscaled"
-                layout="fill"
-                objectFit="contain"
-              />
+        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0 overflow-hidden bg-black/80 border-none flex items-center justify-center">
+          <DialogTitle className="sr-only">Upscaled Image</DialogTitle>
+          <DialogDescription className="sr-only">
+            View the upscaled image in full size
+          </DialogDescription>
+          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+            {selectedImage && (
+              <div 
+                className="relative w-full h-full"
+                style={{
+                  overflow: 'auto',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <img 
+                  src={selectedImage} 
+                  alt="Upscaled image"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain',
+                    transform: `scale(${modalZoom})`,
+                    transition: 'transform 0.2s ease-in-out'
+                  }}
+                />
+              </div>
             )}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => handleModalZoom(false)}
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => handleModalZoom(true)}
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+            </div>
             <DialogClose className="absolute top-2 right-2 rounded-full bg-black bg-opacity-50 p-2 text-white hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 transition-all duration-200">
               <X className="h-6 w-6" />
+              <VisuallyHidden>Close</VisuallyHidden>
             </DialogClose>
           </div>
         </DialogContent>
