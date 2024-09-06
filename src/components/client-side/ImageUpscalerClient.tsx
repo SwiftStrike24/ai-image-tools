@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Upload, Loader2, Info, Trash2, ZoomIn, ZoomOut, Maximize, AlertCircle } from 'lucide-react'
+import { Upload, Loader2, Info, Trash2, ZoomIn, ZoomOut, Maximize, AlertCircle, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import dynamic from 'next/dynamic'
+import Image from 'next/image'
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { upscaleImage, getUpscaleStatus } from "@/actions/replicate/upscaleImage"
@@ -37,6 +39,8 @@ function ImageUpscalerComponent() {
   const imageRef = useRef<HTMLImageElement>(null)
   const { toast } = useToast()
   const [jobId, setJobId] = useState<string | null>(null)
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false)
+  const [isSimulationMode, setIsSimulationMode] = useState(false)
 
   const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -79,8 +83,61 @@ function ImageUpscalerComponent() {
     }
   }, [])
 
+  const pollJobStatus = useCallback(async (currentJobId: string) => {
+    try {
+      const status = await getUpscaleStatus(currentJobId);
+      if (status.status === 'completed') {
+        setUpscaledImage(status.result!);
+        setRequestCount(prevCount => prevCount + 1);
+        toast({
+          title: "Upscaling Complete",
+          description: "Your image has been successfully upscaled.",
+        });
+        setIsLoading(false);
+        setJobId(null);
+      } else if (status.status === 'failed') {
+        throw new Error(status.error || 'Upscaling failed');
+      } else {
+        setTimeout(() => pollJobStatus(currentJobId), 2000);
+      }
+    } catch (error) {
+      console.error('Error polling job status:', error);
+      setError(error instanceof Error ? error.message : "Failed to upscale image. Please try again.");
+      toast({
+        title: "Upscaling Failed",
+        description: "There was an error while upscaling your image.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      setJobId(null);
+    }
+  }, [toast, setUpscaledImage, setRequestCount, setIsLoading, setError, setJobId]);
+
+  const simulateUpscale = useCallback(() => {
+    setIsLoading(true);
+    setError(null);
+    const simulatedJobId = `sim_${Date.now()}`;
+    setJobId(simulatedJobId);
+
+    setTimeout(() => {
+      setUpscaledImage(uploadedImage); // Use the original image as the "upscaled" image in simulation
+      setRequestCount(prevCount => prevCount + 1);
+      toast({
+        title: "Upscaling Complete (Simulated)",
+        description: "Your image has been successfully upscaled in simulation mode.",
+      });
+      setIsLoading(false);
+      setJobId(null);
+    }, 3000); // Simulate a 3-second upscaling process
+  }, [uploadedImage, toast]);
+
   const handleUpscale = useCallback(async () => {
     if (!originalFile || isLoading) return;
+
+    if (isSimulationMode) {
+      simulateUpscale();
+      return;
+    }
 
     const now = Date.now();
     if (now - lastRequestTime < RATE_LIMIT_INTERVAL) {
@@ -122,38 +179,7 @@ function ImageUpscalerComponent() {
       });
       setIsLoading(false);
     }
-  }, [originalFile, upscaleOption, faceEnhance, toast, isLoading, requestCount, lastRequestTime]);
-
-  const pollJobStatus = useCallback(async (currentJobId: string) => {
-    try {
-      const status = await getUpscaleStatus(currentJobId);
-      if (status.status === 'completed') {
-        setUpscaledImage(status.result!);
-        setRequestCount(prevCount => prevCount + 1);
-        toast({
-          title: "Upscaling Complete",
-          description: "Your image has been successfully upscaled.",
-        });
-        setIsLoading(false);
-        setJobId(null); // Reset job ID after completion
-      } else if (status.status === 'failed') {
-        throw new Error(status.error || 'Upscaling failed');
-      } else {
-        // Still pending, poll again after a delay
-        setTimeout(() => pollJobStatus(currentJobId), 2000);
-      }
-    } catch (error) {
-      console.error('Error polling job status:', error);
-      setError(error instanceof Error ? error.message : "Failed to upscale image. Please try again.");
-      toast({
-        title: "Upscaling Failed",
-        description: "There was an error while upscaling your image.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      setJobId(null); // Reset job ID after failure
-    }
-  }, [toast, setUpscaledImage, setRequestCount, setIsLoading, setError]);
+  }, [originalFile, upscaleOption, faceEnhance, isLoading, requestCount, lastRequestTime, toast, pollJobStatus, isSimulationMode, simulateUpscale]);
 
   const handleClearImage = useCallback(() => {
     if (uploadedImage) {
@@ -164,7 +190,7 @@ function ImageUpscalerComponent() {
     setUpscaledImage(null);
     setZoom(1);
     setError(null);
-    setJobId(null); // Reset job ID when clearing the image
+    setJobId(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -188,6 +214,10 @@ function ImageUpscalerComponent() {
     }
   }, [])
 
+  const handleImageClick = useCallback(() => {
+    setIsImageModalOpen(true)
+  }, [])
+
   useEffect(() => {
     return () => {
       if (uploadedImage) {
@@ -208,7 +238,27 @@ function ImageUpscalerComponent() {
     <div className="flex items-start justify-center bg-gradient-to-br from-gray-900 to-purple-900 min-h-[calc(100vh-80px)] p-4 relative overflow-hidden">
       <div className="absolute inset-0 bg-purple-900 opacity-10 blur-3xl"></div>
       <div className="max-w-4xl w-full space-y-8 relative z-10 mt-8">
-        <h1 className="text-4xl font-bold text-center text-purple-300 mb-8">AI Image Upscaler</h1>
+        <div className="flex justify-between items-center">
+          <h1 className="text-4xl font-bold text-center text-purple-300">AI Image Upscaler</h1>
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="simulation-mode" className="text-white">Simulation Mode</Label>
+            <Switch
+              id="simulation-mode"
+              checked={isSimulationMode}
+              onCheckedChange={setIsSimulationMode}
+            />
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="w-4 h-4 text-purple-400 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="left" className="bg-purple-900 text-white border-purple-500">
+                  <p>Toggle simulation mode to test UI without making API requests</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
         <AnimatePresence>
           {error && (
             <motion.div
@@ -261,13 +311,14 @@ function ImageUpscalerComponent() {
                 className="relative aspect-square rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center"
                 ref={imageContainerRef}
               >
-                <img
-                  ref={imageRef}
+                <Image
                   src={uploadedImage}
                   alt="Uploaded"
-                  className="max-w-full max-h-full object-contain transition-transform duration-300 ease-in-out"
+                  layout="fill"
+                  objectFit="contain"
+                  className="transition-transform duration-300 ease-in-out"
                   style={{ transform: `scale(${zoom})` }}
-                  onLoad={() => handleZoom(1)} // Reset zoom when image loads
+                  onLoadingComplete={() => handleZoom(1)}
                 />
                 <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center">
                   <div className="flex space-x-2">
@@ -423,8 +474,17 @@ function ImageUpscalerComponent() {
                   transition={{ duration: 0.3 }}
                   className="space-y-4"
                 >
-                  <div className="aspect-square rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center">
-                    <img src={upscaledImage} alt="Upscaled" className="max-w-full max-h-full object-contain" />
+                  <div 
+                    className="aspect-square rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer"
+                    onClick={handleImageClick}
+                  >
+                    <Image
+                      src={upscaledImage}
+                      alt="Upscaled"
+                      layout="fill"
+                      objectFit="contain"
+                      unoptimized
+                    />
                   </div>
                   <Button
                     asChild
@@ -445,10 +505,30 @@ function ImageUpscalerComponent() {
         {isLoading && jobId && (
           <div className="text-center mt-4">
             <p className="text-white">Job ID: {jobId}</p>
-            <p className="text-white">Processing your image...</p>
+            <p className="text-white">
+              {isSimulationMode ? "Simulating upscaling process..." : "Processing your image..."}
+            </p>
           </div>
         )}
       </div>
+      
+      <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-hidden bg-transparent border-none">
+          <div className="relative w-full h-full">
+            {upscaledImage && (
+              <Image
+                src={upscaledImage}
+                alt="Upscaled"
+                layout="fill"
+                objectFit="contain"
+              />
+            )}
+            <DialogClose className="absolute top-2 right-2 rounded-full bg-black bg-opacity-50 p-2 text-white hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 transition-all duration-200">
+              <X className="h-6 w-6" />
+            </DialogClose>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
