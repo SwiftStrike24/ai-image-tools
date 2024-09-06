@@ -15,7 +15,8 @@ import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"
+import { VisuallyHidden } from "@/components/ui/visually-hidden"
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -453,15 +454,19 @@ export default function FluxAIImageGenerator() {
 
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && closeModal()}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-hidden bg-transparent border-none">
+          <DialogTitle className="sr-only">Generated Image</DialogTitle>
+          <DialogDescription className="sr-only">
+            View the generated image in full size
+          </DialogDescription>
           <div className={`relative ${getModalSizeClass(generatedAspectRatio)} mx-auto`}>
             <img 
               src={selectedImage || ''} 
-              alt="Selected" 
+              alt="Generated image"
               className={`w-full h-full object-contain rounded-lg ${getAspectRatioClass(generatedAspectRatio)}`}
             />
             <DialogClose className="absolute top-2 right-2 rounded-full bg-black bg-opacity-50 p-2 text-white hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 transition-all duration-200">
               <X className="h-6 w-6" />
-              <span className="sr-only">Close</span>
+              <VisuallyHidden>Close</VisuallyHidden>
             </DialogClose>
           </div>
         </DialogContent>
