@@ -173,18 +173,16 @@ export default function FluxAIImageGenerator() {
 
   const getModalSizeClass = (ratio: string) => {
     switch (ratio) {
-      case '1:1': return 'w-full max-w-xl h-auto'
-      case '4:3': return 'w-full max-w-2xl h-auto'
-      case '3:4': return 'w-full max-w-lg h-auto'
-      case '16:9': return 'w-full max-w-4xl h-auto'
-      case '9:16': return 'w-full max-w-sm h-auto'
-      case '4:5': return 'w-full max-w-lg h-auto'
-      case '21:9': return 'w-full max-w-5xl h-auto'
-      case '2:3': return 'w-full max-w-md h-auto'
-      case '3:2': return 'w-full max-w-2xl h-auto'
-      case '5:4': return 'w-full max-w-xl h-auto'
-      case '9:21': return 'w-full max-w-sm h-auto'
-      default: return 'w-full max-w-xl h-auto'
+      case '1:1': return 'w-full max-w-xl h-auto aspect-square'
+      case '16:9': return 'w-full max-w-4xl h-auto aspect-video'
+      case '9:16': return 'w-full max-w-sm h-auto aspect-[9/16]'
+      case '4:5': return 'w-full max-w-lg h-auto aspect-[4/5]'
+      case '21:9': return 'w-full max-w-5xl h-auto aspect-[21/9]'
+      case '2:3': return 'w-full max-w-md h-auto aspect-[2/3]'
+      case '3:2': return 'w-full max-w-2xl h-auto aspect-[3/2]'
+      case '5:4': return 'w-full max-w-xl h-auto aspect-[5/4]'
+      case '9:21': return 'w-full max-w-sm h-auto aspect-[9/21]'
+      default: return 'w-full max-w-xl h-auto aspect-square'
     }
   }
 
@@ -523,7 +521,7 @@ export default function FluxAIImageGenerator() {
           <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
             {selectedImage && (
               <div 
-                className="relative w-full h-full"
+                className={`relative ${getModalSizeClass(generatedAspectRatio)}`}
                 style={{
                   overflow: 'auto',
                   display: 'flex',
@@ -535,10 +533,8 @@ export default function FluxAIImageGenerator() {
                   ref={modalImageRef}
                   src={selectedImage}
                   alt="Generated image"
+                  className="w-full h-full object-contain"
                   style={{
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    objectFit: 'contain',
                     transform: `scale(${modalZoom})`,
                     transition: 'transform 0.2s ease-in-out'
                   }}
