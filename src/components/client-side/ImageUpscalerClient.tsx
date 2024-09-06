@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils"
 import { upscaleImage as upscaleImageAPI } from "@/actions/replicate/upscaleImage"
 import { convertHeicToJpeg, compressImage } from "@/utils/imageUtils"
 import { VisuallyHidden } from "@/components/ui/visually-hidden"
+import RetroGrid from "@/components/magicui/retro-grid"
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MIN_ZOOM = 1;
@@ -251,273 +252,283 @@ function ImageUpscalerComponent() {
   const upscaleOptions = ['2x', '4x', '6x', '8x', '10x']
 
   return (
-    <div className="flex items-start justify-center bg-gradient-to-br from-gray-900 to-purple-900 min-h-[calc(100vh-80px)] p-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-purple-900 opacity-10 blur-3xl"></div>
-      <div className="max-w-4xl w-full space-y-8 relative z-10 mt-8">
-        <div className="flex justify-between items-center">
-          <h1 className="text-4xl font-bold text-center text-purple-300">AI Image Upscaler</h1>
-          <div className="flex items-center space-x-2">
-            <Label htmlFor="simulation-mode" className="text-white">Simulation Mode</Label>
-            <Switch
-              id="simulation-mode"
-              checked={isSimulationMode}
-              onCheckedChange={setIsSimulationMode}
-            />
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="w-4 h-4 text-purple-400 cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent side="left" className="bg-purple-900 text-white border-purple-500">
-                  <p>Toggle simulation mode to test UI without making API requests</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </div>
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="space-y-4">
-            <AnimatePresence>
-              {!uploadedImage && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="border-2 border-dashed border-purple-500 rounded-lg p-8 text-center cursor-pointer hover:bg-purple-900/30 transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
-                  onDrop={handleDrop}
-                  onDragOver={(e) => e.preventDefault()}
-                >
-                  <Upload className="mx-auto h-12 w-12 text-purple-400 mb-4" />
-                  <p className="text-white">Drag and drop an image here, or click to select</p>
-                  <p className="text-sm text-purple-300 mt-2">Max file size: 10MB</p>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    onChange={handleFileChange}
-                    accept="image/*"
-                    aria-label="Upload image"
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-            {uploadedImage && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
-                className="relative aspect-square rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center"
-                ref={imageContainerRef}
-              >
-                <Image
-                  src={uploadedImage}
-                  alt="Uploaded"
-                  layout="fill"
-                  objectFit="contain"
-                  className="transition-transform duration-300 ease-in-out"
-                  style={{ transform: `scale(${zoom})` }}
-                  onLoadingComplete={() => handleZoom(1)}
-                />
-                <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center">
-                  <div className="flex space-x-2">
-                    <Button
-                      size="icon"
-                      variant="secondary"
-                      onClick={() => handleZoom(zoom - ZOOM_STEP)}
-                      disabled={zoom <= MIN_ZOOM}
-                    >
-                      <ZoomOut className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="secondary"
-                      onClick={() => handleZoom(1)}
-                      disabled={zoom === 1}
-                    >
-                      <Maximize className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="secondary"
-                      onClick={() => handleZoom(zoom + ZOOM_STEP)}
-                      disabled={zoom >= MAX_ZOOM}
-                    >
-                      <ZoomIn className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <Button
-                    size="icon"
-                    variant="destructive"
-                    onClick={handleClearImage}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-          </div>
-          <div className="space-y-6">
-            <div>
-              <Label className="text-white mb-2 block">Upscale Factor</Label>
-              <div className="grid grid-cols-5 gap-2">
-                {upscaleOptions.map((option) => (
-                  <Button
-                    key={option}
-                    onClick={() => setUpscaleOption(option)}
-                    variant={upscaleOption === option ? "default" : "secondary"}
-                  >
-                    {option}
-                  </Button>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center space-x-2 text-white">
+    <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
+      <RetroGrid className="absolute inset-0 z-0 opacity-50" />
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 via-purple-900/50 to-gray-900/90 z-10" />
+      <div className="relative z-20 container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto space-y-8">
+          <div className="flex justify-between items-center">
+            <h1 className="text-4xl font-bold text-purple-300">AI Image Upscaler</h1>
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="simulation-mode" className="text-white">Simulation Mode</Label>
               <Switch
-                id="face-enhance"
-                checked={faceEnhance}
-                onCheckedChange={setFaceEnhance}
+                id="simulation-mode"
+                checked={isSimulationMode}
+                onCheckedChange={setIsSimulationMode}
               />
-              <Label htmlFor="face-enhance">Face Enhance</Label>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Info className="w-4 h-4 text-purple-400 cursor-help" />
                   </TooltipTrigger>
-                  <TooltipContent 
-                    side="right"
-                    className="bg-purple-900 text-white border-purple-500"
-                  >
-                    <p>Run GFPGAN face enhancement along with upscaling to improve facial details</p>
+                  <TooltipContent side="left" className="bg-purple-900 text-white border-purple-500">
+                    <p>Toggle simulation mode to test UI without making API requests</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </div>
-            <div className="relative">
-              <Button
-                onClick={handleUpscale}
-                disabled={!uploadedImage || isLoading}
-                className={cn(
-                  "w-full",
-                  isLoading && "opacity-50 cursor-not-allowed"
-                )}
+          </div>
+          
+          {/* Error Alert */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
               >
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                    <span>Processing...</span>
-                  </div>
-                ) : (
-                  'Upscale'
-                )}
-              </Button>
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Main Content */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Image Upload Area */}
+            <div className="space-y-4">
               <AnimatePresence>
-                {isLoading && (
+                {!uploadedImage && (
                   <motion.div
-                    initial={{ opacity: 0, y: -20 }}
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
-                    className="flex justify-center items-center py-4"
+                    className="border-2 border-dashed border-purple-500 rounded-lg p-8 text-center cursor-pointer hover:bg-purple-900/30 transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                    onDrop={handleDrop}
+                    onDragOver={(e) => e.preventDefault()}
                   >
-                    <div className="flex items-center space-x-2">
-                      <motion.div
-                        className="w-3 h-3 bg-purple-500 rounded-full"
-                        animate={{
-                          scale: [1, 1.5, 1],
-                          opacity: [1, 0.5, 1],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                        }}
-                      />
-                      <motion.div
-                        className="w-3 h-3 bg-purple-500 rounded-full"
-                        animate={{
-                          scale: [1, 1.5, 1],
-                          opacity: [1, 0.5, 1],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: 0.2,
-                        }}
-                      />
-                      <motion.div
-                        className="w-3 h-3 bg-purple-500 rounded-full"
-                        animate={{
-                          scale: [1, 1.5, 1],
-                          opacity: [1, 0.5, 1],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: 0.4,
-                        }}
-                      />
+                    <Upload className="mx-auto h-12 w-12 text-purple-400 mb-4" />
+                    <p className="text-white">Drag and drop an image here, or click to select</p>
+                    <p className="text-sm text-purple-300 mt-2">Max file size: 10MB</p>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      onChange={handleFileChange}
+                      accept="image/*"
+                      aria-label="Upload image"
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {uploadedImage && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="relative aspect-square rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center"
+                  ref={imageContainerRef}
+                >
+                  <Image
+                    src={uploadedImage}
+                    alt="Uploaded"
+                    layout="fill"
+                    objectFit="contain"
+                    className="transition-transform duration-300 ease-in-out"
+                    style={{ transform: `scale(${zoom})` }}
+                    onLoadingComplete={() => handleZoom(1)}
+                  />
+                  <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center">
+                    <div className="flex space-x-2">
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        onClick={() => handleZoom(zoom - ZOOM_STEP)}
+                        disabled={zoom <= MIN_ZOOM}
+                      >
+                        <ZoomOut className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        onClick={() => handleZoom(1)}
+                        disabled={zoom === 1}
+                      >
+                        <Maximize className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        onClick={() => handleZoom(zoom + ZOOM_STEP)}
+                        disabled={zoom >= MAX_ZOOM}
+                      >
+                        <ZoomIn className="h-4 w-4" />
+                      </Button>
                     </div>
+                    <Button
+                      size="icon"
+                      variant="destructive"
+                      onClick={handleClearImage}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            {/* Upscale Options and Controls */}
+            <div className="space-y-6">
+              <div>
+                <Label className="text-white mb-2 block">Upscale Factor</Label>
+                <div className="grid grid-cols-5 gap-2">
+                  {upscaleOptions.map((option) => (
+                    <Button
+                      key={option}
+                      onClick={() => setUpscaleOption(option)}
+                      variant={upscaleOption === option ? "default" : "secondary"}
+                    >
+                      {option}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center space-x-2 text-white">
+                <Switch
+                  id="face-enhance"
+                  checked={faceEnhance}
+                  onCheckedChange={setFaceEnhance}
+                />
+                <Label htmlFor="face-enhance">Face Enhance</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="w-4 h-4 text-purple-400 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent 
+                      side="right"
+                      className="bg-purple-900 text-white border-purple-500"
+                    >
+                      <p>Run GFPGAN face enhancement along with upscaling to improve facial details</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div className="relative">
+                <Button
+                  onClick={handleUpscale}
+                  disabled={!uploadedImage || isLoading}
+                  className={cn(
+                    "w-full",
+                    isLoading && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  {isLoading ? (
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                      <span>Processing...</span>
+                    </div>
+                  ) : (
+                    'Upscale'
+                  )}
+                </Button>
+                <AnimatePresence>
+                  {isLoading && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                      className="flex justify-center items-center py-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <motion.div
+                          className="w-3 h-3 bg-purple-500 rounded-full"
+                          animate={{
+                            scale: [1, 1.5, 1],
+                            opacity: [1, 0.5, 1],
+                          }}
+                          transition={{
+                            duration: 1.5,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                          }}
+                        />
+                        <motion.div
+                          className="w-3 h-3 bg-purple-500 rounded-full"
+                          animate={{
+                            scale: [1, 1.5, 1],
+                            opacity: [1, 0.5, 1],
+                          }}
+                          transition={{
+                            duration: 1.5,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                            delay: 0.2,
+                          }}
+                        />
+                        <motion.div
+                          className="w-3 h-3 bg-purple-500 rounded-full"
+                          animate={{
+                            scale: [1, 1.5, 1],
+                            opacity: [1, 0.5, 1],
+                          }}
+                          transition={{
+                            duration: 1.5,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                            delay: 0.4,
+                          }}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+              <AnimatePresence>
+                {upscaledImage && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-4"
+                  >
+                    <div 
+                      className={`relative ${getAspectRatioClass(upscaleOption)} rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer group`}
+                      onClick={() => handleImageClick(upscaledImage)}
+                    >
+                      <Image
+                        src={upscaledImage}
+                        alt="Upscaled"
+                        layout="fill"
+                        objectFit="contain"
+                        unoptimized
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity duration-300" />
+                      <ZoomIn className="absolute text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    </div>
+                    <Button
+                      asChild
+                      className="w-full"
+                    >
+                      <a
+                        href={upscaledImage}
+                        download="upscaled_image.jpg"
+                      >
+                        Download Upscaled Image
+                      </a>
+                    </Button>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
-            <AnimatePresence>
-              {upscaledImage && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-4"
-                >
-                  <div 
-                    className={`relative ${getAspectRatioClass(upscaleOption)} rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer group`}
-                    onClick={() => handleImageClick(upscaledImage)}
-                  >
-                    <Image
-                      src={upscaledImage}
-                      alt="Upscaled"
-                      layout="fill"
-                      objectFit="contain"
-                      unoptimized
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity duration-300" />
-                    <ZoomIn className="absolute text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  </div>
-                  <Button
-                    asChild
-                    className="w-full"
-                  >
-                    <a
-                      href={upscaledImage}
-                      download="upscaled_image.jpg"
-                    >
-                      Download Upscaled Image
-                    </a>
-                  </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         </div>
       </div>

@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"
 import { VisuallyHidden } from "@/components/ui/visually-hidden"
 import { FluxImageParams } from "@/types/imageTypes"
+import RetroGrid from "@/components/magicui/retro-grid"
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -205,9 +206,10 @@ export default function FluxAIImageGenerator() {
   }, [])
 
   return (
-    <div className="flex items-start justify-center bg-gradient-to-br from-gray-900 to-purple-900 min-h-[calc(100vh-80px)] p-4 relative overflow-hidden">
-      <div className="absolute inset-0 bg-purple-900 opacity-10 blur-3xl"></div>
-      <div className="max-w-4xl w-full space-y-8 relative z-10 mt-8">
+    <div className="relative flex items-start justify-center min-h-[calc(100vh-80px)] p-4 overflow-hidden">
+      <RetroGrid className="absolute inset-0 z-0" />
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/80 to-purple-900/80 z-10"></div>
+      <div className="max-w-4xl w-full space-y-8 relative z-20 mt-8 bg-gray-900/60 backdrop-blur-sm rounded-lg p-6 shadow-xl">
         <div className="flex justify-between items-center">
           <h1 className="text-4xl font-bold text-center text-purple-300">Image Generator</h1>
           <div className="flex items-center space-x-2">
