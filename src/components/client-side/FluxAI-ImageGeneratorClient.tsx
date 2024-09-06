@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import Image from 'next/image'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, AlertCircle, Download, RefreshCw, Sparkles, X, Info } from "lucide-react"
+import { Loader2, AlertCircle, Download, RefreshCw, Sparkles, X, Info } from "lucide-react" // cspell:ignore lucide
 import { generateFluxImage } from "@/actions/replicate/generateFluxImage"
 import { enhancePrompt } from "@/actions/replicate/enhancePrompt"
 import { useToast } from "@/hooks/use-toast"
@@ -17,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"
 import { VisuallyHidden } from "@/components/ui/visually-hidden"
+import { FluxImageParams } from "@/types/imageTypes" // Import the FluxImageParams type
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -27,7 +29,7 @@ export default function FluxAIImageGenerator() {
   const [aspectRatio, setAspectRatio] = useState("1:1")
   const [generatedAspectRatio, setGeneratedAspectRatio] = useState("1:1")
   const [numOutputs, setNumOutputs] = useState(1)
-  const [outputFormat, setOutputFormat] = useState("webp")
+  const [outputFormat, setOutputFormat] = useState("webp") // cspell:ignore webp
   const [outputQuality, setOutputQuality] = useState(80)
   const [isEnhancePromptEnabled, setIsEnhancePromptEnabled] = useState(false)
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null)
@@ -187,11 +189,11 @@ export default function FluxAIImageGenerator() {
     { value: "16:9", label: "16:9 (Widescreen)" },
     { value: "9:16", label: "9:16 (Vertical)" },
     { value: "4:5", label: "4:5" },
-    { value: "21:9", label: "21:9 (Ultrawide)" },
+    { value: "21:9", label: "21:9 (Ultrawide)" }, // cspell:ignore Ultrawide
     { value: "2:3", label: "2:3" },
     { value: "3:2", label: "3:2" },
     { value: "5:4", label: "5:4" },
-    { value: "9:21", label: "9:21 (Vertical Ultrawide)" }
+    { value: "9:21", label: "9:21 (Vertical Ultrawide)" } // cspell:ignore Ultrawide
   ];
 
   const simulateImageGeneration = useCallback(async (params: FluxImageParams) => {
@@ -485,7 +487,7 @@ export default function FluxAIImageGenerator() {
         </div>
 
         {isSimulationMode && (
-          <Alert variant="warning" className="mt-4 bg-yellow-900/50 border-yellow-600">
+          <Alert className="mt-4 bg-yellow-900/50 border-yellow-600">
             <AlertCircle className="h-4 w-4 text-yellow-400" />
             <AlertTitle className="text-yellow-400">Simulation Mode Active</AlertTitle>
             <AlertDescription className="text-yellow-200">
@@ -502,11 +504,15 @@ export default function FluxAIImageGenerator() {
             View the generated image in full size
           </DialogDescription>
           <div className={`relative ${getModalSizeClass(generatedAspectRatio)} mx-auto`}>
-            <img 
-              src={selectedImage || ''} 
-              alt="Generated image"
-              className={`w-full h-full object-contain rounded-lg ${getAspectRatioClass(generatedAspectRatio)}`}
-            />
+            {selectedImage && (
+              <Image 
+                src={selectedImage}
+                alt="Generated image"
+                layout="fill"
+                objectFit="contain"
+                className={`rounded-lg ${getAspectRatioClass(generatedAspectRatio)}`}
+              />
+            )}
             <DialogClose className="absolute top-2 right-2 rounded-full bg-black bg-opacity-50 p-2 text-white hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 transition-all duration-200">
               <X className="h-6 w-6" />
               <VisuallyHidden>Close</VisuallyHidden>
