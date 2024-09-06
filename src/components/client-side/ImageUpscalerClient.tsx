@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogClose, DialogTitle, DialogDescription } fr
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { upscaleImage as upscaleImageAPI } from "@/actions/replicate/upscaleImage"
-import { convertHeicToJpeg } from "@/utils/imageUtils"
+import { convertHeicToJpeg, compressImage } from "@/utils/imageUtils"
 import { VisuallyHidden } from "@/components/ui/visually-hidden"
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -37,7 +37,6 @@ function ImageUpscalerComponent() {
   const [lastRequestTime, setLastRequestTime] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const imageContainerRef = useRef<HTMLDivElement>(null)
-  const imageRef = useRef<HTMLImageElement>(null)
   const { toast } = useToast()
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const [isSimulationMode, setIsSimulationMode] = useState(false)
@@ -53,8 +52,9 @@ function ImageUpscalerComponent() {
       }
       try {
         const convertedFile = await convertHeicToJpeg(file);
-        setOriginalFile(convertedFile);
-        const objectUrl = URL.createObjectURL(convertedFile);
+        const compressedFile = await compressImage(convertedFile, 1920, 0.8); // Compress to max 1920px width/height and 80% quality
+        setOriginalFile(compressedFile);
+        const objectUrl = URL.createObjectURL(compressedFile);
         setUploadedImage(objectUrl);
         setError(null);
         setZoom(1);
@@ -74,8 +74,9 @@ function ImageUpscalerComponent() {
       }
       try {
         const convertedFile = await convertHeicToJpeg(file);
-        setOriginalFile(convertedFile);
-        const objectUrl = URL.createObjectURL(convertedFile);
+        const compressedFile = await compressImage(convertedFile, 1920, 0.8);
+        setOriginalFile(compressedFile);
+        const objectUrl = URL.createObjectURL(compressedFile);
         setUploadedImage(objectUrl);
         setError(null);
         setZoom(1);

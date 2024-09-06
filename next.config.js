@@ -2,8 +2,13 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['via.placeholder.com', 'replicate.com', 'replicate.delivery'],
+    domains: ['replicate.com', 'replicate.delivery'],
   },
-}
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb'
+    },
+  },
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
