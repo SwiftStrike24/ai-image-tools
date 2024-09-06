@@ -11,6 +11,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'replicate.delivery',
       },
+      {
+        protocol: 'https',
+        hostname: 'via.placeholder.com',
+      },
       // Add any other domains you're loading images from
     ],
   },

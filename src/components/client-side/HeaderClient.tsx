@@ -64,7 +64,7 @@ export default function Header() {
             transition={{ duration: 0.5 }}
           >
             <Link href="/" className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600 hover:from-pink-600 hover:to-purple-400 transition-all duration-300">
-              AI Image Tools
+              FluxScale AI
             </Link>
           </motion.h1>
           <nav className="relative">

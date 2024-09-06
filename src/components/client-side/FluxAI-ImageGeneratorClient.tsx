@@ -192,10 +192,9 @@ export default function FluxAIImageGenerator() {
 
   const simulateImageGeneration = useCallback(async (params: FluxImageParams) => {
     await new Promise(resolve => setTimeout(resolve, 2000));
-    return Array(params.num_outputs).fill(null).map((_, index) => {
-      const [width, height] = params.aspect_ratio.split(':').map(Number);
-      return `https://via.placeholder.com/${width * 100}x${height * 100}/1a1a1a/ffffff.png?text=Generated+${index + 1}`;
-    });
+    // Use a default stock image URL (replace this with an actual image URL from your project)
+    const defaultImageUrl = '/images/simulated-image.jpg'; // Assuming you have this image in your public folder
+    return Array(params.num_outputs).fill(defaultImageUrl);
   }, []);
 
   const handleModalZoom = useCallback((zoomIn: boolean) => {
@@ -206,298 +205,248 @@ export default function FluxAIImageGenerator() {
   }, [])
 
   return (
-    <div className="relative flex items-start justify-center min-h-[calc(100vh-80px)] p-4 overflow-hidden">
-      <RetroGrid className="absolute inset-0 z-0" />
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/80 to-purple-900/80 z-10"></div>
-      <div className="max-w-4xl w-full space-y-8 relative z-20 mt-8 bg-gray-900/60 backdrop-blur-sm rounded-lg p-6 shadow-xl">
-        <div className="flex justify-between items-center">
-          <h1 className="text-4xl font-bold text-center text-purple-300">Image Generator</h1>
-          <div className="flex items-center space-x-2">
-            <Label htmlFor="simulation-mode" className="text-white">Simulation Mode</Label>
-            <Switch
-              id="simulation-mode"
-              checked={isSimulationMode}
-              onCheckedChange={setIsSimulationMode}
-            />
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info className="w-4 h-4 text-purple-400 cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent side="left" className="bg-purple-900 text-white border-purple-500">
-                  <p>Toggle simulation mode to test UI without making API requests</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+    <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
+      <RetroGrid className="absolute inset-0 z-0 opacity-50" />
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 via-purple-900/50 to-gray-900/90 z-10" />
+      <div className="relative z-20 container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto space-y-8">
+          <div className="flex justify-between items-center">
+            <h1 className="text-4xl font-bold text-purple-300">AI Image Generator</h1>
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="simulation-mode" className="text-white">Simulation Mode</Label>
+              <Switch
+                id="simulation-mode"
+                checked={isSimulationMode}
+                onCheckedChange={setIsSimulationMode}
+              />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="w-4 h-4 text-purple-400 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="left" className="bg-purple-900 text-white border-purple-500">
+                    <p>Toggle simulation mode to test UI without making API requests</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
-        </div>
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="space-y-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="prompt" className="text-white">Image Prompt</Label>
-                <Input
-                  id="prompt"
-                  type="text"
-                  required
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="Enter your image prompt"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="aspect-ratio" className="text-white">Aspect Ratio</Label>
-                <Select value={aspectRatio} onValueChange={setAspectRatio}>
-                  <SelectTrigger id="aspect-ratio" className="w-full bg-gray-800 text-white border-gray-700">
-                    <SelectValue placeholder="Select aspect ratio" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {aspectRatioOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-white">Number of Outputs</Label>
-                <div className="grid grid-cols-4 gap-2">
-                  {[1, 2, 3, 4].map((num) => (
-                    <Button
-                      key={num}
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setNumOutputs(num);
-                      }}
-                      variant={numOutputs === num ? "default" : "secondary"}
-                      className="w-full"
-                    >
-                      {num}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-white">Output Format</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['webp', 'jpg', 'png'].map((format) => (
-                    <Button
-                      key={format}
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setOutputFormat(format);
-                      }}
-                      variant={outputFormat === format ? "default" : "secondary"}
-                      className="w-full"
-                    >
-                      {format.toUpperCase()}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-white">Output Quality: {outputQuality}</Label>
-                <Slider
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={[outputQuality]}
-                  onValueChange={(value) => setOutputQuality(value[0])}
-                  className="w-full"
-                  disabled={outputFormat === 'png'}
-                />
-              </div>
-              <div className="flex items-center space-x-2 text-white">
-                <Switch
-                  id="enhance-prompt"
-                  checked={isEnhancePromptEnabled}
-                  onCheckedChange={setIsEnhancePromptEnabled}
-                />
-                <Label htmlFor="enhance-prompt">Enhance Prompt</Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Sparkles className="w-4 h-4 text-purple-400 cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent 
-                      side="right"
-                      className="bg-purple-900 text-white border-purple-500"
-                    >
-                      <p>Automatically enhance your prompt for better results</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <Button
-                type="submit"
-                className={cn(
-                  "w-full",
-                  isLoading && "opacity-50 cursor-not-allowed"
-                )}
-                disabled={isLoading}
+
+          {/* Error Alert */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
               >
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                    <span>Generating...</span>
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Main Content */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Image Generation Form */}
+            <div className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="prompt" className="text-white">Prompt</Label>
+                  <Input
+                    id="prompt"
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Enter your image prompt here..."
+                    className="bg-gray-800 text-white border-gray-700"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="aspect-ratio" className="text-white">Aspect Ratio</Label>
+                  <Select value={aspectRatio} onValueChange={setAspectRatio}>
+                    <SelectTrigger id="aspect-ratio" className="w-full bg-gray-800 text-white border-gray-700">
+                      <SelectValue placeholder="Select aspect ratio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {aspectRatioOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white">Number of Outputs</Label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[1, 2, 3, 4].map((num) => (
+                      <Button
+                        key={num}
+                        type="button"
+                        onClick={() => setNumOutputs(num)}
+                        variant={numOutputs === num ? "default" : "secondary"}
+                        className="w-full"
+                      >
+                        {num}
+                      </Button>
+                    ))}
                   </div>
-                ) : (
-                  'Generate Image(s)'
-                )}
-              </Button>
-              <AnimatePresence>
-                {isLoading && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.3 }}
-                    className="flex justify-center items-center py-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <motion.div
-                        className="w-3 h-3 bg-purple-500 rounded-full"
-                        animate={{
-                          scale: [1, 1.5, 1],
-                          opacity: [1, 0.5, 1],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                        }}
-                      />
-                      <motion.div
-                        className="w-3 h-3 bg-purple-500 rounded-full"
-                        animate={{
-                          scale: [1, 1.5, 1],
-                          opacity: [1, 0.5, 1],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: 0.2,
-                        }}
-                      />
-                      <motion.div
-                        className="w-3 h-3 bg-purple-500 rounded-full"
-                        animate={{
-                          scale: [1, 1.5, 1],
-                          opacity: [1, 0.5, 1],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: 0.4,
-                        }}
-                      />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-white">Output Format</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['webp', 'jpg', 'png'].map((format) => (
+                      <Button
+                        key={format}
+                        type="button"
+                        onClick={() => setOutputFormat(format)}
+                        variant={outputFormat === format ? "default" : "secondary"}
+                        className="w-full"
+                      >
+                        {format.toUpperCase()}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="output-quality" className="text-white">Output Quality</Label>
+                  <div className="flex items-center space-x-2">
+                    <Slider
+                      id="output-quality"
+                      min={1}
+                      max={100}
+                      step={1}
+                      value={[outputQuality]}
+                      onValueChange={(value) => setOutputQuality(value[0])}
+                      className="flex-grow"
+                    />
+                    <span className="text-white">{outputQuality}%</span>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="enhance-prompt"
+                    checked={isEnhancePromptEnabled}
+                    onCheckedChange={setIsEnhancePromptEnabled}
+                  />
+                  <Label htmlFor="enhance-prompt" className="text-white">Enhance Prompt</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="w-4 h-4 text-purple-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="bg-purple-900 text-white border-purple-500">
+                        <p>Use AI to enhance your prompt for better results</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Button
+                  type="submit"
+                  className={cn(
+                    "w-full",
+                    isLoading && "opacity-50 cursor-not-allowed"
+                  )}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                      <span>Generating...</span>
                     </div>
+                  ) : (
+                    'Generate Image(s)'
+                  )}
+                </Button>
+              </form>
+            </div>
+
+            {/* Generated Images Display */}
+            <div className="space-y-4">
+              <AnimatePresence>
+                {imageUrls.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.3 }}
+                    className={`grid gap-4 ${
+                      imageUrls.length === 1 ? 'grid-cols-1' :
+                      imageUrls.length === 2 ? 'grid-cols-2' :
+                      'grid-cols-2'
+                    }`}
+                  >
+                    {imageUrls.map((url, index) => (
+                      <div 
+                        key={index} 
+                        className={`relative ${getAspectRatioClass(generatedAspectRatio)} rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer group`}
+                        onClick={() => handleImageClick(url)}
+                      >
+                        {showGlow && (
+                          <motion.div
+                            className="absolute inset-0 bg-purple-500 opacity-20"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 0.2 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 1 }}
+                          />
+                        )}
+                        <Image
+                          src={url}
+                          alt={`Generated ${index + 1}`}
+                          layout="fill"
+                          objectFit="cover"
+                          className="w-full h-full"
+                          unoptimized={isSimulationMode}
+                        />
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload(url, index);
+                          }}
+                          className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                          size="sm"
+                          variant="secondary"
+                          disabled={downloadingIndex === index}
+                        >
+                          {downloadingIndex === index ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Download className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    ))}
                   </motion.div>
                 )}
               </AnimatePresence>
-            </form>
-          </div>
-          <div className="space-y-4">
-            <AnimatePresence>
               {imageUrls.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.3 }}
-                  className={`grid gap-4 ${
-                    imageUrls.length === 1 ? 'grid-cols-1' :
-                    imageUrls.length === 2 ? 'grid-cols-2' :
-                    'grid-cols-2'
-                  }`}
+                <Button
+                  onClick={handleNewImage}
+                  className="w-full"
+                  variant="secondary"
                 >
-                  {imageUrls.map((url, index) => (
-                    <div 
-                      key={index} 
-                      className={`relative ${getAspectRatioClass(generatedAspectRatio)} rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer group`}
-                      onClick={() => handleImageClick(url)}
-                    >
-                      {showGlow && (
-                        <motion.div
-                          className="absolute inset-0 bg-purple-500 opacity-20"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 0.2 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 1 }}
-                        />
-                      )}
-                      <Image
-                        src={url}
-                        alt={`Generated ${index + 1}`}
-                        layout="fill"
-                        objectFit="cover"
-                        className="w-full h-full"
-                      />
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownload(url, index);
-                        }}
-                        className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                        size="sm"
-                        variant="secondary"
-                        disabled={downloadingIndex === index}
-                      >
-                        {downloadingIndex === index ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Download className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  ))}
-                </motion.div>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  New Image(s)
+                </Button>
               )}
-            </AnimatePresence>
-            {imageUrls.length > 0 && (
-              <Button
-                onClick={handleNewImage}
-                className="w-full"
-                variant="secondary"
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                New Image(s)
-              </Button>
-            )}
+            </div>
           </div>
-        </div>
 
-        {isSimulationMode && (
-          <Alert className="mt-4 bg-yellow-900/50 border-yellow-600">
-            <AlertCircle className="h-4 w-4 text-yellow-400" />
-            <AlertTitle className="text-yellow-400">Simulation Mode Active</AlertTitle>
-            <AlertDescription className="text-yellow-200">
-              You are currently in simulation mode. No real API calls will be made.
-            </AlertDescription>
-          </Alert>
-        )}
+          {isSimulationMode && (
+            <Alert className="mt-4 bg-yellow-900/50 border-yellow-600">
+              <AlertCircle className="h-4 w-4 text-yellow-400" />
+              <AlertTitle className="text-yellow-400">Simulation Mode Active</AlertTitle>
+              <AlertDescription className="text-yellow-200">
+                You are currently in simulation mode. No real API calls will be made.
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
       </div>
 
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && closeModal()}>
