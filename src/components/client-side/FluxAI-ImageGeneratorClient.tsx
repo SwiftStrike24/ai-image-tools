@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, AlertCircle, Download, RefreshCw, Sparkles, X, Info, ZoomIn, ZoomOut } from "lucide-react"
+import { Loader2, AlertCircle, Download, RefreshCw, X, Info, ZoomIn, ZoomOut } from "lucide-react"
 import { generateFluxImage } from "@/actions/replicate/generateFluxImage"
 import { enhancePrompt } from "@/actions/replicate/enhancePrompt"
 import { useToast } from "@/hooks/use-toast"
