@@ -190,14 +190,15 @@ function ImageUpscalerComponent() {
     }
   }, [])
 
-  const handleImageClick = useCallback((url: string) => {
-    setSelectedImage(url);
-    setIsImageModalOpen(true);
-  }, []);
-
   const closeModal = useCallback(() => {
     setSelectedImage(null);
     setIsImageModalOpen(false);
+    setModalZoom(1); // Reset zoom when closing
+  }, []);
+
+  const handleImageClick = useCallback((url: string) => {
+    setSelectedImage(url);
+    setIsImageModalOpen(true);
   }, []);
 
   const getAspectRatioClass = (ratio: string) => {
@@ -517,7 +518,9 @@ function ImageUpscalerComponent() {
         </div>
       </div>
       
-      <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
+      <Dialog open={isImageModalOpen} onOpenChange={(open) => {
+        if (!open) closeModal();
+      }}>
         <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0 overflow-hidden bg-black/80 border-none flex items-center justify-center">
           <DialogTitle className="sr-only">Upscaled Image</DialogTitle>
           <DialogDescription className="sr-only">
@@ -537,10 +540,8 @@ function ImageUpscalerComponent() {
                 <img 
                   src={selectedImage} 
                   alt="Upscaled image"
+                  className="w-full h-full object-contain"
                   style={{
-                    maxWidth: '100%',
-                    maxHeight: '100%',
-                    objectFit: 'contain',
                     transform: `scale(${modalZoom})`,
                     transition: 'transform 0.2s ease-in-out'
                   }}
@@ -563,7 +564,7 @@ function ImageUpscalerComponent() {
                 <ZoomIn className="h-4 w-4" />
               </Button>
             </div>
-            <DialogClose className="absolute top-2 right-2 rounded-full bg-black bg-opacity-50 p-2 text-white hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 transition-all duration-200">
+            <DialogClose onClick={closeModal} className="absolute top-2 right-2 rounded-full bg-black bg-opacity-50 p-2 text-white hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 transition-all duration-200">
               <X className="h-6 w-6" />
               <VisuallyHidden>Close</VisuallyHidden>
             </DialogClose>
