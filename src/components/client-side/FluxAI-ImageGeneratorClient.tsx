@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, AlertCircle, Download, RefreshCw, Sparkles, X, Info } from "lucide-react" // cspell:ignore lucide
+import { Loader2, AlertCircle, Download, RefreshCw, Sparkles, X, Info, ZoomIn, ZoomOut } from "lucide-react" // cspell:ignore lucide
 import { generateFluxImage } from "@/actions/replicate/generateFluxImage"
 import { enhancePrompt } from "@/actions/replicate/enhancePrompt"
 import { useToast } from "@/hooks/use-toast"
@@ -35,6 +35,8 @@ export default function FluxAIImageGenerator() {
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [isSimulationMode, setIsSimulationMode] = useState(false)
+  const [modalZoom, setModalZoom] = useState(1)
+  const modalImageRef = useRef<HTMLImageElement>(null)
   const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -142,12 +144,14 @@ export default function FluxAIImageGenerator() {
     }
   }, [outputFormat, toast])
 
-  const handleImageClick = (url: string) => {
+  const handleImageClick = useCallback((url: string) => {
     setSelectedImage(url)
-  }
+    setModalZoom(1) // Reset zoom when opening new image
+  }, [])
 
   const closeModal = useCallback(() => {
     setSelectedImage(null)
+    setModalZoom(1) // Reset zoom when closing
   }, [])
 
   const getAspectRatioClass = (ratio: string) => {
@@ -208,6 +212,13 @@ export default function FluxAIImageGenerator() {
 
     return placeholderImages;
   }, []);
+
+  const handleModalZoom = useCallback((zoomIn: boolean) => {
+    setModalZoom(prev => {
+      const newZoom = zoomIn ? prev * 1.2 : prev / 1.2
+      return Math.max(1, Math.min(newZoom, 3)) // Limit zoom between 1x and 3x
+    })
+  }, [])
 
   return (
     <div className="flex items-start justify-center bg-gradient-to-br from-gray-900 to-purple-900 min-h-[calc(100vh-80px)] p-4 relative overflow-hidden">
@@ -451,7 +462,13 @@ export default function FluxAIImageGenerator() {
                           transition={{ duration: 1 }}
                         />
                       )}
-                      <img src={url} alt={`Generated ${index + 1}`} className="w-full h-full object-cover" />
+                      <Image
+                        src={url}
+                        alt={`Generated ${index + 1}`}
+                        layout="fill"
+                        objectFit="cover"
+                        className="w-full h-full"
+                      />
                       <Button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -498,21 +515,52 @@ export default function FluxAIImageGenerator() {
       </div>
 
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && closeModal()}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 overflow-hidden bg-transparent border-none">
+        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0 overflow-hidden bg-black/80 border-none flex items-center justify-center">
           <DialogTitle className="sr-only">Generated Image</DialogTitle>
           <DialogDescription className="sr-only">
             View the generated image in full size
           </DialogDescription>
-          <div className={`relative ${getModalSizeClass(generatedAspectRatio)} mx-auto`}>
+          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
             {selectedImage && (
-              <Image 
-                src={selectedImage}
-                alt="Generated image"
-                layout="fill"
-                objectFit="contain"
-                className={`rounded-lg ${getAspectRatioClass(generatedAspectRatio)}`}
-              />
+              <div 
+                className="relative w-full h-full"
+                style={{
+                  overflow: 'auto',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <img 
+                  ref={modalImageRef}
+                  src={selectedImage}
+                  alt="Generated image"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    objectFit: 'contain',
+                    transform: `scale(${modalZoom})`,
+                    transition: 'transform 0.2s ease-in-out'
+                  }}
+                />
+              </div>
             )}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => handleModalZoom(false)}
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => handleModalZoom(true)}
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+            </div>
             <DialogClose className="absolute top-2 right-2 rounded-full bg-black bg-opacity-50 p-2 text-white hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 transition-all duration-200">
               <X className="h-6 w-6" />
               <VisuallyHidden>Close</VisuallyHidden>
