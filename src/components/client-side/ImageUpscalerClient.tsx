@@ -13,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogClose, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { upscaleImage, getUpscaleStatus } from "@/actions/replicate/upscaleImage"
+import { upscaleImage as upscaleImageAPI } from "@/actions/replicate/upscaleImage"
 import { convertHeicToJpeg } from "@/utils/imageUtils"
 import { VisuallyHidden } from "@/components/ui/visually-hidden"
 
@@ -39,7 +39,6 @@ function ImageUpscalerComponent() {
   const imageContainerRef = useRef<HTMLDivElement>(null)
   const imageRef = useRef<HTMLImageElement>(null)
   const { toast } = useToast()
-  const [jobId, setJobId] = useState<string | null>(null)
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const [isSimulationMode, setIsSimulationMode] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
@@ -86,42 +85,9 @@ function ImageUpscalerComponent() {
     }
   }, [])
 
-  const pollJobStatus = useCallback(async (currentJobId: string) => {
-    try {
-      const status = await getUpscaleStatus(currentJobId);
-      if (status.status === 'completed') {
-        setUpscaledImage(status.result!);
-        setRequestCount(prevCount => prevCount + 1);
-        toast({
-          title: "Upscaling Complete",
-          description: "Your image has been successfully upscaled.",
-        });
-        setIsLoading(false);
-        setJobId(null);
-      } else if (status.status === 'failed') {
-        throw new Error(status.error || 'Upscaling failed');
-      } else {
-        setTimeout(() => pollJobStatus(currentJobId), 2000);
-      }
-    } catch (error) {
-      console.error('Error polling job status:', error);
-      setError(error instanceof Error ? error.message : "Failed to upscale image. Please try again.");
-      toast({
-        title: "Upscaling Failed",
-        description: "There was an error while upscaling your image.",
-        variant: "destructive",
-      });
-      setIsLoading(false);
-      setJobId(null);
-    }
-  }, [toast, setUpscaledImage, setRequestCount, setIsLoading, setError, setJobId]);
-
   const simulateUpscale = useCallback(() => {
     setIsLoading(true);
     setError(null);
-    const simulatedJobId = `sim_${Date.now()}`;
-    setJobId(simulatedJobId);
-
     setTimeout(() => {
       setUpscaledImage(uploadedImage); // Use the original image as the "upscaled" image in simulation
       setRequestCount(prevCount => prevCount + 1);
@@ -130,7 +96,6 @@ function ImageUpscalerComponent() {
         description: "Your image has been successfully upscaled in simulation mode.",
       });
       setIsLoading(false);
-      setJobId(null);
     }, 3000); // Simulate a 3-second upscaling process
   }, [uploadedImage, toast]);
 
@@ -143,18 +108,13 @@ function ImageUpscalerComponent() {
     }
 
     const now = Date.now();
-    if (now - lastRequestTime < RATE_LIMIT_INTERVAL) {
-      if (requestCount >= MAX_REQUESTS_PER_INTERVAL) {
-        toast({
-          title: "Rate limit exceeded",
-          description: "Please wait before making more requests.",
-          variant: "destructive",
-        });
-        return;
-      }
-    } else {
-      setRequestCount(0);
-      setLastRequestTime(now);
+    if (now - lastRequestTime < RATE_LIMIT_INTERVAL && requestCount >= MAX_REQUESTS_PER_INTERVAL) {
+      toast({
+        title: "Rate limit exceeded",
+        description: "Please wait before making more requests.",
+        variant: "destructive",
+      });
+      return;
     }
 
     setIsLoading(true);
@@ -169,20 +129,34 @@ function ImageUpscalerComponent() {
         reader.readAsDataURL(originalFile);
       });
 
-      const newJobId = await upscaleImage(base64Image, scale, faceEnhance);
-      setJobId(newJobId);
-      pollJobStatus(newJobId);
+      console.log("Calling upscaleImage API...");
+      const upscaledImageUrl = await upscaleImageAPI(base64Image, scale, faceEnhance);
+      console.log("Received upscaled image URL:", upscaledImageUrl);
+
+      setUpscaledImage(upscaledImageUrl);
+      setRequestCount(prevCount => prevCount + 1);
+      setLastRequestTime(now);
+
+      toast({
+        title: "Upscaling Complete",
+        description: "Your image has been successfully upscaled.",
+      });
     } catch (error) {
       console.error('Upscaling error:', error);
-      setError(error instanceof Error ? error.message : "Failed to start upscaling job. Please try again.");
+      let errorMessage = "Failed to upscale image. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      setError(errorMessage);
       toast({
         title: "Upscaling Failed",
-        description: "There was an error while starting the upscaling process.",
+        description: errorMessage,
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
     }
-  }, [originalFile, upscaleOption, faceEnhance, isLoading, requestCount, lastRequestTime, toast, pollJobStatus, isSimulationMode, simulateUpscale]);
+  }, [originalFile, upscaleOption, faceEnhance, isLoading, isSimulationMode, simulateUpscale, lastRequestTime, requestCount, toast]);
 
   const handleClearImage = useCallback(() => {
     if (uploadedImage) {
@@ -193,7 +167,6 @@ function ImageUpscalerComponent() {
     setUpscaledImage(null);
     setZoom(1);
     setError(null);
-    setJobId(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -542,14 +515,6 @@ function ImageUpscalerComponent() {
             </AnimatePresence>
           </div>
         </div>
-        {isLoading && jobId && (
-          <div className="text-center mt-4">
-            <p className="text-white">Job ID: {jobId}</p>
-            <p className="text-white">
-              {isSimulationMode ? "Simulating upscaling process..." : "Processing your image..."}
-            </p>
-          </div>
-        )}
       </div>
       
       <Dialog open={isImageModalOpen} onOpenChange={setIsImageModalOpen}>
@@ -561,7 +526,7 @@ function ImageUpscalerComponent() {
           <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
             {selectedImage && (
               <div 
-                className="relative w-full h-full"
+                className={`relative ${getModalSizeClass(upscaleOption)}`}
                 style={{
                   overflow: 'auto',
                   display: 'flex',

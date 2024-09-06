@@ -4,7 +4,7 @@ import { useState, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, AlertCircle, Download, RefreshCw, Sparkles, X, Info, ZoomIn, ZoomOut } from "lucide-react" // cspell:ignore lucide
+import { Loader2, AlertCircle, Download, RefreshCw, Sparkles, X, Info, ZoomIn, ZoomOut } from "lucide-react"
 import { generateFluxImage } from "@/actions/replicate/generateFluxImage"
 import { enhancePrompt } from "@/actions/replicate/enhancePrompt"
 import { useToast } from "@/hooks/use-toast"
@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"
 import { VisuallyHidden } from "@/components/ui/visually-hidden"
-import { FluxImageParams } from "@/types/imageTypes" // Import the FluxImageParams type
+import { FluxImageParams } from "@/types/imageTypes"
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -29,7 +29,7 @@ export default function FluxAIImageGenerator() {
   const [aspectRatio, setAspectRatio] = useState("1:1")
   const [generatedAspectRatio, setGeneratedAspectRatio] = useState("1:1")
   const [numOutputs, setNumOutputs] = useState(1)
-  const [outputFormat, setOutputFormat] = useState("webp") // cspell:ignore webp
+  const [outputFormat, setOutputFormat] = useState("webp")
   const [outputQuality, setOutputQuality] = useState(80)
   const [isEnhancePromptEnabled, setIsEnhancePromptEnabled] = useState(false)
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null)
@@ -49,23 +49,17 @@ export default function FluxAIImageGenerator() {
 
       if (isEnhancePromptEnabled) {
         const enhancedPromptResult = await enhancePrompt(prompt);
-        if (enhancedPromptResult !== prompt) {
-          finalPrompt = enhancedPromptResult;
-          toast({
-            title: "Prompt Enhanced",
-            description: "Your prompt was enhanced for better results.",
-            duration: 5000,
-          });
-        } else {
-          toast({
-            title: "Prompt Enhancement Skipped",
-            description: "The original prompt was used as the enhanced version was too short.",
-            duration: 5000,
-          });
-        }
+        finalPrompt = enhancedPromptResult !== prompt ? enhancedPromptResult : prompt;
+        toast({
+          title: enhancedPromptResult !== prompt ? "Prompt Enhanced" : "Prompt Enhancement Skipped",
+          description: enhancedPromptResult !== prompt 
+            ? "Your prompt was enhanced for better results." 
+            : "The original prompt was used as the enhanced version was too short.",
+          duration: 5000,
+        });
       }
 
-      const params = {
+      const params: FluxImageParams = {
         prompt: finalPrompt,
         aspect_ratio: aspectRatio,
         num_outputs: numOutputs,
@@ -75,12 +69,9 @@ export default function FluxAIImageGenerator() {
         disable_safety_checker: true,
       };
 
-      let result;
-      if (isSimulationMode) {
-        result = await simulateImageGeneration(params);
-      } else {
-        result = await generateFluxImage(params);
-      }
+      const result = isSimulationMode 
+        ? await simulateImageGeneration(params)
+        : await generateFluxImage(params);
 
       if (Array.isArray(result)) {
         setImageUrls(result)
@@ -146,12 +137,12 @@ export default function FluxAIImageGenerator() {
 
   const handleImageClick = useCallback((url: string) => {
     setSelectedImage(url)
-    setModalZoom(1) // Reset zoom when opening new image
+    setModalZoom(1)
   }, [])
 
   const closeModal = useCallback(() => {
     setSelectedImage(null)
-    setModalZoom(1) // Reset zoom when closing
+    setModalZoom(1)
   }, [])
 
   const getAspectRatioClass = (ratio: string) => {
@@ -191,30 +182,25 @@ export default function FluxAIImageGenerator() {
     { value: "16:9", label: "16:9 (Widescreen)" },
     { value: "9:16", label: "9:16 (Vertical)" },
     { value: "4:5", label: "4:5" },
-    { value: "21:9", label: "21:9 (Ultrawide)" }, // cspell:ignore Ultrawide
+    { value: "21:9", label: "21:9 (Ultrawide)" },
     { value: "2:3", label: "2:3" },
     { value: "3:2", label: "3:2" },
     { value: "5:4", label: "5:4" },
-    { value: "9:21", label: "9:21 (Vertical Ultrawide)" } // cspell:ignore Ultrawide
+    { value: "9:21", label: "9:21 (Vertical Ultrawide)" }
   ];
 
   const simulateImageGeneration = useCallback(async (params: FluxImageParams) => {
-    // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // Generate placeholder images based on aspect ratio
-    const placeholderImages = Array(params.num_outputs).fill(null).map((_, index) => {
+    return Array(params.num_outputs).fill(null).map((_, index) => {
       const [width, height] = params.aspect_ratio.split(':').map(Number);
       return `https://via.placeholder.com/${width * 100}x${height * 100}/1a1a1a/ffffff.png?text=Generated+${index + 1}`;
     });
-
-    return placeholderImages;
   }, []);
 
   const handleModalZoom = useCallback((zoomIn: boolean) => {
     setModalZoom(prev => {
       const newZoom = zoomIn ? prev * 1.2 : prev / 1.2
-      return Math.max(1, Math.min(newZoom, 3)) // Limit zoom between 1x and 3x
+      return Math.max(1, Math.min(newZoom, 3))
     })
   }, [])
 
