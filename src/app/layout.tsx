@@ -9,8 +9,8 @@ import {
   SignedIn,
   SignedOut,
   RedirectToSignIn,
-  UserButton
 } from '@clerk/nextjs'
+import Header from "@/components/Header";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -29,9 +29,7 @@ export default function RootLayout({
       <html lang="en">
         <body className={inter.className}>
           <SignedIn>
-            <header className="p-4 flex justify-end">
-              <UserButton afterSignOutUrl="/"/>
-            </header>
+            <Header />
             {children}
           </SignedIn>
           <SignedOut>

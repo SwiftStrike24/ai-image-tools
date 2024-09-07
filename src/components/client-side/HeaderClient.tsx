@@ -6,13 +6,14 @@ import { useWindowSize } from 'react-use'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from "@/lib/utils"
+import { UserButton } from '@clerk/nextjs'
 
 const tabs = [
   { id: 'upscaler', label: 'Image Upscaler', path: '/upscaler' },
   { id: 'generator', label: 'Image Generator', path: '/generator' },
 ]
 
-export default function Header() {
+export default function HeaderClient() {  // Changed from Header to HeaderClient
   const pathname = usePathname()
   const [activeTab, setActiveTab] = useState(tabs[0].id)
   const { width } = useWindowSize()
@@ -67,50 +68,61 @@ export default function Header() {
               FluxScale AI
             </Link>
           </motion.h1>
-          <nav className="relative">
-            <div className="flex space-x-2 bg-gray-800 rounded-lg p-1">
-              {tabs.map((tab) => (
-                <Link
-                  key={tab.id}
-                  href={tab.path}
-                  id={tab.id}
-                  className={cn(
-                    "relative z-20 px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200",
-                    activeTab === tab.id 
-                      ? "text-white" 
-                      : "text-gray-400 hover:text-purple-300"
-                  )}
-                  aria-current={activeTab === tab.id ? 'page' : undefined}
-                  onClick={() => handleTabChange(tab.id)}
-                >
-                  {tab.label}
-                </Link>
-              ))}
-            </div>
-            <AnimatePresence initial={false}>
-              <motion.div
-                key={activeTab}
-                className="absolute left-0 bottom-1 top-1 bg-purple-600 rounded-md z-10"
-                initial={{ 
-                  width: indicatorWidth, 
-                  x: prevIndicatorOffset,
-                  opacity: 0
-                }}
-                animate={{
-                  width: indicatorWidth,
-                  x: indicatorOffset,
-                  opacity: 1
-                }}
-                exit={{ opacity: 0 }}
-                transition={{ 
-                  type: 'spring', 
-                  stiffness: 300, 
-                  damping: 30,
-                  opacity: { duration: 0.2 }
-                }}
-              />
-            </AnimatePresence>
-          </nav>
+          <div className="flex items-center space-x-4">
+            <nav className="relative">
+              <div className="flex space-x-2 bg-gray-800 rounded-lg p-1">
+                {tabs.map((tab) => (
+                  <Link
+                    key={tab.id}
+                    href={tab.path}
+                    id={tab.id}
+                    className={cn(
+                      "relative z-20 px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200",
+                      activeTab === tab.id 
+                        ? "text-white" 
+                        : "text-gray-400 hover:text-purple-300"
+                    )}
+                    aria-current={activeTab === tab.id ? 'page' : undefined}
+                    onClick={() => handleTabChange(tab.id)}
+                  >
+                    {tab.label}
+                  </Link>
+                ))}
+              </div>
+              <AnimatePresence initial={false}>
+                <motion.div
+                  key={activeTab}
+                  className="absolute left-0 bottom-1 top-1 bg-purple-600 rounded-md z-10"
+                  initial={{ 
+                    width: indicatorWidth, 
+                    x: prevIndicatorOffset,
+                    opacity: 0
+                  }}
+                  animate={{
+                    width: indicatorWidth,
+                    x: indicatorOffset,
+                    opacity: 1
+                  }}
+                  exit={{ opacity: 0 }}
+                  transition={{ 
+                    type: 'spring', 
+                    stiffness: 300, 
+                    damping: 30,
+                    opacity: { duration: 0.2 }
+                  }}
+                />
+              </AnimatePresence>
+            </nav>
+            <UserButton 
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  avatarBox: "h-10 w-10",
+                  userButtonAvatarBox: "h-10 w-10",
+                },
+              }}
+            />
+          </div>
         </div>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
