@@ -6,9 +6,9 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/react";
 import {
   ClerkProvider,
-  SignInButton,
   SignedIn,
   SignedOut,
+  RedirectToSignIn,
   UserButton
 } from '@clerk/nextjs'
 
@@ -28,15 +28,15 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body className={inter.className}>
-          <header>
-            <SignedOut>
-              <SignInButton />
-            </SignedOut>
-            <SignedIn>
-              <UserButton />
-            </SignedIn>
-          </header>
-          {children}
+          <SignedIn>
+            <header className="p-4 flex justify-end">
+              <UserButton afterSignOutUrl="/"/>
+            </header>
+            {children}
+          </SignedIn>
+          <SignedOut>
+            <RedirectToSignIn />
+          </SignedOut>
           <SpeedInsights />
           <Analytics />
           <Toaster />
