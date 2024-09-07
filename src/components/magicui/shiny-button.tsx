@@ -1,10 +1,10 @@
 "use client";
 
-import { motion, type AnimationProps } from "framer-motion";
+import { motion, type AnimationProps, type MotionProps } from "framer-motion";
 import { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
-const animationProps = {
+const animationProps: MotionProps = {
   initial: { "--x": "100%", scale: 0.8 },
   animate: { "--x": "-100%", scale: 1 },
   whileTap: { scale: 0.95 },
@@ -23,7 +23,7 @@ const animationProps = {
       mass: 0.5,
     },
   },
-} as AnimationProps;
+};
 
 interface ShinyButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   text: string | React.ReactNode;
