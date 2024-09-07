@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# AI Image Tools 🎨🖼️
 
-## Getting Started
+![AI Image Tools Banner](https://via.placeholder.com/1200x300?text=AI+Image+Tools)
 
-First, run the development server:
+## 🚀 Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **🖼️ AI Image Generation**: Create stunning images from text prompts
+- **🔍 Image Upscaling**: Enhance and upscale your images with AI
+- **🎭 Multiple Aspect Ratios**: Support for various image dimensions
+- **🌈 High-Quality Outputs**: Generate images in WebP, JPG, or PNG formats
+- **🧠 Smart Prompt Enhancement**: AI-powered prompt improvement for better results
+- **🕹️ Simulation Mode**: Test the UI without making API calls
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Frontend**: Next.js 14, React, TypeScript
+- **Styling**: Tailwind CSS, Shadcn UI, Magic UI
+- **Animation**: Framer Motion
+- **API Integration**: Replicate API
+- **Deployment**: Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+## 🏁 Getting Started
 
-## Learn More
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/ai-image-tools.git
+   cd ai-image-tools
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. Set up environment variables:
+   Create a `.env.local` file in the root directory and add:
+   ```bash
+   REPLICATE_API_TOKEN=your_replicate_api_token
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+4. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
-## Deploy on Vercel
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📸 Screenshots
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+<div align="center">
+  <img src="https://via.placeholder.com/400x300?text=Image+Generator" alt="Image Generator" width="45%">
+  <img src="https://via.placeholder.com/400x300?text=Image+Upscaler" alt="Image Upscaler" width="45%">
+</div>
+
+## 🔮 Future Plans
+
+- [ ] Implement user authentication
+- [ ] Add a subscription model using Stripe
+- [ ] Expand AI model options for diverse image generation styles
+- [ ] Introduce batch processing for multiple images
+- [ ] Develop a mobile app version
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome! Feel free to check [issues page](https://github.com/yourusername/ai-image-tools/issues).
+
+## 📄 License
+
+This project is [MIT](https://choosealicense.com/licenses/mit/) licensed.
+
+## 👨‍💻 Author
+
+**SwiftStrike24**
+
+- GitHub: [@SwiftStrike24](https://github.com/SwiftStrike24)
+- LinkedIn: [Your LinkedIn](https://linkedin.com/in/yourprofile)
+
+## 🙏 Acknowledgments
+
+- [Replicate](https://replicate.com/) for their amazing AI models
+- [Vercel](https://vercel.com/) for hosting and deployment
+- [Shadcn UI](https://ui.shadcn.com/) for beautiful UI components
+- [Magic UI](https://magicui.design/) for additional UI enhancements
+- [Tailwind CSS](https://tailwindcss.com/) for utility-first CSS framework
+
+---
+
+<div align="center">
+  Made with ❤️ and ☕
+</div>
