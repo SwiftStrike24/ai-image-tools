@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogClose, DialogTitle, DialogDescription } fr
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { upscaleImage as upscaleImageAPI } from "@/actions/replicate/upscaleImage"
-import { convertHeicToJpeg, compressImage } from "@/utils/imageUtils"
+import { ImageUtilsType, dummyImageUtils } from '@/utils/imageUtils'
 import { VisuallyHidden } from "@/components/ui/visually-hidden"
 import RetroGrid from "@/components/magicui/retro-grid"
 
@@ -43,6 +43,18 @@ function ImageUpscalerComponent() {
   const [isSimulationMode, setIsSimulationMode] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [modalZoom, setModalZoom] = useState(1)
+  const [imageUtils, setImageUtils] = useState<ImageUtilsType>(dummyImageUtils)
+
+  useEffect(() => {
+    import('@/utils/browserUtils').then((module) => {
+      setImageUtils({
+        convertHeicToJpeg: module.convertHeicToJpeg,
+        compressImage: module.compressImage,
+        createObjectURL: module.createObjectURL,
+        revokeObjectURL: module.revokeObjectURL,
+      });
+    });
+  }, []);
 
   const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -52,10 +64,10 @@ function ImageUpscalerComponent() {
         return
       }
       try {
-        const convertedFile = await convertHeicToJpeg(file);
-        const compressedFile = await compressImage(convertedFile, 1920, 0.8); // Compress to max 1920px width/height and 80% quality
+        const convertedFile = await imageUtils.convertHeicToJpeg(file);
+        const compressedFile = await imageUtils.compressImage(convertedFile, 1920, 0.8); // Compress to max 1920px width/height and 80% quality
         setOriginalFile(compressedFile);
-        const objectUrl = URL.createObjectURL(compressedFile);
+        const objectUrl = imageUtils.createObjectURL(compressedFile);
         setUploadedImage(objectUrl);
         setError(null);
         setZoom(1);
@@ -63,7 +75,7 @@ function ImageUpscalerComponent() {
         setError(error instanceof Error ? error.message : "Failed to process the image.");
       }
     }
-  }, [])
+  }, [imageUtils])
 
   const handleDrop = useCallback(async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
@@ -74,10 +86,10 @@ function ImageUpscalerComponent() {
         return
       }
       try {
-        const convertedFile = await convertHeicToJpeg(file);
-        const compressedFile = await compressImage(convertedFile, 1920, 0.8);
+        const convertedFile = await imageUtils.convertHeicToJpeg(file);
+        const compressedFile = await imageUtils.compressImage(convertedFile, 1920, 0.8);
         setOriginalFile(compressedFile);
-        const objectUrl = URL.createObjectURL(compressedFile);
+        const objectUrl = imageUtils.createObjectURL(compressedFile);
         setUploadedImage(objectUrl);
         setError(null);
         setZoom(1);
@@ -85,7 +97,7 @@ function ImageUpscalerComponent() {
         setError(error instanceof Error ? error.message : "Failed to process the image.");
       }
     }
-  }, [])
+  }, [imageUtils])
 
   const simulateUpscale = useCallback(() => {
     setIsLoading(true);
@@ -162,7 +174,7 @@ function ImageUpscalerComponent() {
 
   const handleClearImage = useCallback(() => {
     if (uploadedImage) {
-      URL.revokeObjectURL(uploadedImage);
+      imageUtils.revokeObjectURL(uploadedImage);
     }
     setUploadedImage(null);
     setOriginalFile(null);
@@ -172,7 +184,7 @@ function ImageUpscalerComponent() {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [uploadedImage]);
+  }, [uploadedImage, imageUtils]);
 
   const handleZoom = useCallback((newZoom: number) => {
     if (imageContainerRef.current) {
@@ -281,10 +293,10 @@ function ImageUpscalerComponent() {
   useEffect(() => {
     return () => {
       if (uploadedImage) {
-        URL.revokeObjectURL(uploadedImage);
+        imageUtils.revokeObjectURL(uploadedImage);
       }
     };
-  }, [uploadedImage]);
+  }, [uploadedImage, imageUtils]);
 
   useEffect(() => {
     if (uploadedImage) {
