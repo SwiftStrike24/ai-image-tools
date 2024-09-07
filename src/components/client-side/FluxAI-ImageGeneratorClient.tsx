@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } fr
 import { VisuallyHidden } from "@/components/ui/visually-hidden"
 import { FluxImageParams } from "@/types/imageTypes"
 import RetroGrid from "@/components/magicui/retro-grid"
+import ShinyButton from "@/components/magicui/shiny-button"
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -41,9 +42,19 @@ export default function FluxAIImageGenerator() {
   const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError(null)
+    e.preventDefault();
+    if (!prompt.trim()) {
+      setError("Please enter a prompt before generating images.");
+      toast({
+        title: "Empty Prompt",
+        description: "Please enter a prompt before generating images.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
 
     try {
       let finalPrompt = prompt;
@@ -74,27 +85,27 @@ export default function FluxAIImageGenerator() {
         ? await simulateImageGeneration(params)
         : await generateFluxImage(params);
 
-      if (Array.isArray(result)) {
-        setImageUrls(result)
-        setShowGlow(true)
-        setGeneratedAspectRatio(aspectRatio)
+      if (Array.isArray(result) && result.length > 0) {
+        setImageUrls(result);
+        setShowGlow(true);
+        setGeneratedAspectRatio(aspectRatio);
         toast({
           title: isSimulationMode ? "Images Simulated" : "Images Generated",
           description: `Successfully ${isSimulationMode ? 'simulated' : 'generated'} ${result.length} image(s).`,
-        })
+        });
       } else {
-        throw new Error('Unexpected response from generate API')
+        throw new Error('No images were generated. Please try again.');
       }
     } catch (error) {
-      console.error('Image generation error:', error)
-      setError(error instanceof Error ? error.message : "Failed to generate image(s). Please try again.")
+      console.error('Image generation error:', error);
+      setError(error instanceof Error ? error.message : "Failed to generate image(s). Please try again.");
       toast({
         title: "Generation Failed",
-        description: "There was an error while generating your image(s).",
+        description: error instanceof Error ? error.message : "There was an error while generating your image(s).",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -260,7 +271,10 @@ export default function FluxAIImageGenerator() {
                   <Input
                     id="prompt"
                     value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
+                    onChange={(e) => {
+                      setPrompt(e.target.value);
+                      if (error) setError(null);
+                    }}
                     placeholder="Enter your image prompt here..."
                     className="bg-gray-800 text-white border-gray-700"
                   />
@@ -345,23 +359,24 @@ export default function FluxAIImageGenerator() {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <Button
-                  type="submit"
+                <ShinyButton
+                  onClick={handleSubmit}
+                  disabled={isLoading || !prompt.trim()}
                   className={cn(
-                    "w-full",
-                    isLoading && "opacity-50 cursor-not-allowed"
+                    "w-full py-3 text-lg font-semibold bg-gray-800 text-white border-gray-700 hover:bg-gray-700 transition-colors",
+                    (isLoading || !prompt.trim()) && "opacity-50 cursor-not-allowed"
                   )}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <div className="flex items-center justify-center">
-                      <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                      <span>Generating...</span>
-                    </div>
-                  ) : (
-                    'Generate Image(s)'
-                  )}
-                </Button>
+                  text={
+                    isLoading ? (
+                      <div className="flex items-center justify-center">
+                        <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                        <span>Generating...</span>
+                      </div>
+                    ) : (
+                      'Generate Image(s)'
+                    )
+                  }
+                />
               </form>
             </div>
 
@@ -403,36 +418,37 @@ export default function FluxAIImageGenerator() {
                           className="w-full h-full"
                           unoptimized={isSimulationMode}
                         />
-                        <Button
+                        <ShinyButton
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDownload(url, index);
                           }}
                           className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                          size="sm"
-                          variant="secondary"
                           disabled={downloadingIndex === index}
-                        >
-                          {downloadingIndex === index ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Download className="h-4 w-4" />
-                          )}
-                        </Button>
+                          text={
+                            downloadingIndex === index ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Download className="h-4 w-4" />
+                            )
+                          }
+                        />
                       </div>
                     ))}
                   </motion.div>
                 )}
               </AnimatePresence>
               {imageUrls.length > 0 && (
-                <Button
+                <ShinyButton
                   onClick={handleNewImage}
-                  className="w-full"
-                  variant="secondary"
-                >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  New Image(s)
-                </Button>
+                  className="w-full py-3 text-lg font-semibold bg-gray-800 text-white border-gray-700 hover:bg-gray-700 transition-colors"
+                  text={
+                    <div className="flex items-center justify-center">
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      <span>New Image(s)</span>
+                    </div>
+                  }
+                />
               )}
             </div>
           </div>
