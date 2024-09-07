@@ -163,16 +163,18 @@ function ImageUpscalerComponent() {
       const upscaledImageUrl = await upscaleImageAPI(base64Image, scale, faceEnhance);
       console.log("Received upscaled image URL:", upscaledImageUrl);
 
-      // Ensure the upscaledImageUrl is a valid URL
-      const validatedUrl = new URL(upscaledImageUrl);
-      setUpscaledImage(validatedUrl.toString());
-      setRequestCount(prevCount => prevCount + 1);
-      setLastRequestTime(now);
+      if (typeof upscaledImageUrl === 'string' && upscaledImageUrl.startsWith('http')) {
+        setUpscaledImage(upscaledImageUrl);
+        setRequestCount(prevCount => prevCount + 1);
+        setLastRequestTime(now);
 
-      toast({
-        title: "Upscaling Complete",
-        description: "Your image has been successfully upscaled.",
-      });
+        toast({
+          title: "Upscaling Complete",
+          description: "Your image has been successfully upscaled.",
+        });
+      } else {
+        throw new Error('The upscaling service did not return a valid URL.');
+      }
     } catch (error) {
       console.error('Upscaling error:', error);
       let errorMessage = "Failed to upscale image. Please try again.";

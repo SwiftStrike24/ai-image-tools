@@ -6,6 +6,8 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
+type ReplicateOutput = string | string[] | { image: string } | null;
+
 export async function upscaleImage(image: string, scale: number, faceEnhance: boolean): Promise<string> {
   console.log("Upscale request received:", { scale, faceEnhance });
 
@@ -19,21 +21,22 @@ export async function upscaleImage(image: string, scale: number, faceEnhance: bo
           face_enhance: faceEnhance,
         },
       }
-    );
+    ) as ReplicateOutput;
 
     console.log("Replicate API response:", output);
 
-    if (typeof output === 'string') {
+    if (typeof output === 'string' && output.startsWith('http')) {
       return output;
+    } else if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string' && output[0].startsWith('http')) {
+      return output[0];
+    } else if (output && typeof output === 'object' && 'image' in output && typeof output.image === 'string' && output.image.startsWith('http')) {
+      return output.image;
     } else {
-      throw new Error('Unexpected response from Replicate API');
+      console.error("Invalid output from Replicate API:", output);
+      throw new Error('Replicate API did not return a valid image URL');
     }
   } catch (error) {
     console.error("Error in upscaleImage:", error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to upscale image: ${error.message}`);
-    } else {
-      throw new Error("Failed to upscale image: Unknown error");
-    }
+    throw new Error(`Failed to upscale image: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
