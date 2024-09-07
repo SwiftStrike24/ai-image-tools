@@ -147,7 +147,9 @@ function ImageUpscalerComponent() {
       const upscaledImageUrl = await upscaleImageAPI(base64Image, scale, faceEnhance);
       console.log("Received upscaled image URL:", upscaledImageUrl);
 
-      setUpscaledImage(upscaledImageUrl);
+      // Ensure the upscaledImageUrl is a valid URL
+      const validatedUrl = new URL(upscaledImageUrl);
+      setUpscaledImage(validatedUrl.toString());
       setRequestCount(prevCount => prevCount + 1);
       setLastRequestTime(now);
 
@@ -257,16 +259,10 @@ function ImageUpscalerComponent() {
       const link = document.createElement('a');
       link.href = url;
       
-      // Create a more human-readable timestamp
       const now = new Date();
-      const dateString = now.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }).replace(/\//g, '-');
+      const dateString = now.toISOString().split('T')[0]; // Format: YYYY-MM-DD
       
-      const fileExtension = 'jpg';
-      const fileName = `upscaled_${upscaleOption}_${dateString}.${fileExtension}`;
+      const fileName = `Upscaled_Image_${upscaleOption}_${dateString}.jpg`;
       
       link.setAttribute('download', fileName);
       document.body.appendChild(link);
@@ -565,6 +561,10 @@ function ImageUpscalerComponent() {
                         layout="fill"
                         objectFit="contain"
                         unoptimized
+                        onError={(e) => {
+                          console.error('Error loading upscaled image:', e);
+                          setError("Failed to load upscaled image. Please try again.");
+                        }}
                       />
                       <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity duration-300" />
                       <ZoomIn className="absolute text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
