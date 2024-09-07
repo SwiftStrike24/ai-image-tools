@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, AlertCircle, Download, RefreshCw, X, Info, ZoomIn, ZoomOut } from "lucide-react"
+import { AlertCircle, X, Info, ZoomIn, ZoomOut } from "lucide-react"
 import { generateFluxImage } from "@/actions/replicate/generateFluxImage"
 import { enhancePrompt } from "@/actions/replicate/enhancePrompt"
 import { useToast } from "@/hooks/use-toast"
@@ -38,7 +38,6 @@ export default function FluxAIImageGenerator() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [isSimulationMode, setIsSimulationMode] = useState(false)
   const [modalZoom, setModalZoom] = useState(1)
-  const modalImageRef = useRef<HTMLImageElement>(null)
   const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -363,19 +362,10 @@ export default function FluxAIImageGenerator() {
                   onClick={handleSubmit}
                   disabled={isLoading || !prompt.trim()}
                   className={cn(
-                    "w-full py-3 text-lg font-semibold bg-gray-800 text-white border-gray-700 hover:bg-gray-700 transition-colors",
+                    "w-full py-3 text-lg font-semibold",
                     (isLoading || !prompt.trim()) && "opacity-50 cursor-not-allowed"
                   )}
-                  text={
-                    isLoading ? (
-                      <div className="flex items-center justify-center">
-                        <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                        <span>Generating...</span>
-                      </div>
-                    ) : (
-                      'Generate Image(s)'
-                    )
-                  }
+                  text={isLoading ? "Generating..." : 'Generate Image(s)'}
                 />
               </form>
             </div>
@@ -419,19 +409,13 @@ export default function FluxAIImageGenerator() {
                           unoptimized={isSimulationMode}
                         />
                         <ShinyButton
-                          onClick={(e) => {
+                          onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
                             handleDownload(url, index);
                           }}
                           className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                           disabled={downloadingIndex === index}
-                          text={
-                            downloadingIndex === index ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Download className="h-4 w-4" />
-                            )
-                          }
+                          text={downloadingIndex === index ? "Downloading..." : "Download"}
                         />
                       </div>
                     ))}
@@ -441,13 +425,8 @@ export default function FluxAIImageGenerator() {
               {imageUrls.length > 0 && (
                 <ShinyButton
                   onClick={handleNewImage}
-                  className="w-full py-3 text-lg font-semibold bg-gray-800 text-white border-gray-700 hover:bg-gray-700 transition-colors"
-                  text={
-                    <div className="flex items-center justify-center">
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      <span>New Image(s)</span>
-                    </div>
-                  }
+                  className="w-full py-3 text-lg font-semibold"
+                  text="New Image(s)"
                 />
               )}
             </div>
@@ -474,23 +453,15 @@ export default function FluxAIImageGenerator() {
           <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
             {selectedImage && (
               <div 
-                className={`relative ${getModalSizeClass(generatedAspectRatio)}`}
-                style={{
-                  overflow: 'auto',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
+                className={`relative ${getModalSizeClass(generatedAspectRatio)} overflow-auto flex items-center justify-center`}
               >
-                <img 
-                  ref={modalImageRef}
+                <Image 
                   src={selectedImage}
                   alt="Generated image"
-                  className="w-full h-full object-contain"
-                  style={{
-                    transform: `scale(${modalZoom})`,
-                    transition: 'transform 0.2s ease-in-out'
-                  }}
+                  layout="fill"
+                  objectFit="contain"
+                  className={`w-full h-full object-contain transition-transform duration-200 ease-in-out transform scale-${modalZoom}`}
+                  unoptimized={isSimulationMode}
                 />
               </div>
             )}

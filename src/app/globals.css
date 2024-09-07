@@ -67,3 +67,5 @@
     @apply bg-background text-foreground;
   }
 }
+
+@import '../styles/shiny-button.css';

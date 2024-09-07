@@ -1,38 +1,21 @@
 "use client";
 
-import { motion, HTMLMotionProps } from "framer-motion";
-import { ButtonHTMLAttributes } from "react";
+import { motion, type AnimationProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-// Define a custom type that extends HTMLMotionProps for button
-type CustomButtonMotionProps = HTMLMotionProps<"button"> & {
-  initial?: { [key: string]: string | number };
-  animate?: { [key: string]: string | number };
-};
-
-const animationProps: CustomButtonMotionProps = {
-  initial: { "--x": "100%", scale: 0.8 },
-  animate: { "--x": "-100%", scale: 1 },
-  whileTap: { scale: 0.95 },
+const animationProps = {
+  initial: { "--x": "100%" },
+  animate: { "--x": "-100%" },
   transition: {
     repeat: Infinity,
     repeatType: "loop",
-    repeatDelay: 1,
-    type: "spring",
-    stiffness: 20,
-    damping: 15,
-    mass: 2,
-    scale: {
-      type: "spring",
-      stiffness: 200,
-      damping: 5,
-      mass: 0.5,
-    },
+    duration: 3,
+    ease: "linear",
   },
-};
+} as AnimationProps;
 
-interface ShinyButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  text: string | React.ReactNode;
+interface ShinyButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  text: string;
   className?: string;
 }
 
@@ -43,21 +26,31 @@ const ShinyButton = ({
 }: ShinyButtonProps) => {
   return (
     <motion.button
-      {...animationProps as any}
+      {...animationProps}
       className={cn(
-        "relative rounded-lg px-6 py-2 font-medium backdrop-blur-xl transition-[box-shadow] duration-300 ease-in-out hover:shadow dark:bg-[radial-gradient(circle_at_50%_0%,hsl(var(--primary)/10%)_0%,transparent_60%)] dark:hover:shadow-[0_0_20px_hsl(var(--primary)/10%)]",
-        className,
+        "relative rounded-lg px-6 py-2 font-medium text-white bg-black backdrop-blur-xl transition-all duration-300 ease-in-out",
+        "hover:shadow-[0_0_20px_rgba(147,51,234,0.5)] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50",
+        "before:absolute before:inset-0 before:rounded-lg before:bg-gradient-to-r before:from-transparent before:via-purple-500 before:to-transparent before:opacity-0 before:transition-opacity hover:before:opacity-20",
+        className
       )}
       {...props}
     >
       <span
-        className="relative block h-full w-full text-sm uppercase tracking-wide text-[rgb(0,0,0,65%)] dark:font-light dark:text-[rgb(255,255,255,90%)] shiny-button-text"
+        className="relative block h-full w-full text-sm uppercase tracking-wide"
+        style={{
+          maskImage:
+            "linear-gradient(-75deg, #fff calc(var(--x) + 20%), transparent calc(var(--x) + 30%), #fff calc(var(--x) + 100%))",
+        }}
       >
         {text}
       </span>
       <span
-        className="absolute inset-0 z-10 block rounded-[inherit] bg-[linear-gradient(-75deg,hsl(var(--primary)/10%)_calc(var(--x)+20%),hsl(var(--primary)/50%)_calc(var(--x)+25%),hsl(var(--primary)/10%)_calc(var(--x)+100%))] p-px shiny-button-overlay"
-      ></span>
+        style={{
+          mask: "linear-gradient(#000, #000) content-box, linear-gradient(#000, #000)",
+          maskComposite: "exclude",
+        }}
+        className="absolute inset-0 z-10 block rounded-[inherit] bg-[linear-gradient(-75deg,rgba(147,51,234,0.1)_calc(var(--x)+20%),rgba(147,51,234,0.3)_calc(var(--x)+25%),rgba(147,51,234,0.1)_calc(var(--x)+100%))] p-px"
+      />
     </motion.button>
   );
 };

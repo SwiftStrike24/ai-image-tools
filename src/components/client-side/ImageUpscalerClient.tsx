@@ -492,20 +492,13 @@ function ImageUpscalerComponent() {
                   onClick={handleUpscale}
                   disabled={!uploadedImage || isLoading}
                   className={cn(
-                    "w-full py-3 text-lg font-semibold bg-gray-800 text-white border-gray-700 hover:bg-gray-700 transition-colors",
+                    "w-full py-3 text-lg font-semibold",
                     (!uploadedImage || isLoading) && "opacity-50 cursor-not-allowed"
                   )}
-                  text={
-                    isLoading ? (
-                      <div className="flex items-center justify-center">
-                        <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                        <span>Processing...</span>
-                      </div>
-                    ) : (
-                      'Upscale'
-                    )
-                  }
-                />
+                  text={isLoading ? "Processing..." : 'Upscale'}
+                >
+                  {isLoading && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
+                </ShinyButton>
                 <AnimatePresence>
                   {isLoading && (
                     <motion.div
@@ -589,14 +582,11 @@ function ImageUpscalerComponent() {
                     <ShinyButton
                       onClick={handleDownload}
                       disabled={!upscaledImage}
-                      className="w-full py-3 text-lg font-semibold bg-gray-800 text-white border-gray-700 hover:bg-gray-700 transition-colors"
-                      text={
-                        <div className="flex items-center justify-center">
-                          <Download className="mr-2 h-5 w-5" />
-                          <span>Download {upscaleOption} Upscaled Image</span>
-                        </div>
-                      }
-                    />
+                      className="w-full py-3 text-lg font-semibold"
+                      text={`Download ${upscaleOption} Upscaled Image`}
+                    >
+                      <Download className="mr-2 h-5 w-5" />
+                    </ShinyButton>
                   </motion.div>
                 )}
               </AnimatePresence>
