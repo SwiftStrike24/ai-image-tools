@@ -17,6 +17,7 @@ import { upscaleImage as upscaleImageAPI } from "@/actions/replicate/upscaleImag
 import { ImageUtilsType, dummyImageUtils } from '@/utils/imageUtils'
 import { VisuallyHidden } from "@/components/ui/visually-hidden"
 import RetroGrid from "@/components/magicui/retro-grid"
+import ShinyButton from "@/components/magicui/shiny-button"
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const MIN_ZOOM = 1;
@@ -103,15 +104,30 @@ function ImageUpscalerComponent() {
     setIsLoading(true);
     setError(null);
     setTimeout(() => {
-      setUpscaledImage(uploadedImage); // Use the original image as the "upscaled" image in simulation
-      setRequestCount(prevCount => prevCount + 1);
-      toast({
-        title: "Upscaling Complete (Simulated)",
-        description: "Your image has been successfully upscaled in simulation mode.",
-      });
-      setIsLoading(false);
+      // Create a simulated upscaled image by duplicating the original
+      const img = new window.Image(); // Use window.Image instead of Image
+      img.onload = () => {
+        const scale = parseInt(upscaleOption.replace('x', ''));
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
+        const simulatedUpscaledImage = canvas.toDataURL('image/jpeg');
+        setUpscaledImage(simulatedUpscaledImage);
+        setRequestCount(prevCount => prevCount + 1);
+        toast({
+          title: "Upscaling Complete (Simulated)",
+          description: "Your image has been successfully upscaled in simulation mode.",
+        });
+        setIsLoading(false);
+      };
+      img.src = uploadedImage as string;
     }, 3000); // Simulate a 3-second upscaling process
-  }, [uploadedImage, toast]);
+  }, [uploadedImage, upscaleOption, toast]);
 
   const handleUpscale = useCallback(async () => {
     if (!originalFile || isLoading) return;
@@ -476,8 +492,8 @@ function ImageUpscalerComponent() {
                   onClick={handleUpscale}
                   disabled={!uploadedImage || isLoading}
                   className={cn(
-                    "w-full",
-                    isLoading && "opacity-50 cursor-not-allowed"
+                    "w-full py-3 text-lg font-semibold bg-gray-800 text-white border-gray-700 hover:bg-gray-700 transition-colors",
+                    (!uploadedImage || isLoading) && "opacity-50 cursor-not-allowed"
                   )}
                 >
                   {isLoading ? (
@@ -569,14 +585,14 @@ function ImageUpscalerComponent() {
                       <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity duration-300" />
                       <ZoomIn className="absolute text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </div>
-                    <Button
+                    <ShinyButton
                       onClick={handleDownload}
-                      className="w-full"
                       disabled={!upscaledImage}
+                      className="w-full py-3 text-lg font-semibold bg-gray-800 text-white border-gray-700 hover:bg-gray-700 transition-colors"
                     >
-                      <Download className="mr-2 h-4 w-4" />
+                      <Download className="mr-2 h-5 w-5 inline" />
                       Download {upscaleOption} Upscaled Image
-                    </Button>
+                    </ShinyButton>
                   </motion.div>
                 )}
               </AnimatePresence>
