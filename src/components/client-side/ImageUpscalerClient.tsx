@@ -590,10 +590,13 @@ function ImageUpscalerComponent() {
                       onClick={handleDownload}
                       disabled={!upscaledImage}
                       className="w-full py-3 text-lg font-semibold bg-gray-800 text-white border-gray-700 hover:bg-gray-700 transition-colors"
-                    >
-                      <Download className="mr-2 h-5 w-5 inline" />
-                      Download {upscaleOption} Upscaled Image
-                    </ShinyButton>
+                      text={
+                        <div className="flex items-center justify-center">
+                          <Download className="mr-2 h-5 w-5" />
+                          <span>Download {upscaleOption} Upscaled Image</span>
+                        </div>
+                      }
+                    />
                   </motion.div>
                 )}
               </AnimatePresence>
