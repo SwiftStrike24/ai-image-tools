@@ -488,23 +488,24 @@ function ImageUpscalerComponent() {
                 </TooltipProvider>
               </div>
               <div className="relative">
-                <Button
+                <ShinyButton
                   onClick={handleUpscale}
                   disabled={!uploadedImage || isLoading}
                   className={cn(
                     "w-full py-3 text-lg font-semibold bg-gray-800 text-white border-gray-700 hover:bg-gray-700 transition-colors",
                     (!uploadedImage || isLoading) && "opacity-50 cursor-not-allowed"
                   )}
-                >
-                  {isLoading ? (
-                    <div className="flex items-center justify-center">
-                      <Loader2 className="animate-spin mr-2 h-4 w-4" />
-                      <span>Processing...</span>
-                    </div>
-                  ) : (
-                    'Upscale'
-                  )}
-                </Button>
+                  text={
+                    isLoading ? (
+                      <div className="flex items-center justify-center">
+                        <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                        <span>Processing...</span>
+                      </div>
+                    ) : (
+                      'Upscale'
+                    )
+                  }
+                />
                 <AnimatePresence>
                   {isLoading && (
                     <motion.div
