@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { AlertCircle, X, Info, ZoomIn, ZoomOut } from "lucide-react"
+import { AlertCircle, X, Info } from "lucide-react"
 import { generateFluxImage } from "@/actions/replicate/generateFluxImage"
 import { enhancePrompt } from "@/actions/replicate/enhancePrompt"
 import { useToast } from "@/hooks/use-toast"
@@ -37,7 +37,6 @@ export default function FluxAIImageGenerator() {
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [isSimulationMode, setIsSimulationMode] = useState(false)
-  const [modalZoom, setModalZoom] = useState(1)
   const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -148,12 +147,10 @@ export default function FluxAIImageGenerator() {
 
   const handleImageClick = useCallback((url: string) => {
     setSelectedImage(url)
-    setModalZoom(1)
   }, [])
 
   const closeModal = useCallback(() => {
     setSelectedImage(null)
-    setModalZoom(1)
   }, [])
 
   const getAspectRatioClass = (ratio: string) => {
@@ -191,13 +188,6 @@ export default function FluxAIImageGenerator() {
     const defaultImageUrl = '/images/simulated-image.jpg'; // Assuming you have this image in your public folder
     return Array(params.num_outputs).fill(defaultImageUrl);
   }, []);
-
-  const handleModalZoom = useCallback((zoomIn: boolean) => {
-    setModalZoom(prev => {
-      const newZoom = zoomIn ? prev * 1.2 : prev / 1.2
-      return Math.max(1, Math.min(newZoom, 3))
-    })
-  }, [])
 
   return (
     <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
@@ -448,10 +438,6 @@ export default function FluxAIImageGenerator() {
                   src={selectedImage}
                   alt="Generated image"
                   className="max-w-full max-h-[95vh] object-contain"
-                  style={{
-                    transform: `scale(${modalZoom})`,
-                    transition: 'transform 0.2s ease-in-out',
-                  }}
                 />
                 <DialogClose className="absolute top-2 right-2 rounded-full bg-purple-600 bg-opacity-50 p-2 text-white hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 transition-all duration-200">
                   <X className="h-6 w-6" />
@@ -462,23 +448,6 @@ export default function FluxAIImageGenerator() {
           </div>
         </DialogContent>
       </Dialog>
-
-      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => handleModalZoom(false)}
-        >
-          <ZoomOut className="h-4 w-4" />
-        </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => handleModalZoom(true)}
-        >
-          <ZoomIn className="h-4 w-4" />
-        </Button>
-      </div>
     </div>
   )
 }
