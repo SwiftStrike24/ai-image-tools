@@ -43,7 +43,6 @@ function ImageUpscalerComponent() {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const [isSimulationMode, setIsSimulationMode] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
-  const [modalZoom, setModalZoom] = useState(1)
   const [imageUtils, setImageUtils] = useState<ImageUtilsType>(dummyImageUtils)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
