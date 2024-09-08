@@ -445,49 +445,55 @@ export default function FluxAIImageGenerator() {
       </div>
 
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && closeModal()}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0 overflow-hidden bg-black/80 border-none flex items-center justify-center">
+        <DialogContent className="p-0 overflow-hidden bg-transparent border-none flex items-center justify-center">
           <DialogTitle className="sr-only">Generated Image</DialogTitle>
           <DialogDescription className="sr-only">
             View the generated image in full size
           </DialogDescription>
-          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+          <div className="relative flex items-center justify-center">
             {selectedImage && (
               <div 
-                className={`relative ${getModalSizeClass(generatedAspectRatio)} overflow-auto flex items-center justify-center`}
+                className="relative"
+                style={{
+                  maxWidth: '95vw',
+                  maxHeight: '95vh',
+                }}
               >
-                <Image 
+                <img 
                   src={selectedImage}
                   alt="Generated image"
-                  layout="fill"
-                  objectFit="contain"
-                  className={`w-full h-full object-contain transition-transform duration-200 ease-in-out transform scale-${modalZoom}`}
-                  unoptimized={isSimulationMode}
+                  className="max-w-full max-h-[95vh] object-contain"
+                  style={{
+                    transform: `scale(${modalZoom})`,
+                    transition: 'transform 0.2s ease-in-out',
+                  }}
                 />
+                <DialogClose className="absolute top-2 right-2 rounded-full bg-purple-600 bg-opacity-50 p-2 text-white hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 transition-all duration-200">
+                  <X className="h-6 w-6" />
+                  <VisuallyHidden>Close</VisuallyHidden>
+                </DialogClose>
               </div>
             )}
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleModalZoom(false)}
-              >
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleModalZoom(true)}
-              >
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-            </div>
-            <DialogClose className="absolute top-2 right-2 rounded-full bg-black bg-opacity-50 p-2 text-white hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 transition-all duration-200">
-              <X className="h-6 w-6" />
-              <VisuallyHidden>Close</VisuallyHidden>
-            </DialogClose>
           </div>
         </DialogContent>
       </Dialog>
+
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => handleModalZoom(false)}
+        >
+          <ZoomOut className="h-4 w-4" />
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => handleModalZoom(true)}
+        >
+          <ZoomIn className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   )
 }
