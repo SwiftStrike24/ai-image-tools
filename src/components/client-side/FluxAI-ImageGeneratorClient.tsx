@@ -173,21 +173,6 @@ export default function FluxAIImageGenerator() {
     }
   }
 
-  const getModalSizeClass = (ratio: string) => {
-    switch (ratio) {
-      case '1:1': return 'w-full max-w-xl h-auto aspect-square'
-      case '16:9': return 'w-full max-w-4xl h-auto aspect-video'
-      case '9:16': return 'w-full max-w-sm h-auto aspect-[9/16]'
-      case '4:5': return 'w-full max-w-lg h-auto aspect-[4/5]'
-      case '21:9': return 'w-full max-w-5xl h-auto aspect-[21/9]'
-      case '2:3': return 'w-full max-w-md h-auto aspect-[2/3]'
-      case '3:2': return 'w-full max-w-2xl h-auto aspect-[3/2]'
-      case '5:4': return 'w-full max-w-xl h-auto aspect-[5/4]'
-      case '9:21': return 'w-full max-w-sm h-auto aspect-[9/21]'
-      default: return 'w-full max-w-xl h-auto aspect-square'
-    }
-  }
-
   const aspectRatioOptions = [
     { value: "1:1", label: "1:1 (Square)" },
     { value: "16:9", label: "16:9 (Widescreen)" },
