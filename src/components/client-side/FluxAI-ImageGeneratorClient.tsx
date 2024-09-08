@@ -189,6 +189,23 @@ export default function FluxAIImageGenerator() {
     return Array(params.num_outputs).fill(defaultImageUrl);
   }, []);
 
+  const getModalSizeClass = (ratio: string) => {
+    switch (ratio) {
+      case '1:1': return 'aspect-square'
+      case '4:3': return 'aspect-4/3'
+      case '3:4': return 'aspect-3/4'
+      case '16:9': return 'aspect-16/9'
+      case '9:16': return 'aspect-9/16'
+      case '4:5': return 'aspect-[4/5]'
+      case '21:9': return 'aspect-[21/9]'
+      case '2:3': return 'aspect-[2/3]'
+      case '3:2': return 'aspect-[3/2]'
+      case '5:4': return 'aspect-[5/4]'
+      case '9:21': return 'aspect-[9/21]'
+      default: return 'aspect-square'
+    }
+  }
+
   return (
     <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
       <RetroGrid className="absolute inset-0 z-0 opacity-50" />
@@ -419,19 +436,19 @@ export default function FluxAIImageGenerator() {
         </div>
       </div>
 
-      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && closeModal()}>
+      <Dialog open={!!selectedImage} onOpenChange={closeModal}>
         <DialogContent className="p-0 overflow-hidden bg-transparent border-none">
           <DialogTitle className="sr-only">Generated Image</DialogTitle>
           <DialogDescription className="sr-only">
             View the generated image in full size
           </DialogDescription>
-          <div className="relative flex items-center justify-center w-screen h-screen">
+          <div className="relative flex items-center justify-center w-screen h-screen" onClick={closeModal}>
             {selectedImage && (
-              <div className="relative max-w-full max-h-full">
+              <div className="relative max-w-full max-h-full" onClick={(e) => e.stopPropagation()}>
                 <img 
                   src={selectedImage}
                   alt="Generated image"
-                  className="max-w-full max-h-[95vh] object-contain"
+                  className={`max-w-full max-h-[95vh] object-contain ${getModalSizeClass(generatedAspectRatio)}`}
                 />
                 <DialogClose className="absolute top-2 right-2 rounded-full bg-black bg-opacity-50 p-2 text-white hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 transition-all duration-200">
                   <X className="h-6 w-6" />
