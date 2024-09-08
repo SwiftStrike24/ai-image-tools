@@ -18,12 +18,26 @@ const nextConfig = {
       // Add any other domains you're loading images from
     ],
   },
-  // Add this section
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = { fs: false, net: false, tls: false };
     }
     return config;
+  },
+  serverRuntimeConfig: {
+    // Will only be available on the server side
+    mySecret: 'secret',
+    secondSecret: process.env.SECOND_SECRET, // Pass through env variables
+  },
+  publicRuntimeConfig: {
+    // Will be available on both server and client
+    staticFolder: '/static',
+  },
+  // Increase the serverless function timeout
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
   },
 };
 

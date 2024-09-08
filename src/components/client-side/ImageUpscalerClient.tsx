@@ -179,7 +179,13 @@ function ImageUpscalerComponent() {
       console.error('Upscaling error:', error);
       let errorMessage = "Failed to upscale image. Please try again.";
       if (error instanceof Error) {
-        errorMessage = error.message;
+        if (error.message.includes("API did not return a valid image URL")) {
+          errorMessage = "The upscaling service encountered an issue. Please try again or use a different image.";
+        } else if (error.message.includes("Failed to read the image file")) {
+          errorMessage = "There was a problem processing your image. Please try uploading it again.";
+        } else {
+          errorMessage = error.message;
+        }
       }
       setError(errorMessage);
       toast({
