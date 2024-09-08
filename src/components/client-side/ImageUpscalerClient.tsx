@@ -45,6 +45,7 @@ function ImageUpscalerComponent() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [modalZoom, setModalZoom] = useState(1)
   const [imageUtils, setImageUtils] = useState<ImageUtilsType>(dummyImageUtils)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   useEffect(() => {
     import('@/utils/browserUtils').then((module) => {
@@ -236,12 +237,13 @@ function ImageUpscalerComponent() {
   const closeModal = useCallback(() => {
     setSelectedImage(null);
     setIsImageModalOpen(false);
-    setModalZoom(1); // Reset zoom when closing
+    setIsModalOpen(false);
   }, []);
 
   const handleImageClick = useCallback((url: string) => {
     setSelectedImage(url);
     setIsImageModalOpen(true);
+    setIsModalOpen(true);
   }, []);
 
   const getAspectRatioClass = (ratio: string) => {
@@ -265,13 +267,6 @@ function ImageUpscalerComponent() {
       default: return 'w-full max-w-xl h-auto'
     }
   }
-
-  const handleModalZoom = useCallback((zoomIn: boolean) => {
-    setModalZoom(prev => {
-      const newZoom = zoomIn ? prev * 1.2 : prev / 1.2
-      return Math.max(1, Math.min(newZoom, 3)) // Limit zoom between 0.5x and 3x
-    })
-  }, [])
 
   const handleDownload = useCallback(async () => {
     if (!upscaledImage) return;
@@ -327,7 +322,7 @@ function ImageUpscalerComponent() {
   const upscaleOptions = ['2x', '4x', '6x', '8x', '10x']
 
   return (
-    <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
+    <div className={`relative min-h-screen bg-gray-900 text-white overflow-hidden ${isModalOpen ? 'blur-sm' : ''}`}>
       <RetroGrid className="absolute inset-0 z-0 opacity-50" />
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 via-purple-900/50 to-gray-900/90 z-10" />
       <div className="relative z-20 container mx-auto px-4 py-8">
@@ -606,15 +601,15 @@ function ImageUpscalerComponent() {
       <Dialog open={isImageModalOpen} onOpenChange={(open) => {
         if (!open) closeModal();
       }}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0 overflow-hidden bg-black/80 border-none flex items-center justify-center">
+        <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full p-0 overflow-hidden bg-transparent border-none flex items-center justify-center">
           <DialogTitle className="sr-only">Upscaled Image</DialogTitle>
           <DialogDescription className="sr-only">
             View the upscaled image in full size
           </DialogDescription>
-          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+          <div className="relative w-full h-full flex items-center justify-center">
             {selectedImage && (
               <div 
-                className={`relative ${getModalSizeClass(upscaleOption)}`}
+                className="relative w-full h-full"
                 style={{
                   overflow: 'auto',
                   display: 'flex',
@@ -625,31 +620,11 @@ function ImageUpscalerComponent() {
                 <img 
                   src={selectedImage} 
                   alt="Upscaled image"
-                  className="w-full h-full object-contain"
-                  style={{
-                    transform: `scale(${modalZoom})`,
-                    transition: 'transform 0.2s ease-in-out'
-                  }}
+                  className="max-w-full max-h-full object-contain"
                 />
               </div>
             )}
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleModalZoom(false)}
-              >
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleModalZoom(true)}
-              >
-                <ZoomIn className="h-4 w-4" />
-              </Button>
-            </div>
-            <DialogClose onClick={closeModal} className="absolute top-2 right-2 rounded-full bg-black bg-opacity-50 p-2 text-white hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 transition-all duration-200">
+            <DialogClose className="absolute top-4 right-4 rounded-full bg-purple-600 bg-opacity-50 p-2 text-white hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2 transition-all duration-200">
               <X className="h-6 w-6" />
               <VisuallyHidden>Close</VisuallyHidden>
             </DialogClose>
