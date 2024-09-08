@@ -13,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogClose, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { upscaleImage as upscaleImageAPI } from "@/actions/replicate/upscaleImage"
+import { upscaleImage } from "@/actions/replicate/upscaleImage"
 import { ImageUtilsType, dummyImageUtils } from '@/utils/imageUtils'
 import { VisuallyHidden } from "@/components/ui/visually-hidden"
 import RetroGrid from "@/components/magicui/retro-grid"
@@ -160,32 +160,32 @@ function ImageUpscalerComponent() {
       });
 
       console.log("Calling upscaleImage API...");
-      const upscaledImageUrl = await upscaleImageAPI(base64Image, scale, faceEnhance);
+      toast({
+        title: "Upscaling Started",
+        description: "Your image is being processed. This may take a few minutes.",
+      });
+
+      const upscaledImageUrl = await upscaleImage({
+        image: base64Image,
+        scale,
+        faceEnhance,
+      });
+
       console.log("Received upscaled image URL:", upscaledImageUrl);
 
-      if (typeof upscaledImageUrl === 'string' && upscaledImageUrl.startsWith('http')) {
-        setUpscaledImage(upscaledImageUrl);
-        setRequestCount(prevCount => prevCount + 1);
-        setLastRequestTime(now);
+      setUpscaledImage(upscaledImageUrl);
+      setRequestCount(prevCount => prevCount + 1);
+      setLastRequestTime(now);
 
-        toast({
-          title: "Upscaling Complete",
-          description: "Your image has been successfully upscaled.",
-        });
-      } else {
-        throw new Error('The upscaling service did not return a valid URL.');
-      }
+      toast({
+        title: "Upscaling Complete",
+        description: "Your image has been successfully upscaled.",
+      });
     } catch (error) {
       console.error('Upscaling error:', error);
       let errorMessage = "Failed to upscale image. Please try again.";
       if (error instanceof Error) {
-        if (error.message.includes("API did not return a valid image URL")) {
-          errorMessage = "The upscaling service encountered an issue. Please try again or use a different image.";
-        } else if (error.message.includes("Failed to read the image file")) {
-          errorMessage = "There was a problem processing your image. Please try uploading it again.";
-        } else {
-          errorMessage = error.message;
-        }
+        errorMessage = error.message;
       }
       setError(errorMessage);
       toast({
