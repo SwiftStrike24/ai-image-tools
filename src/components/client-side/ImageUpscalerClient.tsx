@@ -256,17 +256,6 @@ function ImageUpscalerComponent() {
     }
   }
 
-  const getModalSizeClass = (ratio: string) => {
-    switch (ratio) {
-      case '1:1': return 'w-full max-w-xl h-auto'
-      case '4:3': return 'w-full max-w-2xl h-auto'
-      case '3:4': return 'w-full max-w-lg h-auto'
-      case '16:9': return 'w-full max-w-4xl h-auto'
-      case '9:16': return 'w-full max-w-sm h-auto'
-      default: return 'w-full max-w-xl h-auto'
-    }
-  }
-
   const handleDownload = useCallback(async () => {
     if (!upscaledImage) return;
 
