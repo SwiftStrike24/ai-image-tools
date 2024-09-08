@@ -160,11 +160,11 @@ export default function FluxAIImageGenerator() {
       case '3:4': return 'aspect-3/4'
       case '16:9': return 'aspect-16/9'
       case '9:16': return 'aspect-9/16'
-      case '4:5': return 'aspect-4/5'
+      case '4:5': return 'aspect-[4/5]'
       case '21:9': return 'aspect-[21/9]'
-      case '2:3': return 'aspect-2/3'
-      case '3:2': return 'aspect-3/2'
-      case '5:4': return 'aspect-5/4'
+      case '2:3': return 'aspect-[2/3]'
+      case '3:2': return 'aspect-[3/2]'
+      case '5:4': return 'aspect-[5/4]'
       case '9:21': return 'aspect-[9/21]'
       default: return 'aspect-square'
     }
@@ -174,11 +174,11 @@ export default function FluxAIImageGenerator() {
     { value: "1:1", label: "1:1 (Square)" },
     { value: "16:9", label: "16:9 (Widescreen)" },
     { value: "9:16", label: "9:16 (Vertical)" },
-    { value: "4:5", label: "4:5" },
+    { value: "4:5", label: "4:5 (Instagram Portrait)" },
     { value: "21:9", label: "21:9 (Ultrawide)" },
-    { value: "2:3", label: "2:3" },
-    { value: "3:2", label: "3:2" },
-    { value: "5:4", label: "5:4" },
+    { value: "2:3", label: "2:3 (Classic Portrait)" },
+    { value: "3:2", label: "3:2 (Classic Landscape)" },
+    { value: "5:4", label: "5:4 (Large Format)" },
     { value: "9:21", label: "9:21 (Vertical Ultrawide)" }
   ];
 
