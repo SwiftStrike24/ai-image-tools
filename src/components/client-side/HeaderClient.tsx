@@ -22,7 +22,6 @@ export default function HeaderClient() {
   const [indicatorWidth, setIndicatorWidth] = useState(0)
   const [indicatorOffset, setIndicatorOffset] = useState(0)
   const [prevIndicatorOffset, setPrevIndicatorOffset] = useState(0)
-  const [slideDirection, setSlideDirection] = useState(1)
 
   useEffect(() => {
     const currentTab = tabs.find(tab => tab.path === pathname) || tabs[0]
@@ -44,14 +43,7 @@ export default function HeaderClient() {
     return () => window.removeEventListener('resize', updateIndicator)
   }, [activeTab, width, updateIndicator])
 
-  const getSlideDirection = (newTab: string) => {
-    const currentIndex = tabs.findIndex(tab => tab.id === activeTab)
-    const newIndex = tabs.findIndex(tab => tab.id === newTab)
-    return newIndex > currentIndex ? 1 : -1
-  }
-
   const handleTabChange = (newTab: string) => {
-    setSlideDirection(getSlideDirection(newTab))
     setActiveTab(newTab)
   }
 
