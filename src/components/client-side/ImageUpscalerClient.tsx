@@ -315,8 +315,18 @@ function ImageUpscalerComponent() {
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 via-purple-900/50 to-gray-900/90 z-10" />
       <div className="relative z-20 container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto space-y-8">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col items-center space-y-2">
             <h1 className="text-4xl font-bold text-purple-300">AI Image Upscaler</h1>
+            <motion.p 
+              className="text-xl bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              Powered by Real-ESRGAN: Enhance Your Images with AI
+            </motion.p>
+          </div>
+          <div className="flex justify-end items-center">
             <div className="flex items-center space-x-2">
               <Label htmlFor="simulation-mode" className="text-white">Simulation Mode</Label>
               <Switch
@@ -583,6 +593,16 @@ function ImageUpscalerComponent() {
               </AnimatePresence>
             </div>
           </div>
+
+          {isSimulationMode && (
+            <Alert className="mt-4 bg-yellow-900/50 border-yellow-600">
+              <AlertCircle className="h-4 w-4 text-yellow-400" />
+              <AlertTitle className="text-yellow-400">Simulation Mode Active</AlertTitle>
+              <AlertDescription className="text-yellow-200">
+                You are currently in simulation mode. No real API calls will be made, and a placeholder image will be used.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       </div>
       
