@@ -4,12 +4,16 @@
 
 ## 🚀 Features
 
-- **🖼️ AI Image Generation**: Create stunning images from text prompts
-- **🔍 Image Upscaling**: Enhance and upscale your images with AI
-- **🎭 Multiple Aspect Ratios**: Support for various image dimensions
-- **🌈 High-Quality Outputs**: Generate images in WebP, JPG, or PNG formats
+- **🖼️ AI Image Generation**: Create stunning images from text prompts using FLUX.1 AI
+- **🔍 Image Upscaling**: Enhance and upscale your images with Real-ESRGAN technology
+- **🎭 Multiple Aspect Ratios**: Support for various image dimensions (1:1, 16:9, 9:16, 4:5, 21:9, etc.)
+- **🌈 High-Quality Outputs**: Generate images in WebP, JPG, or PNG formats with adjustable quality
 - **🧠 Smart Prompt Enhancement**: AI-powered prompt improvement for better results
+- **👤 Face Enhancement**: Option to improve facial details during upscaling
 - **🕹️ Simulation Mode**: Test the UI without making API calls
+- **🖱️ Interactive Image Viewer**: Zoom and pan functionality for uploaded and generated images
+- **💾 Easy Download**: One-click download for generated and upscaled images
+- **🌓 Dark Mode Interface**: Sleek, modern dark theme with purple accents
 
 ## 🛠️ Tech Stack
 
@@ -17,7 +21,22 @@
 - **Styling**: Tailwind CSS, Shadcn UI, Magic UI
 - **Animation**: Framer Motion
 - **API Integration**: Replicate API
+- **Authentication**: Clerk
 - **Deployment**: Vercel
+
+## 🧩 Key Components
+
+- `ImageUpscaler`: Handles image uploading and upscaling functionality
+- `FluxAIImageGenerator`: Manages AI image generation from text prompts
+- `Header`: Navigation component with animated tab switching
+- `RetroGrid`: Background component for visual appeal
+- `ShinyButton`: Custom button component with animated effects
+
+## 🔌 APIs and Server Actions
+
+- `upscaleImage`: Upscales images using Real-ESRGAN model
+- `generateFluxImage`: Generates images from text prompts using FLUX.1 model
+- `enhancePrompt`: Improves user prompts for better image generation results using Meta's Meta-Llama 3 3.8b model
 
 ## 🏁 Getting Started
 
@@ -36,6 +55,8 @@
    Create a `.env.local` file in the root directory and add:
    ```bash
    REPLICATE_API_TOKEN=your_replicate_api_token
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+   CLERK_SECRET_KEY=your_clerk_secret_key
    ```
 
 4. Run the development server:
@@ -54,11 +75,16 @@
 
 ## 🔮 Future Plans
 
-- [ ] Implement user authentication
-- [ ] Add a subscription model using Stripe
+- [ ] Implement user authentication and profile management
+- [ ] Add a subscription model using Stripe for premium features
 - [ ] Expand AI model options for diverse image generation styles
 - [ ] Introduce batch processing for multiple images
 - [ ] Develop a mobile app version
+- [ ] Implement image history and favorites functionality
+- [ ] Add social sharing features for generated images
+- [ ] Integrate more advanced editing tools (e.g., inpainting, outpainting)
+- [ ] Implement a gallery showcase for user-generated images
+- [ ] Add language support for internationalization
 
 ## 🤝 Contributing
 
@@ -77,14 +103,16 @@ This project is [MIT](https://choosealicense.com/licenses/mit/) licensed.
 
 ## 🙏 Acknowledgments
 
-- [Replicate](https://replicate.com/) for their amazing AI models
+- [Replicate](https://replicate.com/) for their amazing AI models (Real-ESRGAN and FLUX.1)
 - [Vercel](https://vercel.com/) for hosting and deployment
 - [Shadcn UI](https://ui.shadcn.com/) for beautiful UI components
 - [Magic UI](https://magicui.design/) for additional UI enhancements
 - [Tailwind CSS](https://tailwindcss.com/) for utility-first CSS framework
+- [Clerk](https://clerk.com/) for authentication services
+- [Framer Motion](https://www.framer.com/motion/) for smooth animations
 
 ---
 
 <div align="center">
-  Made with ❤️ and ☕
+  Made with ❤️ and ☕ by SwiftStrike24
 </div>
