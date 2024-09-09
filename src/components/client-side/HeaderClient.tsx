@@ -142,8 +142,8 @@ export default function HeaderClient() {
             </h2>
             <p className="text-gray-300 max-w-2xl mx-auto text-lg">
               {activeTab === 'upscaler'
-                ? 'Enhance your images with Real-ESRGAN technology. Upscale, sharpen, and bring out details in your visuals with advanced AI.'
-                : 'Create stunning, high-resolution images from text prompts using FLUX.1 AI. Transform your ideas into visual masterpieces.'}
+                ? 'Boost your images instantly! Enhance resolution, sharpen details, and reveal hidden quality using advanced AI technology.'
+                : 'Turn words into art! Create unique, high-quality images from your text descriptions with cutting-edge AI.'}
             </p>
           </motion.div>
         </AnimatePresence>
