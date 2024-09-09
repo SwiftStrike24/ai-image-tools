@@ -212,8 +212,7 @@ export default function FluxAIImageGenerator() {
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 via-purple-900/50 to-gray-900/90 z-10" />
       <div className="relative z-20 container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto space-y-8">
-          <div className="flex flex-col items-center space-y-2">
-            <h1 className="text-4xl font-bold text-purple-300">AI Image Generator</h1>
+          <div className="flex justify-between items-center">
             <motion.p 
               className="text-xl bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600"
               initial={{ opacity: 0, y: -10 }}
@@ -222,8 +221,6 @@ export default function FluxAIImageGenerator() {
             >
               Powered by FLUX.1
             </motion.p>
-          </div>
-          <div className="flex justify-end items-center">
             <div className="flex items-center space-x-2">
               <Label htmlFor="simulation-mode" className="text-white">Simulation Mode</Label>
               <Switch

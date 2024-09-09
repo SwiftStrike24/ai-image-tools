@@ -138,7 +138,7 @@ export default function HeaderClient() {
             className="text-center"
           >
             <h2 className="text-2xl md:text-3xl font-semibold mb-4 text-purple-300">
-              {activeTab === 'upscaler' ? 'AI-Powered Image Upscaler' : 'AI Image Generator'}
+              {activeTab === 'upscaler' ? 'AI Image Upscaler' : 'AI Image Generator'}
             </h2>
             <p className="text-gray-300 max-w-2xl mx-auto text-lg">
               {activeTab === 'upscaler'
