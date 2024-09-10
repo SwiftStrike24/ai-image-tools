@@ -19,7 +19,8 @@ import { VisuallyHidden } from "@/components/ui/visually-hidden"
 import RetroGrid from "@/components/magicui/retro-grid"
 import ShinyButton from "@/components/magicui/shiny-button"
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE_MB = 50; // 50MB
+const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024; // Convert MB to bytes
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 5;
 const ZOOM_STEP = 0.1;
@@ -61,7 +62,7 @@ function ImageUpscalerComponent() {
     const file = event.target.files?.[0]
     if (file) {
       if (file.size > MAX_FILE_SIZE) {
-        setError("File size exceeds 10MB limit")
+        setError(`File size exceeds ${MAX_FILE_SIZE_MB}MB limit`)
         return
       }
       try {
@@ -83,7 +84,7 @@ function ImageUpscalerComponent() {
     const file = event.dataTransfer.files[0]
     if (file) {
       if (file.size > MAX_FILE_SIZE) {
-        setError("File size exceeds 10MB limit")
+        setError(`File size exceeds ${MAX_FILE_SIZE_MB}MB limit`)
         return
       }
       try {
@@ -380,7 +381,7 @@ function ImageUpscalerComponent() {
                   >
                     <Upload className="mx-auto h-12 w-12 text-purple-400 mb-4" />
                     <p className="text-white">Drag and drop an image here, or click to select</p>
-                    <p className="text-sm text-purple-300 mt-2">Max file size: 10MB</p>
+                    <p className="text-sm text-purple-300 mt-2">Max file size: {MAX_FILE_SIZE_MB}MB</p>
                     <input
                       type="file"
                       ref={fileInputRef}
