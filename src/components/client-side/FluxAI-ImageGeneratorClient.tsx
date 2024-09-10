@@ -264,7 +264,7 @@ export default function FluxAIImageGenerator() {
             {/* Image Generation Form */}
             <div className="space-y-4">
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
+                <div className="space-y-2">
                   <Label htmlFor="prompt" className="text-white">Prompt</Label>
                   <Input
                     id="prompt"
@@ -275,7 +275,11 @@ export default function FluxAIImageGenerator() {
                     }}
                     placeholder="Enter your image prompt here..."
                     className="bg-gray-800 text-white border-gray-700"
+                    maxLength={1000}
                   />
+                  <div className="text-right text-xs text-muted-foreground">
+                    {prompt.length}/1000
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="aspect-ratio" className="text-white">Aspect Ratio</Label>
