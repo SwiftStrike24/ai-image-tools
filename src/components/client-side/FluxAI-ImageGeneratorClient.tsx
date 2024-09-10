@@ -232,6 +232,14 @@ export default function FluxAIImageGenerator() {
     }
   }
 
+  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    if (newValue.length <= 1000) {
+      setPrompt(newValue);
+      if (error) setError(null);
+    }
+  };
+
   return (
     <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
       <GlobalStyles />
@@ -296,10 +304,7 @@ export default function FluxAIImageGenerator() {
                   <Input
                     id="prompt"
                     value={prompt}
-                    onChange={(e) => {
-                      setPrompt(e.target.value);
-                      if (error) setError(null);
-                    }}
+                    onChange={handlePromptChange}
                     placeholder="Enter your image prompt here..."
                     className="bg-gray-800 text-white border-gray-700 focus:border-purple-500 transition-colors duration-200"
                     maxLength={1000}
