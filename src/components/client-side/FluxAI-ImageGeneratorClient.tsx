@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -63,6 +63,8 @@ export default function FluxAIImageGenerator() {
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [isSimulationMode, setIsSimulationMode] = useState(false)
+  const [resetKey, setResetKey] = useState(0)
+  const promptInputRef = useRef<HTMLTextAreaElement>(null)
   const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -137,6 +139,10 @@ export default function FluxAIImageGenerator() {
     setPrompt('')
     setImageUrls([])
     setError(null)
+    setResetKey(prev => prev + 1) // Trigger input reset
+    if (promptInputRef.current) {
+      promptInputRef.current.style.height = 'auto' // Reset height
+    }
   }, [])
 
   const handleDownload = useCallback(async (url: string, index: number) => {
@@ -237,6 +243,12 @@ export default function FluxAIImageGenerator() {
     if (newValue.length <= 1000) {
       setPrompt(newValue);
       if (error) setError(null);
+    } else {
+      toast({
+        title: "Prompt Too Long",
+        description: "The prompt cannot exceed 1000 characters.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -308,6 +320,8 @@ export default function FluxAIImageGenerator() {
                     placeholder="Enter your image prompt here..."
                     className="bg-gray-800 text-white border-gray-700 focus:border-purple-500 transition-colors duration-200"
                     maxLength={1000}
+                    resetKey={resetKey}
+                    ref={promptInputRef}
                   />
                   <div className="text-right text-xs text-muted-foreground">
                     {prompt.length}/1000

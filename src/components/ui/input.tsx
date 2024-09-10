@@ -6,30 +6,36 @@ import { cn } from "@/lib/utils"
 export interface InputProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   maxLength?: number;
+  resetKey?: number; // Add this prop to trigger reset
 }
 
 const Input = React.forwardRef<HTMLTextAreaElement, InputProps>(
-  ({ className, maxLength, ...props }, ref) => {
+  ({ className, maxLength, resetKey, ...props }, ref) => {
     const [value, setValue] = React.useState(props.defaultValue?.toString() || "");
     const [isScrolling, setIsScrolling] = React.useState(false);
-    const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+    const textareaRef = React.useRef<HTMLTextAreaElement | null>(null);
     const scrollTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
-    const adjustHeight = () => {
+    const adjustHeight = React.useCallback(() => {
       const textarea = textareaRef.current;
       if (textarea) {
         textarea.style.height = 'auto';
         textarea.style.height = `${Math.min(textarea.scrollHeight, 240)}px`;
       }
-    };
+    }, []);
 
     React.useEffect(() => {
       adjustHeight();
-    }, [value]);
+    }, [value, adjustHeight]);
+
+    React.useEffect(() => {
+      setValue(props.value?.toString() || "");
+      adjustHeight();
+    }, [props.value, resetKey, adjustHeight]);
 
     const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
       const newValue = event.target.value;
-      if (maxLength && newValue.length <= maxLength) {
+      if (!maxLength || newValue.length <= maxLength) {
         setValue(newValue);
         if (props.onChange) {
           props.onChange(event);
@@ -44,7 +50,7 @@ const Input = React.forwardRef<HTMLTextAreaElement, InputProps>(
       }
       scrollTimeoutRef.current = setTimeout(() => {
         setIsScrolling(false);
-      }, 1000); // Hide scrollbar after 1 second of inactivity
+      }, 1000);
     };
 
     return (
