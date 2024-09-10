@@ -48,16 +48,16 @@ export default function HeaderClient() {
   }
 
   return (
-    <header className="bg-gradient-to-br from-gray-900 to-purple-900 text-white p-6 relative overflow-hidden">
+    <header className="bg-gradient-to-br from-gray-900 to-purple-900 text-white p-4 md:p-6 relative overflow-hidden">
       <RetroGrid className="absolute inset-0 z-0 opacity-30" />
       <div className="absolute inset-0 bg-purple-900/50 backdrop-blur-xl"></div>
-      <div className="relative z-10 max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-8">
+      <div className="relative z-20 max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-4 md:mb-8">
           <motion.h1 
-            className="text-3xl md:text-4xl font-bold mb-6 md:mb-0"
-            initial={{ opacity: 0, y: -20 }}
+            className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4 md:mb-0"
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.3 }}
           >
             <Link href="/" className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600 hover:from-pink-600 hover:to-purple-400 transition-all duration-300">
               FluxScale AI
@@ -72,7 +72,7 @@ export default function HeaderClient() {
                     href={tab.path}
                     id={tab.id}
                     className={cn(
-                      "relative z-20 px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 flex items-center",
+                      "relative z-20 px-3 py-2 text-xs md:text-sm font-medium rounded-md transition-colors duration-200 flex items-center",
                       activeTab === tab.id 
                         ? "text-white bg-purple-600/50" 
                         : "text-gray-300 hover:text-purple-300 hover:bg-purple-600/20"
@@ -80,8 +80,9 @@ export default function HeaderClient() {
                     aria-current={activeTab === tab.id ? 'page' : undefined}
                     onClick={() => handleTabChange(tab.id)}
                   >
-                    <tab.icon className="w-4 h-4 mr-2" />
-                    {tab.label}
+                    <tab.icon className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
+                    <span className="hidden md:inline">{tab.label}</span>
+                    <span className="md:hidden">{tab.label.split(' ')[1]}</span>
                   </Link>
                 ))}
               </div>
@@ -113,8 +114,8 @@ export default function HeaderClient() {
               afterSignOutUrl="/"
               appearance={{
                 elements: {
-                  avatarBox: "h-10 w-10",
-                  userButtonAvatarBox: "h-10 w-10",
+                  avatarBox: "h-8 w-8 md:h-10 md:w-10",
+                  userButtonAvatarBox: "h-8 w-8 md:h-10 md:w-10",
                 },
               }}
             />
@@ -123,19 +124,19 @@ export default function HeaderClient() {
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
             className="text-center"
           >
-            <h2 className="text-2xl md:text-3xl font-semibold mb-4 text-purple-300">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-semibold mb-2 md:mb-4 text-purple-300">
               {activeTab === 'upscaler' ? 'AI Image Upscaler' : 'AI Image Generator'}
             </h2>
-            <p className="text-gray-300 max-w-2xl mx-auto text-lg">
+            <p className="text-gray-300 max-w-2xl mx-auto text-sm md:text-base lg:text-lg">
               {activeTab === 'upscaler'
-                ? 'Boost your images instantly! Enhance resolution, sharpen details, and reveal hidden quality using advanced AI technology.'
-                : 'Turn words into art! Create unique, high-quality images from your text descriptions with cutting-edge AI.'}
+                ? 'Boost your images instantly! Enhance resolution and reveal hidden quality.'
+                : 'Turn words into art! Create unique images from your descriptions.'}
             </p>
           </motion.div>
         </AnimatePresence>

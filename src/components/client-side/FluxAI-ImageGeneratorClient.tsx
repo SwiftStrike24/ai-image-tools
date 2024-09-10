@@ -210,8 +210,8 @@ export default function FluxAIImageGenerator() {
     <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
       <RetroGrid className="absolute inset-0 z-0 opacity-50" />
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 via-purple-900/50 to-gray-900/90 z-10" />
-      <div className="relative z-20 container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-8">
+      <div className="relative z-20 container mx-auto px-4 py-6 md:py-8">
+        <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
           <div className="flex justify-between items-center">
             <motion.p 
               className="text-xl bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600"
@@ -260,7 +260,7 @@ export default function FluxAIImageGenerator() {
           </AnimatePresence>
 
           {/* Main Content */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
             {/* Image Generation Form */}
             <div className="space-y-4">
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -361,7 +361,7 @@ export default function FluxAIImageGenerator() {
                   onClick={handleSubmit}
                   disabled={isLoading || !prompt.trim()}
                   className={cn(
-                    "w-full py-3 text-lg font-semibold",
+                    "w-full py-2 md:py-3 text-base md:text-lg font-semibold",
                     (isLoading || !prompt.trim()) && "opacity-50 cursor-not-allowed"
                   )}
                   text={isLoading ? "Generating..." : 'Generate Image(s)'}
@@ -380,7 +380,6 @@ export default function FluxAIImageGenerator() {
                     transition={{ duration: 0.3 }}
                     className={`grid gap-4 ${
                       imageUrls.length === 1 ? 'grid-cols-1' :
-                      imageUrls.length === 2 ? 'grid-cols-2' :
                       'grid-cols-2'
                     }`}
                   >
@@ -412,9 +411,9 @@ export default function FluxAIImageGenerator() {
                             e.stopPropagation();
                             handleDownload(url, index);
                           }}
-                          className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                          className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
                           disabled={downloadingIndex === index}
-                          text={downloadingIndex === index ? "Downloading..." : "Download"}
+                          text={downloadingIndex === index ? "..." : "Download"}
                         />
                       </div>
                     ))}
@@ -424,7 +423,7 @@ export default function FluxAIImageGenerator() {
               {imageUrls.length > 0 && (
                 <ShinyButton
                   onClick={handleNewImage}
-                  className="w-full py-3 text-lg font-semibold"
+                  className="w-full py-2 md:py-3 text-base md:text-lg font-semibold"
                   text="New Image(s)"
                 />
               )}

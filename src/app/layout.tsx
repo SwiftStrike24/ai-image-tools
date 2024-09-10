@@ -25,9 +25,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html lang="en">
-        <body className={inter.className}>
+    <html lang="en">
+      <head>
+        {/* Add this meta tag to prevent zooming on mobile devices */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+      </head>
+      <body className={inter.className}>
+        <ClerkProvider>
           <SignedIn>
             <Header />
             {children}
@@ -38,8 +42,8 @@ export default function RootLayout({
           <SpeedInsights />
           <Analytics />
           <Toaster />
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }

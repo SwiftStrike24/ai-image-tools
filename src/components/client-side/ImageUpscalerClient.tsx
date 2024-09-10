@@ -341,8 +341,8 @@ function ImageUpscalerComponent() {
     <div className={`relative min-h-screen bg-gray-900 text-white overflow-hidden ${isModalOpen ? 'blur-sm' : ''}`}>
       <RetroGrid className="absolute inset-0 z-0 opacity-50" />
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 via-purple-900/50 to-gray-900/90 z-10" />
-      <div className="relative z-20 container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-8">
+      <div className="relative z-20 container mx-auto px-4 py-6 md:py-8">
+        <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
           <div className="flex justify-between items-center">
             <motion.p 
               className="text-xl bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600"
@@ -391,7 +391,7 @@ function ImageUpscalerComponent() {
           </AnimatePresence>
 
           {/* Main Content */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
             {/* Image Upload Area */}
             <div className="space-y-4">
               <AnimatePresence>
@@ -401,14 +401,14 @@ function ImageUpscalerComponent() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
-                    className="border-2 border-dashed border-purple-500 rounded-lg p-8 text-center cursor-pointer hover:bg-purple-900/30 transition-colors"
+                    className="border-2 border-dashed border-purple-500 rounded-lg p-4 md:p-8 text-center cursor-pointer hover:bg-purple-900/30 transition-colors"
                     onClick={() => fileInputRef.current?.click()}
                     onDrop={handleDrop}
                     onDragOver={(e) => e.preventDefault()}
                   >
-                    <Upload className="mx-auto h-12 w-12 text-purple-400 mb-4" />
-                    <p className="text-white">Drag and drop an image here, or click to select</p>
-                    <p className="text-sm text-purple-300 mt-2">Max file size: {MAX_FILE_SIZE_MB}MB</p>
+                    <Upload className="mx-auto h-8 w-8 md:h-12 md:w-12 text-purple-400 mb-2 md:mb-4" />
+                    <p className="text-sm md:text-base text-white">Tap to upload an image</p>
+                    <p className="text-xs md:text-sm text-purple-300 mt-1 md:mt-2">Max file size: {MAX_FILE_SIZE_MB}MB</p>
                     <input
                       type="file"
                       ref={fileInputRef}
@@ -477,7 +477,7 @@ function ImageUpscalerComponent() {
             </div>
 
             {/* Upscale Options and Controls */}
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6">
               <div>
                 <Label className="text-white mb-2 block">Upscale Factor</Label>
                 <div className="grid grid-cols-5 gap-2">
@@ -518,7 +518,7 @@ function ImageUpscalerComponent() {
                   onClick={handleUpscale}
                   disabled={!uploadedImage || isLoading}
                   className={cn(
-                    "w-full py-3 text-lg font-semibold",
+                    "w-full py-2 md:py-3 text-base md:text-lg font-semibold",
                     (!uploadedImage || isLoading) && "opacity-50 cursor-not-allowed"
                   )}
                   text={isLoading ? "Processing..." : 'Upscale'}
