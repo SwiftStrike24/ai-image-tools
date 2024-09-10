@@ -3,6 +3,7 @@
 import replicate from "@/lib/replicate";
 import { FluxImageParams } from "@/types/imageTypes";
 
+// Function to generate an image using the Flux model from Replicate
 export async function generateFluxImage(params: FluxImageParams): Promise<string[]> {
   const input = {
     prompt: params.prompt,

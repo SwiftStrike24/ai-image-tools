@@ -18,7 +18,9 @@ import { ImageUtilsType, dummyImageUtils } from '@/utils/imageUtils'
 import { VisuallyHidden } from "@/components/ui/visually-hidden"
 import RetroGrid from "@/components/magicui/retro-grid"
 import ShinyButton from "@/components/magicui/shiny-button"
+import { resizeImage } from '@/utils/imageUtils'
 
+// Constants
 const MAX_FILE_SIZE_MB = 50; // 50MB
 const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024; // Convert MB to bytes
 const MIN_ZOOM = 1;
@@ -26,7 +28,9 @@ const MAX_ZOOM = 5;
 const ZOOM_STEP = 0.1;
 const RATE_LIMIT_INTERVAL = 60000; // 1 minute in milliseconds
 const MAX_REQUESTS_PER_INTERVAL = 5;
+const MAX_IMAGE_DIMENSION = 1024;
 
+// Function to handle image upload
 function ImageUpscalerComponent() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [originalFile, setOriginalFile] = useState<File | null>(null)
@@ -67,17 +71,26 @@ function ImageUpscalerComponent() {
       }
       try {
         const convertedFile = await imageUtils.convertHeicToJpeg(file);
-        const compressedFile = await imageUtils.compressImage(convertedFile, 1920, 0.8); // Compress to max 1920px width/height and 80% quality
-        setOriginalFile(compressedFile);
-        const objectUrl = imageUtils.createObjectURL(compressedFile);
+        const compressedFile = await imageUtils.compressImage(convertedFile, 1920, 0.8);
+        const resizedImage = await resizeImage(compressedFile, MAX_IMAGE_DIMENSION);
+        setOriginalFile(resizedImage);
+        const objectUrl = imageUtils.createObjectURL(resizedImage);
         setUploadedImage(objectUrl);
         setError(null);
         setZoom(1);
+        
+        if (resizedImage.size !== compressedFile.size) {
+          toast({
+            title: "Image Resized",
+            description: `Your image was larger than ${MAX_IMAGE_DIMENSION}x${MAX_IMAGE_DIMENSION} and has been resized for optimal processing. The upscaled result will still be of higher quality.`,
+            duration: 5000,
+          });
+        }
       } catch (error) {
         setError(error instanceof Error ? error.message : "Failed to process the image.");
       }
     }
-  }, [imageUtils])
+  }, [imageUtils, toast])
 
   const handleDrop = useCallback(async (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault()
@@ -90,17 +103,27 @@ function ImageUpscalerComponent() {
       try {
         const convertedFile = await imageUtils.convertHeicToJpeg(file);
         const compressedFile = await imageUtils.compressImage(convertedFile, 1920, 0.8);
-        setOriginalFile(compressedFile);
-        const objectUrl = imageUtils.createObjectURL(compressedFile);
+        const resizedImage = await resizeImage(compressedFile, MAX_IMAGE_DIMENSION);
+        setOriginalFile(resizedImage);
+        const objectUrl = imageUtils.createObjectURL(resizedImage);
         setUploadedImage(objectUrl);
         setError(null);
         setZoom(1);
+        
+        if (resizedImage.size !== compressedFile.size) {
+          toast({
+            title: "Image Resized",
+            description: `Your image was larger than ${MAX_IMAGE_DIMENSION}x${MAX_IMAGE_DIMENSION} and has been resized for optimal processing. The upscaled result will still be of higher quality.`,
+            duration: 5000,
+          });
+        }
       } catch (error) {
         setError(error instanceof Error ? error.message : "Failed to process the image.");
       }
     }
-  }, [imageUtils])
+  }, [imageUtils, toast])
 
+  // Function to simulate upscaling for UI testing
   const simulateUpscale = useCallback(() => {
     setIsLoading(true);
     setError(null);
@@ -199,6 +222,7 @@ function ImageUpscalerComponent() {
     }
   }, [originalFile, upscaleOption, faceEnhance, isLoading, isSimulationMode, simulateUpscale, lastRequestTime, requestCount, toast]);
 
+  // Function to clear the uploaded image
   const handleClearImage = useCallback(() => {
     if (uploadedImage) {
       imageUtils.revokeObjectURL(uploadedImage);
@@ -213,6 +237,7 @@ function ImageUpscalerComponent() {
     }
   }, [uploadedImage, imageUtils]);
 
+  // Function to handle zooming in and out of the image
   const handleZoom = useCallback((newZoom: number) => {
     if (imageContainerRef.current) {
       const container = imageContainerRef.current
@@ -246,6 +271,7 @@ function ImageUpscalerComponent() {
     setIsModalOpen(true);
   }, []);
 
+  // Function to get the aspect ratio class for the upscaled image
   const getAspectRatioClass = (ratio: string) => {
     switch (ratio) {
       case '1:1': return 'aspect-square'
@@ -257,6 +283,7 @@ function ImageUpscalerComponent() {
     }
   }
 
+  // Function to handle downloading the upscaled image
   const handleDownload = useCallback(async () => {
     if (!upscaledImage) return;
 

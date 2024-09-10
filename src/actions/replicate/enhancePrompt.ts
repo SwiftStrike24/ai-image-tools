@@ -2,6 +2,7 @@
 
 import replicate from "@/lib/replicate";
 
+// Function to enhance a prompt using Replicate
 export async function enhancePrompt(prompt: string): Promise<string> {
   const customStopSequence = "<<END_OF_ENHANCED_PROMPT>>";
   const input = {
