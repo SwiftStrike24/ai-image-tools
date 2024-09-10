@@ -1,0 +1,76 @@
+{
+    "type": "object",
+    "title": "Input",
+    "required": [
+      "prompt"
+    ],
+    "properties": {
+      "seed": {
+        "type": "integer",
+        "title": "Seed",
+        "x-order": 3,
+        "description": "Random seed. Set for reproducible generation"
+      },
+      "prompt": {
+        "type": "string",
+        "title": "Prompt",
+        "x-order": 0,
+        "description": "Prompt for generated image"
+      },
+      "num_outputs": {
+        "type": "integer",
+        "title": "Num Outputs",
+        "default": 1,
+        "maximum": 4,
+        "minimum": 1,
+        "x-order": 2,
+        "description": "Number of outputs to generate"
+      },
+      "aspect_ratio": {
+        "enum": [
+          "1:1",
+          "16:9",
+          "21:9",
+          "2:3",
+          "3:2",
+          "4:5",
+          "5:4",
+          "9:16",
+          "9:21"
+        ],
+        "type": "string",
+        "title": "aspect_ratio",
+        "description": "Aspect ratio for the generated image",
+        "default": "1:1",
+        "x-order": 1
+      },
+      "output_format": {
+        "enum": [
+          "webp",
+          "jpg",
+          "png"
+        ],
+        "type": "string",
+        "title": "output_format",
+        "description": "Format of the output images",
+        "default": "webp",
+        "x-order": 4
+      },
+      "output_quality": {
+        "type": "integer",
+        "title": "Output Quality",
+        "default": 80,
+        "maximum": 100,
+        "minimum": 0,
+        "x-order": 5,
+        "description": "Quality when saving the output images, from 0 to 100. 100 is best quality, 0 is lowest quality. Not relevant for .png outputs"
+      },
+      "disable_safety_checker": {
+        "type": "boolean",
+        "title": "Disable Safety Checker",
+        "default": false,
+        "x-order": 6,
+        "description": "Disable safety checker for generated images."
+      }
+    }
+  }
