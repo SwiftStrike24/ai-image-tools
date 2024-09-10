@@ -10,14 +10,14 @@ export interface InputProps
 
 const Input = React.forwardRef<HTMLTextAreaElement, InputProps>(
   ({ className, maxLength, ...props }, ref) => {
-    const [value, setValue] = React.useState(props.defaultValue || "");
+    const [value, setValue] = React.useState(props.defaultValue?.toString() || "");
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
     const adjustHeight = () => {
       const textarea = textareaRef.current;
       if (textarea) {
         textarea.style.height = 'auto';
-        textarea.style.height = `${textarea.scrollHeight}px`;
+        textarea.style.height = `${Math.min(textarea.scrollHeight, 240)}px`;
       }
     };
 
@@ -26,9 +26,12 @@ const Input = React.forwardRef<HTMLTextAreaElement, InputProps>(
     }, [value]);
 
     const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setValue(event.target.value);
-      if (props.onChange) {
-        props.onChange(event);
+      const newValue = event.target.value;
+      if (maxLength && newValue.length <= maxLength) {
+        setValue(newValue);
+        if (props.onChange) {
+          props.onChange(event);
+        }
       }
     };
 
@@ -36,7 +39,7 @@ const Input = React.forwardRef<HTMLTextAreaElement, InputProps>(
       <div className="relative">
         <textarea
           className={cn(
-            "flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-hidden min-h-[48px] max-h-[240px]",
+            "flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto min-h-[48px] max-h-[240px]",
             className
           )}
           ref={(node) => {
@@ -50,6 +53,7 @@ const Input = React.forwardRef<HTMLTextAreaElement, InputProps>(
           onChange={handleChange}
           onInput={adjustHeight}
           rows={1}
+          value={value}
           {...props}
         />
       </div>

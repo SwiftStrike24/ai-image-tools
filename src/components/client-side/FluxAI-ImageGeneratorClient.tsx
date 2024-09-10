@@ -274,7 +274,7 @@ export default function FluxAIImageGenerator() {
                       if (error) setError(null);
                     }}
                     placeholder="Enter your image prompt here..."
-                    className="bg-gray-800 text-white border-gray-700"
+                    className="bg-gray-800 text-white border-gray-700 focus:border-purple-500 transition-colors duration-200"
                     maxLength={1000}
                   />
                   <div className="text-right text-xs text-muted-foreground">
