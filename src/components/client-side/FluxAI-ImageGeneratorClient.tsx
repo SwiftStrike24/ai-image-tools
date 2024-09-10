@@ -21,6 +21,32 @@ import { VisuallyHidden } from "@/components/ui/visually-hidden"
 import { FluxImageParams } from "@/types/imageTypes"
 import RetroGrid from "@/components/magicui/retro-grid"
 import ShinyButton from "@/components/magicui/shiny-button"
+import { Global, css } from '@emotion/react'
+
+const GlobalStyles = () => (
+  <Global
+    styles={css`
+      /* Webkit (Chrome, Safari, newer versions of Opera) */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background-color: rgba(155, 155, 155, 0.5);
+        border-radius: 20px;
+        border: transparent;
+      }
+
+      /* Firefox */
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(155, 155, 155, 0.5) transparent;
+      }
+    `}
+  />
+)
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -208,6 +234,7 @@ export default function FluxAIImageGenerator() {
 
   return (
     <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
+      <GlobalStyles />
       <RetroGrid className="absolute inset-0 z-0 opacity-50" />
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 via-purple-900/50 to-gray-900/90 z-10" />
       <div className="relative z-20 container mx-auto px-4 py-6 md:py-8">

@@ -11,7 +11,9 @@ export interface InputProps
 const Input = React.forwardRef<HTMLTextAreaElement, InputProps>(
   ({ className, maxLength, ...props }, ref) => {
     const [value, setValue] = React.useState(props.defaultValue?.toString() || "");
+    const [isScrolling, setIsScrolling] = React.useState(false);
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+    const scrollTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
     const adjustHeight = () => {
       const textarea = textareaRef.current;
@@ -35,11 +37,23 @@ const Input = React.forwardRef<HTMLTextAreaElement, InputProps>(
       }
     };
 
+    const handleScroll = () => {
+      setIsScrolling(true);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      scrollTimeoutRef.current = setTimeout(() => {
+        setIsScrolling(false);
+      }, 1000); // Hide scrollbar after 1 second of inactivity
+    };
+
     return (
       <div className="relative">
         <textarea
           className={cn(
             "flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-y-auto min-h-[48px] max-h-[240px]",
+            "scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent hover:scrollbar-thumb-gray-500",
+            isScrolling ? "scrollbar-thumb-opacity-100" : "scrollbar-thumb-opacity-0",
             className
           )}
           ref={(node) => {
@@ -52,6 +66,7 @@ const Input = React.forwardRef<HTMLTextAreaElement, InputProps>(
           }}
           onChange={handleChange}
           onInput={adjustHeight}
+          onScroll={handleScroll}
           rows={1}
           value={value}
           {...props}
