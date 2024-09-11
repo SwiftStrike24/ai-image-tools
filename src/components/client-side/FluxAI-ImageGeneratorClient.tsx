@@ -70,10 +70,11 @@ export default function FluxAIImageGenerator() {
   const [copiedSeed, setCopiedSeed] = useState<number | null>(null)
   const [followUpPrompt, setFollowUpPrompt] = useState<string | null>(null)
   const [showSeedInput, setShowSeedInput] = useState(false)
+  const [originalPrompt, setOriginalPrompt] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const currentPrompt = followUpPrompt || prompt;
+    let currentPrompt = showSeedInput ? `${originalPrompt}, ${followUpPrompt}` : prompt;
     if (!currentPrompt.trim()) {
       setError("Please enter a prompt before generating images.");
       toast({
@@ -150,6 +151,25 @@ export default function FluxAIImageGenerator() {
       setIsLoading(false);
     }
   }
+
+  const handleCopySeed = useCallback((seed: number) => {
+    setCopiedSeed(seed);
+    setShowSeedInput(true);
+    setOriginalPrompt(prompt); // Store the original prompt
+    setFollowUpPrompt(''); // Initialize an empty follow-up prompt
+    
+    toast({
+      title: "Seed Set",
+      description: `Seed ${seed} has been set for the next generation. You can now enter a follow-up prompt.`,
+    });
+  }, [prompt, toast]);
+
+  const clearSeed = useCallback(() => {
+    setCopiedSeed(null);
+    setShowSeedInput(false);
+    setFollowUpPrompt(null);
+    setOriginalPrompt('');
+  }, []);
 
   const handleNewImage = useCallback(() => {
     setPrompt('')
@@ -273,23 +293,6 @@ export default function FluxAIImageGenerator() {
     }
   };
 
-  const handleCopySeed = useCallback((seed: number) => {
-    setCopiedSeed(seed);
-    setShowSeedInput(true);
-    setFollowUpPrompt(''); // Initialize an empty follow-up prompt
-    
-    toast({
-      title: "Seed Set",
-      description: `Seed ${seed} has been set for the next generation. You can now enter a follow-up prompt.`,
-    });
-  }, [toast]);
-
-  const clearSeed = useCallback(() => {
-    setCopiedSeed(null);
-    setShowSeedInput(false);
-    setFollowUpPrompt(null);
-  }, []);
-
   return (
     <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
       <GlobalStyles />
@@ -353,6 +356,11 @@ export default function FluxAIImageGenerator() {
                   <Label htmlFor="prompt" className="text-white">
                     {showSeedInput ? "Follow-up Prompt" : "Prompt"}
                   </Label>
+                  {showSeedInput && (
+                    <div className="text-sm text-gray-400 mb-2">
+                      Original prompt: {originalPrompt}
+                    </div>
+                  )}
                   <Input
                     id="prompt"
                     value={showSeedInput ? followUpPrompt || '' : prompt}
@@ -361,7 +369,7 @@ export default function FluxAIImageGenerator() {
                       handlePromptChange
                     }
                     placeholder={showSeedInput ? 
-                      "Enter your follow-up prompt here..." : 
+                      "Enter additional details for your follow-up prompt..." : 
                       "Enter your image prompt here..."
                     }
                     className="bg-gray-800 text-white border-gray-700 focus:border-purple-500 transition-colors duration-200"
@@ -386,7 +394,7 @@ export default function FluxAIImageGenerator() {
                       />
                       <Button
                         type="button"
-                        onClick={clearSeed}
+                        onClick={() => setCopiedSeed(null)}
                         variant="secondary"
                         className="px-2 py-1"
                       >

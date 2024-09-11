@@ -12,4 +12,5 @@ export interface FluxImageParams {
 export interface FluxImageResult {
   imageUrls: string[];
   seed: number;
+  prompt: string; // Add this line to include the prompt in the result
 }

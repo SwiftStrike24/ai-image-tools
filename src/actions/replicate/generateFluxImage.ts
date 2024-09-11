@@ -64,7 +64,8 @@ export async function generateFluxImage(params: FluxImageParams): Promise<FluxIm
 
       const result: FluxImageResult = {
         imageUrls: output.filter(item => typeof item === 'string' && item.startsWith('http')),
-        seed: seed || Math.floor(Math.random() * 1000000)
+        seed: seed || Math.floor(Math.random() * 1000000),
+        prompt: params.prompt, // This is now valid as we've added it to the FluxImageResult interface
       };
 
       console.log("Final result:", result);
