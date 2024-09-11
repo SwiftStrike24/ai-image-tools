@@ -116,25 +116,27 @@ export default function FluxAIImageGenerator() {
 
       console.log("Params sent to generateFluxImage:", params);
 
-      const result = isSimulationMode 
+      const results = isSimulationMode 
         ? await simulateImageGeneration(params)
         : await generateFluxImage(params);
 
-      console.log("Result received from generateFluxImage:", result);
+      console.log("Results received from generateFluxImage:", results);
 
-      if (result.imageUrls.length > 0) {
-        setImageResults([...imageResults, result]);
-        setImageUrls(result.imageUrls);
+      if (Array.isArray(results) && results.length > 0) {
+        const newImageResults = results.map((result: FluxImageResult) => ({
+          imageUrls: result.imageUrls,
+          seed: result.seed,
+          prompt: result.prompt,
+        }));
+
+        setImageResults(prevResults => [...prevResults, ...newImageResults]);
+        setImageUrls(results.flatMap((result: FluxImageResult) => result.imageUrls));
         setShowGlow(true);
         setGeneratedAspectRatio(aspectRatio);
 
-        // Update the seed with the one returned from the API
-        setCopiedSeed(result.seed);
-        console.log("Updated copiedSeed:", result.seed);
-
         toast({
           title: isSimulationMode ? "Images Simulated" : "Images Generated",
-          description: `Successfully ${isSimulationMode ? 'simulated' : 'generated'} ${result.imageUrls.length} image(s). Seed: ${result.seed}`,
+          description: `Successfully ${isSimulationMode ? 'simulated' : 'generated'} ${results.length} image(s).`,
         });
       } else {
         throw new Error('No images were generated. Please try again.');
@@ -395,7 +397,9 @@ export default function FluxAIImageGenerator() {
                 </div>
                 {showSeedInput && (
                   <div className="space-y-2">
-                    <Label htmlFor="seed-input" className="text-white">Seed for next generation:</Label>
+                    <Label htmlFor="seed-input" className="text-white">
+                      Seed for next generation
+                    </Label>
                     <div className="flex items-center space-x-2">
                       <Input
                         id="seed-input"

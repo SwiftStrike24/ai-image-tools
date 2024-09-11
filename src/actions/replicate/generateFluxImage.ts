@@ -3,11 +3,9 @@
 import replicate from "@/lib/replicate";
 import { FluxImageParams, FluxImageResult } from "@/types/imageTypes";
 
-// Function to generate an image using the Flux model from Replicate
-export async function generateFluxImage(params: FluxImageParams): Promise<FluxImageResult> {
-  const input: any = {
+export async function generateFluxImage(params: FluxImageParams): Promise<FluxImageResult[]> {
+  const baseInput: any = {
     prompt: params.prompt,
-    num_outputs: params.num_outputs,
     aspect_ratio: params.aspect_ratio,
     output_format: params.output_format,
     output_quality: params.output_quality,
@@ -15,13 +13,30 @@ export async function generateFluxImage(params: FluxImageParams): Promise<FluxIm
     enhance_prompt: params.enhance_prompt,
   };
 
+  let results: FluxImageResult[] = [];
+
   if (typeof params.seed === 'number') {
-    input.seed = params.seed;
-    console.log("Input seed:", input.seed);
+    // If a seed is provided, generate all images in one API call
+    baseInput.seed = params.seed;
+    baseInput.num_outputs = params.num_outputs;
+    
+    console.log("Generating multiple images with seed:", baseInput.seed);
+    const result = await runReplicateModel(baseInput);
+    results.push(result);
   } else {
-    console.log("No input seed provided");
+    // If no seed is provided, generate each image separately
+    for (let i = 0; i < params.num_outputs; i++) {
+      console.log(`Generating image ${i + 1} of ${params.num_outputs}`);
+      const input = { ...baseInput, num_outputs: 1 };
+      const result = await runReplicateModel(input);
+      results.push(result);
+    }
   }
 
+  return results;
+}
+
+async function runReplicateModel(input: any): Promise<FluxImageResult> {
   try {
     if (!process.env.REPLICATE_API_TOKEN) {
       throw new Error("REPLICATE_API_TOKEN is not set in the environment variables.");
@@ -37,7 +52,7 @@ export async function generateFluxImage(params: FluxImageParams): Promise<FluxIm
     let completedPrediction;
     do {
       completedPrediction = await replicate.predictions.get(prediction.id);
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+      await new Promise(resolve => setTimeout(resolve, 1000));
     } while (completedPrediction.status !== "succeeded" && completedPrediction.status !== "failed");
 
     if (completedPrediction.status === "failed") {
@@ -50,7 +65,7 @@ export async function generateFluxImage(params: FluxImageParams): Promise<FluxIm
     console.log("Raw Replicate output:", output);
 
     if (Array.isArray(output) && output.length > 0) {
-      let seed = params.seed;
+      let seed = input.seed;
 
       if (completedPrediction.logs) {
         const seedMatch = completedPrediction.logs.match(/Using seed: (\d+)/);
@@ -65,7 +80,7 @@ export async function generateFluxImage(params: FluxImageParams): Promise<FluxIm
       const result: FluxImageResult = {
         imageUrls: output.filter(item => typeof item === 'string' && item.startsWith('http')),
         seed: seed || Math.floor(Math.random() * 1000000),
-        prompt: params.prompt, // This is now valid as we've added it to the FluxImageResult interface
+        prompt: input.prompt,
       };
 
       console.log("Final result:", result);
