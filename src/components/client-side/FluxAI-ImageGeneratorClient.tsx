@@ -73,11 +73,14 @@ export default function FluxAIImageGenerator() {
   const [originalPrompt, setOriginalPrompt] = useState('')
   const [originalImage, setOriginalImage] = useState<FluxImageResult | null>(null)
   const [isProcessingSeed, setIsProcessingSeed] = useState(false)
+  const [followUpImages, setFollowUpImages] = useState<FluxImageResult[]>([])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    let currentPrompt = showSeedInput ? `${originalPrompt}, ${followUpPrompt}` : prompt;
-    if (!currentPrompt.trim()) {
+    if (isLoading) return;
+
+    let currentPrompt = showSeedInput ? followUpPrompt : prompt;
+    if (!currentPrompt?.trim()) {
       setError("Please enter a prompt before generating images.");
       toast({
         title: "Empty Prompt",
@@ -125,22 +128,21 @@ export default function FluxAIImageGenerator() {
       console.log("Results received from generateFluxImage:", results);
 
       if (Array.isArray(results) && results.length > 0) {
-        const newImageResults = results.flatMap((result: FluxImageResult) => 
-          result.imageUrls.map(url => ({
-            imageUrls: [url],
-            seed: result.seed,
-            prompt: result.prompt,
-          }))
-        );
+        const newImageResults = results.map((result: FluxImageResult) => ({
+          ...result,
+          isFollowUp: showSeedInput,
+        }));
 
-        setImageResults(prevResults => [...prevResults, ...newImageResults]);
-        setImageUrls(prevUrls => [...prevUrls, ...newImageResults.map(result => result.imageUrls[0])]);
+        if (showSeedInput) {
+          setFollowUpImages(newImageResults);
+        } else {
+          // Clear previous images and set new ones
+          setImageResults(newImageResults);
+          setImageUrls(newImageResults.map(result => result.imageUrls[0]));
+        }
+
         setShowGlow(true);
         setGeneratedAspectRatio(aspectRatio);
-
-        if (showSeedInput && !originalImage) {
-          setOriginalImage(newImageResults[0]);
-        }
 
         toast({
           title: isSimulationMode ? "Images Simulated" : "Images Generated",
@@ -160,27 +162,24 @@ export default function FluxAIImageGenerator() {
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
-  const handleCopySeed = useCallback((seed: number) => {
+  const handleCopySeed = useCallback((seed: number, selectedImage: FluxImageResult) => {
     if (isProcessingSeed) return;
     setIsProcessingSeed(true);
     setCopiedSeed(seed);
     setShowSeedInput(true);
-    if (!showSeedInput) {
-      setOriginalPrompt(prompt);
-      setOriginalImage(imageResults[imageResults.length - 1]);
-    } else {
-      setOriginalPrompt(prevOriginal => prevOriginal.includes(followUpPrompt || '') ? prevOriginal : `${prevOriginal}, ${followUpPrompt}`);
-    }
+    setOriginalPrompt(selectedImage.prompt);
+    setOriginalImage(selectedImage);
     setFollowUpPrompt('');
+    setFollowUpImages([]);
     
     toast({
       title: "Seed Set",
       description: `Seed ${seed} has been set for the next generation. You can now enter a follow-up prompt.`,
     });
     setTimeout(() => setIsProcessingSeed(false), 500);
-  }, [prompt, followUpPrompt, showSeedInput, imageResults, toast]);
+  }, []);
 
   const clearSeed = useCallback(() => {
     setCopiedSeed(null);
@@ -189,11 +188,12 @@ export default function FluxAIImageGenerator() {
     setPrompt(originalPrompt);
     setOriginalPrompt('');
     setOriginalImage(null);
+    setFollowUpImages([]);
     toast({
       title: "Seed Cleared",
       description: "The seed has been cleared, and you're back to the original prompt.",
     });
-  }, [originalPrompt, toast]);
+  }, [originalPrompt]);
 
   const handleNewImage = useCallback(() => {
     setFollowUpPrompt(null);
@@ -203,12 +203,26 @@ export default function FluxAIImageGenerator() {
     setError(null);
     setResetKey(prev => prev + 1);
     setImageResults([]);
-    // Keep the prompt
+    setFollowUpImages([]);
+    setOriginalImage(null);
+    setOriginalPrompt('');
+    setPrompt('');
     toast({
       title: "Reset Complete",
-      description: "Ready for a new image generation while keeping your current prompt.",
+      description: "Ready for a new image generation.",
     });
-  }, [toast]);
+  }, []);
+
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error",
+        description: error,
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
+  }, [error, toast]);
 
   const handleDownload = useCallback(async (url: string, index: number) => {
     setDownloadingIndex(index)
@@ -320,17 +334,6 @@ export default function FluxAIImageGenerator() {
     }
   };
 
-  useEffect(() => {
-    if (error) {
-      toast({
-        title: "Error",
-        description: error,
-        variant: "destructive",
-        duration: 5000,
-      });
-    }
-  }, [error, toast]);
-
   return (
     <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
       <GlobalStyles />
@@ -405,8 +408,8 @@ export default function FluxAIImageGenerator() {
                     onChange={showSeedInput ?                       (e) => setFollowUpPrompt(e.target.value) :
                       handlePromptChange
                     }
-                    placeholder={showSeedInput ?
-                      "Enter additional details for your follow-up prompt..." :
+                    placeholder={showSeedInput ? 
+                                      "Enter additional details for your follow-up prompt..." :
                       "Enter your image prompt here..."
                     }
                     className="bg-gray-800 text-white border-gray-700 focus:border-purple-500 transition-colors duration-200"
@@ -538,7 +541,7 @@ export default function FluxAIImageGenerator() {
             {/* Generated Images Display */}
             <div className="space-y-4">
               <AnimatePresence>
-                {imageResults.length > 0 && (
+                {(imageResults.length > 0 || followUpImages.length > 0) && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -546,7 +549,7 @@ export default function FluxAIImageGenerator() {
                     transition={{ duration: 0.3 }}
                     className="grid gap-4"
                     style={{
-                      gridTemplateColumns: `repeat(${Math.min(imageResults.length, 2)}, 1fr)`,
+                      gridTemplateColumns: `repeat(${Math.min(Math.max(imageResults.length, followUpImages.length), 2)}, 1fr)`,
                     }}
                   >
                     {showSeedInput && originalImage && (
@@ -572,24 +575,15 @@ export default function FluxAIImageGenerator() {
                         </div>
                       </motion.div>
                     )}
-                    {imageResults.map((result, index) => (
+                    {(showSeedInput ? followUpImages : imageResults).map((result, index) => (
                       <motion.div
-                        key={index}
+                        key={`${result.seed}-${index}`}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5, delay: index * 0.1 }}
                         className={`relative ${getAspectRatioClass(generatedAspectRatio)} rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer group`}
                         onClick={() => handleImageClick(result.imageUrls[0])}
                       >
-                        {showGlow && (
-                          <motion.div
-                            className="absolute inset-0 bg-purple-500 opacity-20"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 0.2 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 1 }}
-                          />
-                        )}
                         <Image
                           src={result.imageUrls[0]}
                           alt={`Generated ${index + 1}`}
@@ -611,12 +605,12 @@ export default function FluxAIImageGenerator() {
                         <ShinyButton
                           onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
-                            handleCopySeed(result.seed);
+                            handleCopySeed(result.seed, result);
                           }}
                           className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
                           text="Use Seed"
                         />
-                        {showSeedInput && index === imageResults.length - 1 && (
+                        {showSeedInput && result.isFollowUp && (
                           <div className="absolute top-2 left-2 bg-purple-900/70 text-white text-xs px-2 py-1 rounded">
                             Follow-up
                           </div>
@@ -626,7 +620,7 @@ export default function FluxAIImageGenerator() {
                   </motion.div>
                 )}
               </AnimatePresence>
-              {imageUrls.length > 0 && (
+              {(imageUrls.length > 0 || followUpImages.length > 0) && (
                 <ShinyButton
                   onClick={handleNewImage}
                   className="w-full py-2 md:py-3 text-base md:text-lg font-semibold"
