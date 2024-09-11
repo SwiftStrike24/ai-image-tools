@@ -8,10 +8,12 @@
 }
 
 .shiny-button-text {
+  -webkit-mask-image: linear-gradient(-75deg, #fff calc(var(--x) + 20%), transparent calc(var(--x) + 30%), #fff calc(var(--x) + 100%));
   mask-image: linear-gradient(-75deg, #fff calc(var(--x) + 20%), transparent calc(var(--x) + 30%), #fff calc(var(--x) + 100%));
 }
 
 .shiny-button-overlay {
+  -webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
   mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
   mask-composite: exclude;
   animation: shiny-button-animation 3s infinite linear;
