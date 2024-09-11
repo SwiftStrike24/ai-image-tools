@@ -121,6 +121,10 @@ export default function FluxAIImageGenerator() {
         setImageUrls(result.imageUrls);
         setShowGlow(true);
         setGeneratedAspectRatio(aspectRatio);
+
+        // Ensure the seed is captured for future generations
+        setCopiedSeed(result.seed);
+
         toast({
           title: isSimulationMode ? "Images Simulated" : "Images Generated",
           description: `Successfully ${isSimulationMode ? 'simulated' : 'generated'} ${result.imageUrls.length} image(s).`,
@@ -263,15 +267,33 @@ export default function FluxAIImageGenerator() {
     }
   };
 
-  const handleCopySeed = (seed: number) => {
+  const handleCopySeed = useCallback((seed: number) => {
     setCopiedSeed(seed);
     setFollowUpPrompt(''); // Initialize an empty follow-up prompt
-    navigator.clipboard.writeText(seed.toString());
-    toast({
-      title: "Seed Copied",
-      description: `Seed ${seed} has been copied. You can now enter a follow-up prompt.`,
-    });
-  }
+    
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(seed.toString())
+        .then(() => {
+          toast({
+            title: "Seed Copied",
+            description: `Seed ${seed} has been copied. You can now enter a follow-up prompt.`,
+          });
+        })
+        .catch((err) => {
+          console.error('Failed to copy seed: ', err);
+          toast({
+            title: "Copy Failed",
+            description: `Failed to copy seed. Please copy it manually: ${seed}`,
+            variant: "destructive",
+          });
+        });
+    } else {
+      toast({
+        title: "Seed Set",
+        description: `Seed ${seed} has been set for the next generation. Clipboard API not available.`,
+      });
+    }
+  }, [toast]);
 
   return (
     <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
@@ -361,8 +383,7 @@ export default function FluxAIImageGenerator() {
                     <Label htmlFor="seed-input" className="text-white">Seed for next generation:</Label>
                     <Input
                       id="seed-input"
-                      type="number"
-                      value={copiedSeed}
+                      value={copiedSeed?.toString() || ''}
                       onChange={(e) => setCopiedSeed(parseInt(e.target.value))}
                       className="bg-gray-800 text-white border-gray-700 focus:border-purple-500 transition-colors duration-200"
                       readOnly

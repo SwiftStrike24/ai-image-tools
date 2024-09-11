@@ -29,12 +29,14 @@ export async function generateFluxImage(params: FluxImageParams): Promise<FluxIm
     const output = await replicate.run("black-forest-labs/flux-schnell", { input });
     
     if (Array.isArray(output) && output.length > 0) {
-      // Extract the seed from the logs if available
-      let seed = Math.floor(Math.random() * 1000000); // Default to a random seed
-      if (typeof output[output.length - 1] === 'string' && output[output.length - 1].includes('Using seed:')) {
-        const seedMatch = output[output.length - 1].match(/Using seed: (\d+)/);
+      // Extract the seed from the logs (use this if the log contains the seed)
+      const lastItem = output[output.length - 1];
+      let seed = params.seed ?? Math.floor(Math.random() * 1000000); // Use provided seed or fallback to random
+
+      if (typeof lastItem === 'string') {
+        const seedMatch = lastItem.match(/Using seed: (\d+)/);
         if (seedMatch) {
-          seed = parseInt(seedMatch[1]);
+          seed = parseInt(seedMatch[1]); // Extract seed from logs if available
         }
       }
 
