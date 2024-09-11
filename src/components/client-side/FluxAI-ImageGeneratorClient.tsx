@@ -208,14 +208,18 @@ export default function FluxAIImageGenerator() {
     } else {
       setCopiedSeed(null);
       setShowSeedInput(false);
-      setPrompt('');
+      setPrompt(originalPrompt); // Set the original prompt when going back to the initial state
+      setImageResults([]);
+      setImageUrls([]);
+      setPromptHistory([]);
+      setCurrentPromptIndex(-1);
     }
     setFollowUpPrompt('');
     toast({
       title: "Prompt Updated",
       description: currentPromptIndex > 0 ? "Reverted to the previous prompt and images." : "Cleared all prompts, seeds, and images.",
     });
-  }, [currentPromptIndex, promptHistory]);
+  }, [currentPromptIndex, promptHistory, originalPrompt]);
 
   const handleNewImage = useCallback(() => {
     setFollowUpPrompt(null);
@@ -573,7 +577,7 @@ export default function FluxAIImageGenerator() {
                     transition={{ duration: 0.3 }}
                     className="grid gap-4"
                     style={{
-                      gridTemplateColumns: `repeat(${Math.min(promptHistory[currentPromptIndex].images.length, 2)}, 1fr)`,
+                      gridTemplateColumns: `repeat(${Math.min(Math.max(promptHistory[currentPromptIndex].images.length, 2), 4)}, 1fr)`,
                     }}
                   >
                     {promptHistory[currentPromptIndex].images.map((result, index) => (

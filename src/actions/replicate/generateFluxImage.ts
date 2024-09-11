@@ -13,6 +13,7 @@ export async function generateFluxImage(params: FluxImageParams): Promise<FluxIm
     output_quality: params.output_quality,
     disable_safety_checker: params.disable_safety_checker,
     enhance_prompt: params.enhance_prompt,
+    num_outputs: params.num_outputs, // Add this line
   };
 
   let results: FluxImageResult[] = [];
@@ -21,11 +22,14 @@ export async function generateFluxImage(params: FluxImageParams): Promise<FluxIm
     if (typeof params.seed === 'number') {
       // If a seed is provided, generate all images in one API call
       baseInput.seed = params.seed;
-      baseInput.num_outputs = params.num_outputs;
       
       console.log("Generating multiple images with seed:", baseInput.seed);
       const result = await runReplicateModel(baseInput);
-      results.push(result);
+      results = result.imageUrls.map((url, index) => ({
+        imageUrls: [url],
+        seed: result.seed + index, // Increment seed for each image
+        prompt: params.prompt,
+      }));
     } else {
       // If no seed is provided, generate each image separately
       for (let i = 0; i < params.num_outputs; i++) {
