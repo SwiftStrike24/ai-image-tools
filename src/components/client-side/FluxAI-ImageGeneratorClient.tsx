@@ -74,6 +74,8 @@ export default function FluxAIImageGenerator() {
   const [originalImage, setOriginalImage] = useState<FluxImageResult | null>(null)
   const [isProcessingSeed, setIsProcessingSeed] = useState(false)
   const [followUpImages, setFollowUpImages] = useState<FluxImageResult[]>([])
+  const [promptHistory, setPromptHistory] = useState<Array<{ prompt: string, images: FluxImageResult[] }>>([]);
+  const [currentPromptIndex, setCurrentPromptIndex] = useState(-1);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,12 +98,17 @@ export default function FluxAIImageGenerator() {
     try {
       let finalPrompt = currentPrompt;
 
+      if (showSeedInput) {
+        const lastPrompt = promptHistory[currentPromptIndex].prompt;
+        finalPrompt = `${lastPrompt}, ${currentPrompt}`.trim();
+      }
+
       if (isEnhancePromptEnabled) {
-        const enhancedPromptResult = await enhancePrompt(currentPrompt);
-        finalPrompt = enhancedPromptResult !== currentPrompt ? enhancedPromptResult : currentPrompt;
+        const enhancedPromptResult = await enhancePrompt(finalPrompt);
+        finalPrompt = enhancedPromptResult !== finalPrompt ? enhancedPromptResult : finalPrompt;
         toast({
-          title: enhancedPromptResult !== currentPrompt ? "Prompt Enhanced" : "Prompt Enhancement Skipped",
-          description: enhancedPromptResult !== currentPrompt 
+          title: enhancedPromptResult !== finalPrompt ? "Prompt Enhanced" : "Prompt Enhancement Skipped",
+          description: enhancedPromptResult !== finalPrompt 
             ? "Your prompt was enhanced for better results." 
             : "The original prompt was used as the enhanced version was too short.",
           duration: 5000,
@@ -133,14 +140,13 @@ export default function FluxAIImageGenerator() {
           isFollowUp: showSeedInput,
         }));
 
-        if (showSeedInput) {
-          setFollowUpImages(newImageResults);
-        } else {
-          // Clear previous images and set new ones
-          setImageResults(newImageResults);
-          setImageUrls(newImageResults.map(result => result.imageUrls[0]));
-        }
+        const newHistoryEntry = { prompt: finalPrompt, images: newImageResults };
+        const newHistory = promptHistory.slice(0, currentPromptIndex + 1).concat(newHistoryEntry);
+        setPromptHistory(newHistory);
+        setCurrentPromptIndex(newHistory.length - 1);
 
+        setImageResults(newImageResults);
+        setImageUrls(newImageResults.map(result => result.imageUrls[0]));
         setShowGlow(true);
         setGeneratedAspectRatio(aspectRatio);
 
@@ -174,26 +180,44 @@ export default function FluxAIImageGenerator() {
     setFollowUpPrompt('');
     setFollowUpImages([]);
     
+    // Update prompt history if it's empty (first seed copy)
+    if (promptHistory.length === 0) {
+      setPromptHistory([{ prompt: selectedImage.prompt, images: [selectedImage] }]);
+      setCurrentPromptIndex(0);
+    }
+    
     toast({
       title: "Seed Set",
       description: `Seed ${seed} has been set for the next generation. You can now enter a follow-up prompt.`,
     });
     setTimeout(() => setIsProcessingSeed(false), 500);
-  }, []);
+  }, [isProcessingSeed, promptHistory]);
 
   const clearSeed = useCallback(() => {
-    setCopiedSeed(null);
-    setShowSeedInput(false);
-    setFollowUpPrompt(null);
-    setPrompt(originalPrompt);
-    setOriginalPrompt('');
-    setOriginalImage(null);
-    setFollowUpImages([]);
+    if (currentPromptIndex > 0) {
+      const newIndex = currentPromptIndex - 1;
+      setCurrentPromptIndex(newIndex);
+      const previousEntry = promptHistory[newIndex];
+      setFollowUpPrompt(previousEntry.prompt);
+      setImageResults(previousEntry.images);
+      setImageUrls(previousEntry.images.map(result => result.imageUrls[0]));
+    } else {
+      setCopiedSeed(null);
+      setShowSeedInput(false);
+      setFollowUpPrompt(null);
+      setPrompt('');
+      setOriginalPrompt('');
+      setOriginalImage(null);
+      setImageResults([]);
+      setImageUrls([]);
+      setPromptHistory([]);
+      setCurrentPromptIndex(-1);
+    }
     toast({
-      title: "Seed Cleared",
-      description: "The seed has been cleared, and you're back to the original prompt.",
+      title: "Prompt Updated",
+      description: currentPromptIndex > 0 ? "Reverted to the previous prompt and images." : "Cleared all prompts, seeds, and images.",
     });
-  }, [originalPrompt]);
+  }, [currentPromptIndex, promptHistory]);
 
   const handleNewImage = useCallback(() => {
     setFollowUpPrompt(null);
@@ -207,6 +231,8 @@ export default function FluxAIImageGenerator() {
     setOriginalImage(null);
     setOriginalPrompt('');
     setPrompt('');
+    setPromptHistory([]);
+    setCurrentPromptIndex(-1);
     toast({
       title: "Reset Complete",
       description: "Ready for a new image generation.",
@@ -399,7 +425,7 @@ export default function FluxAIImageGenerator() {
                   </Label>
                   {showSeedInput && (
                     <div className="text-sm text-gray-400 mb-2">
-                      Original prompt: {originalPrompt}
+                      Current prompt: {promptHistory[currentPromptIndex].prompt}
                     </div>
                   )}
                   <Input
@@ -541,7 +567,7 @@ export default function FluxAIImageGenerator() {
             {/* Generated Images Display */}
             <div className="space-y-4">
               <AnimatePresence>
-                {(imageResults.length > 0 || followUpImages.length > 0) && (
+                {promptHistory.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -549,33 +575,10 @@ export default function FluxAIImageGenerator() {
                     transition={{ duration: 0.3 }}
                     className="grid gap-4"
                     style={{
-                      gridTemplateColumns: `repeat(${Math.min(Math.max(imageResults.length, followUpImages.length), 2)}, 1fr)`,
+                      gridTemplateColumns: `repeat(${Math.min(promptHistory[currentPromptIndex].images.length, 2)}, 1fr)`,
                     }}
                   >
-                    {showSeedInput && originalImage && (
-                      <motion.div
-                        key="original"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.5 }}
-                        className={`relative ${getAspectRatioClass(generatedAspectRatio)} rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer group`}
-                        onClick={() => handleImageClick(originalImage.imageUrls[0])}
-                      >
-                        <Image
-                          src={originalImage.imageUrls[0]}
-                          alt="Original"
-                          layout="fill"
-                          objectFit="cover"
-                          className="w-full h-full transition-transform duration-300 group-hover:scale-105"
-                          unoptimized={isSimulationMode}
-                        />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity duration-300" />
-                        <div className="absolute top-2 left-2 bg-purple-900/70 text-white text-xs px-2 py-1 rounded">
-                          Original
-                        </div>
-                      </motion.div>
-                    )}
-                    {(showSeedInput ? followUpImages : imageResults).map((result, index) => (
+                    {promptHistory[currentPromptIndex].images.map((result, index) => (
                       <motion.div
                         key={`${result.seed}-${index}`}
                         initial={{ opacity: 0, y: 20 }}
@@ -610,7 +613,7 @@ export default function FluxAIImageGenerator() {
                           className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
                           text="Use Seed"
                         />
-                        {showSeedInput && result.isFollowUp && (
+                        {currentPromptIndex > 0 && (
                           <div className="absolute top-2 left-2 bg-purple-900/70 text-white text-xs px-2 py-1 rounded">
                             Follow-up
                           </div>
@@ -620,7 +623,7 @@ export default function FluxAIImageGenerator() {
                   </motion.div>
                 )}
               </AnimatePresence>
-              {(imageUrls.length > 0 || followUpImages.length > 0) && (
+              {promptHistory.length > 0 && (
                 <ShinyButton
                   onClick={handleNewImage}
                   className="w-full py-2 md:py-3 text-base md:text-lg font-semibold"
