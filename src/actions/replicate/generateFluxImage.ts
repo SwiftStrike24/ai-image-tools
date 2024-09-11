@@ -15,7 +15,6 @@ export async function generateFluxImage(params: FluxImageParams): Promise<FluxIm
     enhance_prompt: params.enhance_prompt,
   };
 
-  // Only add seed to input if it's provided and not null
   if (typeof params.seed === 'number') {
     input.seed = params.seed;
     console.log("Input seed:", input.seed);
@@ -29,16 +28,33 @@ export async function generateFluxImage(params: FluxImageParams): Promise<FluxIm
     }
 
     console.log("Running Replicate model: black-forest-labs/flux-schnell");
-    const output = await replicate.run("black-forest-labs/flux-schnell", { input });
-    
+    const prediction = await replicate.predictions.create({
+      version: "f2ab8a5bfe79f02f0789a146cf5e73d2a4ff2684a98c2b303d1e1ff3814271db",
+      input: input,
+    });
+
+    console.log("Prediction created:", prediction.id);
+
+    let completedPrediction;
+    do {
+      completedPrediction = await replicate.predictions.get(prediction.id);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+    } while (completedPrediction.status !== "succeeded" && completedPrediction.status !== "failed");
+
+    if (completedPrediction.status === "failed") {
+      throw new Error("Image generation failed");
+    }
+
+    console.log("Full Replicate API response:", JSON.stringify(completedPrediction, null, 2));
+
+    const output = completedPrediction.output;
     console.log("Raw Replicate output:", output);
 
     if (Array.isArray(output) && output.length > 0) {
-      const lastItem = output[output.length - 1];
       let seed = params.seed;
 
-      if (typeof lastItem === 'string') {
-        const seedMatch = lastItem.match(/Using seed: (\d+)/);
+      if (completedPrediction.logs) {
+        const seedMatch = completedPrediction.logs.match(/Using seed: (\d+)/);
         if (seedMatch) {
           seed = parseInt(seedMatch[1]);
           console.log("Extracted seed from logs:", seed);
