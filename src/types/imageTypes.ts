@@ -4,6 +4,12 @@ export interface FluxImageParams {
   num_outputs: number;
   output_format: string;
   output_quality: number;
-  enhance_prompt: boolean;
   disable_safety_checker: boolean;
+  enhance_prompt: boolean;
+  seed?: number; // Add this line
+}
+
+export interface FluxImageResult {
+  imageUrls: string[];
+  seed: number;
 }

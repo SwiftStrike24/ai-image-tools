@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog"
 import { VisuallyHidden } from "@/components/ui/visually-hidden"
-import { FluxImageParams } from "@/types/imageTypes"
+import { FluxImageParams, FluxImageResult } from "@/types/imageTypes"
 import RetroGrid from "@/components/magicui/retro-grid"
 import ShinyButton from "@/components/magicui/shiny-button"
 import { Global, css } from '@emotion/react'
@@ -66,10 +66,14 @@ export default function FluxAIImageGenerator() {
   const [resetKey, setResetKey] = useState(0)
   const promptInputRef = useRef<HTMLTextAreaElement>(null)
   const { toast } = useToast()
+  const [imageResults, setImageResults] = useState<FluxImageResult[]>([])
+  const [copiedSeed, setCopiedSeed] = useState<number | null>(null)
+  const [followUpPrompt, setFollowUpPrompt] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prompt.trim()) {
+    const currentPrompt = followUpPrompt || prompt;
+    if (!currentPrompt.trim()) {
       setError("Please enter a prompt before generating images.");
       toast({
         title: "Empty Prompt",
@@ -83,14 +87,14 @@ export default function FluxAIImageGenerator() {
     setError(null);
 
     try {
-      let finalPrompt = prompt;
+      let finalPrompt = currentPrompt;
 
       if (isEnhancePromptEnabled) {
-        const enhancedPromptResult = await enhancePrompt(prompt);
-        finalPrompt = enhancedPromptResult !== prompt ? enhancedPromptResult : prompt;
+        const enhancedPromptResult = await enhancePrompt(currentPrompt);
+        finalPrompt = enhancedPromptResult !== currentPrompt ? enhancedPromptResult : currentPrompt;
         toast({
-          title: enhancedPromptResult !== prompt ? "Prompt Enhanced" : "Prompt Enhancement Skipped",
-          description: enhancedPromptResult !== prompt 
+          title: enhancedPromptResult !== currentPrompt ? "Prompt Enhanced" : "Prompt Enhancement Skipped",
+          description: enhancedPromptResult !== currentPrompt 
             ? "Your prompt was enhanced for better results." 
             : "The original prompt was used as the enhanced version was too short.",
           duration: 5000,
@@ -105,19 +109,21 @@ export default function FluxAIImageGenerator() {
         output_quality: outputQuality,
         enhance_prompt: isEnhancePromptEnabled,
         disable_safety_checker: true,
+        seed: copiedSeed !== null ? copiedSeed : undefined,
       };
 
       const result = isSimulationMode 
         ? await simulateImageGeneration(params)
         : await generateFluxImage(params);
 
-      if (Array.isArray(result) && result.length > 0) {
-        setImageUrls(result);
+      if (result.imageUrls.length > 0) {
+        setImageResults([...imageResults, result]);
+        setImageUrls(result.imageUrls);
         setShowGlow(true);
         setGeneratedAspectRatio(aspectRatio);
         toast({
           title: isSimulationMode ? "Images Simulated" : "Images Generated",
-          description: `Successfully ${isSimulationMode ? 'simulated' : 'generated'} ${result.length} image(s).`,
+          description: `Successfully ${isSimulationMode ? 'simulated' : 'generated'} ${result.imageUrls.length} image(s).`,
         });
       } else {
         throw new Error('No images were generated. Please try again.');
@@ -137,11 +143,13 @@ export default function FluxAIImageGenerator() {
 
   const handleNewImage = useCallback(() => {
     setPrompt('')
+    setFollowUpPrompt(null)
+    setCopiedSeed(null)
     setImageUrls([])
     setError(null)
-    setResetKey(prev => prev + 1) // Trigger input reset
+    setResetKey(prev => prev + 1)
     if (promptInputRef.current) {
-      promptInputRef.current.style.height = 'auto' // Reset height
+      promptInputRef.current.style.height = 'auto'
     }
   }, [])
 
@@ -218,7 +226,10 @@ export default function FluxAIImageGenerator() {
     await new Promise(resolve => setTimeout(resolve, 2000));
     // Use a default stock image URL (replace this with an actual image URL from your project)
     const defaultImageUrl = '/images/simulated-image.jpg'; // Assuming you have this image in your public folder
-    return Array(params.num_outputs).fill(defaultImageUrl);
+    return {
+      imageUrls: Array(params.num_outputs).fill(defaultImageUrl),
+      seed: Math.floor(Math.random() * 1000000)
+    };
   }, []);
 
   const getModalSizeClass = (ratio: string) => {
@@ -251,6 +262,16 @@ export default function FluxAIImageGenerator() {
       });
     }
   };
+
+  const handleCopySeed = (seed: number) => {
+    setCopiedSeed(seed);
+    setFollowUpPrompt(''); // Initialize an empty follow-up prompt
+    navigator.clipboard.writeText(seed.toString());
+    toast({
+      title: "Seed Copied",
+      description: `Seed ${seed} has been copied. You can now enter a follow-up prompt.`,
+    });
+  }
 
   return (
     <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
@@ -312,21 +333,42 @@ export default function FluxAIImageGenerator() {
             <div className="space-y-4">
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="prompt" className="text-white">Prompt</Label>
+                  <Label htmlFor="prompt" className="text-white">
+                    {followUpPrompt !== null ? "Follow-up Prompt" : "Prompt"}
+                  </Label>
                   <Input
                     id="prompt"
-                    value={prompt}
-                    onChange={handlePromptChange}
-                    placeholder="Enter your image prompt here..."
+                    value={followUpPrompt !== null ? followUpPrompt : prompt}
+                    onChange={followUpPrompt !== null ? 
+                      (e) => setFollowUpPrompt(e.target.value) : 
+                      handlePromptChange
+                    }
+                    placeholder={followUpPrompt !== null ? 
+                      "Enter your follow-up prompt here..." : 
+                      "Enter your image prompt here..."
+                    }
                     className="bg-gray-800 text-white border-gray-700 focus:border-purple-500 transition-colors duration-200"
                     maxLength={1000}
                     resetKey={resetKey}
                     ref={promptInputRef}
                   />
                   <div className="text-right text-xs text-muted-foreground">
-                    {prompt.length}/1000
+                    {(followUpPrompt !== null ? followUpPrompt.length : prompt.length)}/1000
                   </div>
                 </div>
+                {copiedSeed !== null && (
+                  <div className="space-y-2">
+                    <Label htmlFor="seed-input" className="text-white">Seed for next generation:</Label>
+                    <Input
+                      id="seed-input"
+                      type="number"
+                      value={copiedSeed}
+                      onChange={(e) => setCopiedSeed(parseInt(e.target.value))}
+                      className="bg-gray-800 text-white border-gray-700 focus:border-purple-500 transition-colors duration-200"
+                      readOnly
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="aspect-ratio" className="text-white">Aspect Ratio</Label>
                   <Select value={aspectRatio} onValueChange={setAspectRatio}>
@@ -422,18 +464,18 @@ export default function FluxAIImageGenerator() {
             {/* Generated Images Display */}
             <div className="space-y-4">
               <AnimatePresence>
-                {imageUrls.length > 0 && (
+                {imageResults.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ duration: 0.3 }}
                     className={`grid gap-4 ${
-                      imageUrls.length === 1 ? 'grid-cols-1' :
+                      imageResults[imageResults.length - 1].imageUrls.length === 1 ? 'grid-cols-1' :
                       'grid-cols-2'
                     }`}
                   >
-                    {imageUrls.map((url, index) => (
+                    {imageResults[imageResults.length - 1].imageUrls.map((url, index) => (
                       <div 
                         key={index} 
                         className={`relative ${getAspectRatioClass(generatedAspectRatio)} rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer group`}
@@ -464,6 +506,14 @@ export default function FluxAIImageGenerator() {
                           className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
                           disabled={downloadingIndex === index}
                           text={downloadingIndex === index ? "..." : "Download"}
+                        />
+                        <ShinyButton
+                          onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            handleCopySeed(imageResults[imageResults.length - 1].seed);
+                          }}
+                          className="absolute bottom-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
+                          text="Use Seed"
                         />
                       </div>
                     ))}
