@@ -69,6 +69,7 @@ export default function FluxAIImageGenerator() {
   const [imageResults, setImageResults] = useState<FluxImageResult[]>([])
   const [copiedSeed, setCopiedSeed] = useState<number | null>(null)
   const [followUpPrompt, setFollowUpPrompt] = useState<string | null>(null)
+  const [showSeedInput, setShowSeedInput] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -274,31 +275,20 @@ export default function FluxAIImageGenerator() {
 
   const handleCopySeed = useCallback((seed: number) => {
     setCopiedSeed(seed);
+    setShowSeedInput(true);
     setFollowUpPrompt(''); // Initialize an empty follow-up prompt
     
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(seed.toString())
-        .then(() => {
-          toast({
-            title: "Seed Copied",
-            description: `Seed ${seed} has been copied. You can now enter a follow-up prompt.`,
-          });
-        })
-        .catch((err) => {
-          console.error('Failed to copy seed: ', err);
-          toast({
-            title: "Copy Failed",
-            description: `Failed to copy seed. Please copy it manually: ${seed}`,
-            variant: "destructive",
-          });
-        });
-    } else {
-      toast({
-        title: "Seed Set",
-        description: `Seed ${seed} has been set for the next generation. Clipboard API not available.`,
-      });
-    }
+    toast({
+      title: "Seed Set",
+      description: `Seed ${seed} has been set for the next generation. You can now enter a follow-up prompt.`,
+    });
   }, [toast]);
+
+  const clearSeed = useCallback(() => {
+    setCopiedSeed(null);
+    setShowSeedInput(false);
+    setFollowUpPrompt(null);
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
@@ -361,16 +351,16 @@ export default function FluxAIImageGenerator() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="prompt" className="text-white">
-                    {followUpPrompt !== null ? "Follow-up Prompt" : "Prompt"}
+                    {showSeedInput ? "Follow-up Prompt" : "Prompt"}
                   </Label>
                   <Input
                     id="prompt"
-                    value={followUpPrompt !== null ? followUpPrompt : prompt}
-                    onChange={followUpPrompt !== null ? 
+                    value={showSeedInput ? followUpPrompt || '' : prompt}
+                    onChange={showSeedInput ? 
                       (e) => setFollowUpPrompt(e.target.value) : 
                       handlePromptChange
                     }
-                    placeholder={followUpPrompt !== null ? 
+                    placeholder={showSeedInput ? 
                       "Enter your follow-up prompt here..." : 
                       "Enter your image prompt here..."
                     }
@@ -380,19 +370,30 @@ export default function FluxAIImageGenerator() {
                     ref={promptInputRef}
                   />
                   <div className="text-right text-xs text-muted-foreground">
-                    {(followUpPrompt !== null ? followUpPrompt.length : prompt.length)}/1000
+                    {(showSeedInput ? followUpPrompt?.length || 0 : prompt.length)}/1000
                   </div>
                 </div>
-                {copiedSeed !== null && (
+                {showSeedInput && (
                   <div className="space-y-2">
                     <Label htmlFor="seed-input" className="text-white">Seed for next generation:</Label>
-                    <Input
-                      id="seed-input"
-                      value={copiedSeed?.toString() || ''}
-                      onChange={(e) => setCopiedSeed(parseInt(e.target.value))}
-                      className="bg-gray-800 text-white border-gray-700 focus:border-purple-500 transition-colors duration-200"
-                      readOnly
-                    />
+                    <div className="flex items-center space-x-2">
+                      <Input
+                        id="seed-input"
+                        value={copiedSeed?.toString() || ''}
+                        onChange={(e) => setCopiedSeed(parseInt(e.target.value))}
+                        className="bg-gray-800 text-white border-gray-700 focus:border-purple-500 transition-colors duration-200"
+                        readOnly
+                      />
+                      <Button
+                        type="button"
+                        onClick={clearSeed}
+                        variant="secondary"
+                        className="px-2 py-1"
+                      >
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">Clear seed</span>
+                      </Button>
+                    </div>
                   </div>
                 )}
                 <div className="space-y-2">
