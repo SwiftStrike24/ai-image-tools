@@ -18,6 +18,9 @@ export async function generateFluxImage(params: FluxImageParams): Promise<FluxIm
   // Only add seed to input if it's provided and not null
   if (typeof params.seed === 'number') {
     input.seed = params.seed;
+    console.log("Input seed:", input.seed);
+  } else {
+    console.log("No input seed provided");
   }
 
   try {
@@ -25,34 +28,37 @@ export async function generateFluxImage(params: FluxImageParams): Promise<FluxIm
       throw new Error("REPLICATE_API_TOKEN is not set in the environment variables.");
     }
 
-    console.log("Attempting to run Replicate model: black-forest-labs/flux-schnell");
+    console.log("Running Replicate model: black-forest-labs/flux-schnell");
     const output = await replicate.run("black-forest-labs/flux-schnell", { input });
     
+    console.log("Raw Replicate output:", output);
+
     if (Array.isArray(output) && output.length > 0) {
-      // Extract the seed from the logs (use this if the log contains the seed)
       const lastItem = output[output.length - 1];
-      let seed = params.seed ?? Math.floor(Math.random() * 1000000); // Use provided seed or fallback to random
+      let seed = params.seed;
 
       if (typeof lastItem === 'string') {
         const seedMatch = lastItem.match(/Using seed: (\d+)/);
         if (seedMatch) {
-          seed = parseInt(seedMatch[1]); // Extract seed from logs if available
+          seed = parseInt(seedMatch[1]);
+          console.log("Extracted seed from logs:", seed);
+        } else {
+          console.log("Could not extract seed from logs");
         }
       }
 
-      return {
+      const result: FluxImageResult = {
         imageUrls: output.filter(item => typeof item === 'string' && item.startsWith('http')),
-        seed: seed
+        seed: seed || Math.floor(Math.random() * 1000000)
       };
+
+      console.log("Final result:", result);
+      return result;
     } else {
       throw new Error('Unexpected response format from Replicate API');
     }
   } catch (error) {
     console.error('Error generating image:', error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to generate image: ${error.message}`);
-    } else {
-      throw new Error('An unknown error occurred while generating the image');
-    }
+    throw error;
   }
 }

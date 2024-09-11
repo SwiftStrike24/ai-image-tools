@@ -112,9 +112,13 @@ export default function FluxAIImageGenerator() {
         seed: copiedSeed !== null ? copiedSeed : undefined,
       };
 
+      console.log("Params sent to generateFluxImage:", params);
+
       const result = isSimulationMode 
         ? await simulateImageGeneration(params)
         : await generateFluxImage(params);
+
+      console.log("Result received from generateFluxImage:", result);
 
       if (result.imageUrls.length > 0) {
         setImageResults([...imageResults, result]);
@@ -122,12 +126,13 @@ export default function FluxAIImageGenerator() {
         setShowGlow(true);
         setGeneratedAspectRatio(aspectRatio);
 
-        // Ensure the seed is captured for future generations
+        // Update the seed with the one returned from the API
         setCopiedSeed(result.seed);
+        console.log("Updated copiedSeed:", result.seed);
 
         toast({
           title: isSimulationMode ? "Images Simulated" : "Images Generated",
-          description: `Successfully ${isSimulationMode ? 'simulated' : 'generated'} ${result.imageUrls.length} image(s).`,
+          description: `Successfully ${isSimulationMode ? 'simulated' : 'generated'} ${result.imageUrls.length} image(s). Seed: ${result.seed}`,
         });
       } else {
         throw new Error('No images were generated. Please try again.');
