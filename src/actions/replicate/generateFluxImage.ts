@@ -13,10 +13,8 @@ export async function generateFluxImage(params: FluxImageParams): Promise<FluxIm
     output_quality: params.output_quality,
     disable_safety_checker: params.disable_safety_checker,
     enhance_prompt: params.enhance_prompt,
-    num_outputs: params.num_outputs, // Add this line
+    num_outputs: params.num_outputs,
   };
-
-  let results: FluxImageResult[] = [];
 
   try {
     if (typeof params.seed === 'number') {
@@ -25,23 +23,22 @@ export async function generateFluxImage(params: FluxImageParams): Promise<FluxIm
       
       console.log("Generating multiple images with seed:", baseInput.seed);
       const result = await runReplicateModel(baseInput);
-      results = result.imageUrls.map((url, index) => ({
+      return result.imageUrls.map((url, index) => ({
         imageUrls: [url],
         seed: result.seed + index, // Increment seed for each image
         prompt: params.prompt,
       }));
     } else {
       // If no seed is provided, generate each image separately
+      let results: FluxImageResult[] = [];
       for (let i = 0; i < params.num_outputs; i++) {
         console.log(`Generating image ${i + 1} of ${params.num_outputs}`);
         const input = { ...baseInput, num_outputs: 1 };
         const result = await runReplicateModel(input);
         results.push(result);
       }
+      return results;
     }
-
-    console.log("All images generated successfully:", results);
-    return results;
   } catch (error) {
     console.error("Error in generateFluxImage:", error);
     throw new Error(`Failed to generate images: ${error instanceof Error ? error.message : 'Unknown error'}`);
