@@ -157,6 +157,10 @@ export default function FluxAIImageGenerator() {
       } else {
         throw new Error('No images were generated. Please try again.');
       }
+
+      if (showSeedInput) {
+        setFollowUpPrompt('');
+      }
     } catch (error) {
       console.error('Image generation error:', error);
       setError(error instanceof Error ? error.message : "Failed to generate image(s). Please try again.");
@@ -198,21 +202,15 @@ export default function FluxAIImageGenerator() {
       const newIndex = currentPromptIndex - 1;
       setCurrentPromptIndex(newIndex);
       const previousEntry = promptHistory[newIndex];
-      setFollowUpPrompt(previousEntry.prompt);
+      setPrompt(previousEntry.prompt);
       setImageResults(previousEntry.images);
       setImageUrls(previousEntry.images.map(result => result.imageUrls[0]));
     } else {
       setCopiedSeed(null);
       setShowSeedInput(false);
-      setFollowUpPrompt(null);
       setPrompt('');
-      setOriginalPrompt('');
-      setOriginalImage(null);
-      setImageResults([]);
-      setImageUrls([]);
-      setPromptHistory([]);
-      setCurrentPromptIndex(-1);
     }
+    setFollowUpPrompt('');
     toast({
       title: "Prompt Updated",
       description: currentPromptIndex > 0 ? "Reverted to the previous prompt and images." : "Cleared all prompts, seeds, and images.",
