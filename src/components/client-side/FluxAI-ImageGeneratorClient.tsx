@@ -123,20 +123,29 @@ export default function FluxAIImageGenerator() {
       console.log("Results received from generateFluxImage:", results);
 
       if (Array.isArray(results) && results.length > 0) {
-        const newImageResults = results.map((result: FluxImageResult) => ({
-          imageUrls: result.imageUrls,
-          seed: result.seed,
-          prompt: result.prompt,
-        }));
+        const newImageResults = results.flatMap((result: FluxImageResult) => 
+          result.imageUrls.map(url => ({
+            imageUrl: url,
+            seed: result.seed,
+            prompt: result.prompt,
+          }))
+        );
 
-        setImageResults(prevResults => [...prevResults, ...newImageResults]);
-        setImageUrls(results.flatMap((result: FluxImageResult) => result.imageUrls));
+        setImageResults(prevResults => [
+          ...prevResults,
+          ...newImageResults.map(result => ({
+            imageUrls: [result.imageUrl],
+            seed: result.seed,
+            prompt: result.prompt,
+          }))
+        ]);
+        setImageUrls(prevUrls => [...prevUrls, ...newImageResults.map(result => result.imageUrl)]);
         setShowGlow(true);
         setGeneratedAspectRatio(aspectRatio);
 
         toast({
           title: isSimulationMode ? "Images Simulated" : "Images Generated",
-          description: `Successfully ${isSimulationMode ? 'simulated' : 'generated'} ${results.length} image(s).`,
+          description: `Successfully ${isSimulationMode ? 'simulated' : 'generated'} ${newImageResults.length} image(s).`,
         });
       } else {
         throw new Error('No images were generated. Please try again.');
@@ -195,7 +204,7 @@ export default function FluxAIImageGenerator() {
       title: "Reset Complete",
       description: "Ready for a new image generation while keeping your current prompt.",
     });
-  }, []);
+  }, [toast]);
 
   const handleDownload = useCallback(async (url: string, index: number) => {
     setDownloadingIndex(index)
@@ -398,7 +407,7 @@ export default function FluxAIImageGenerator() {
                 {showSeedInput && (
                   <div className="space-y-2">
                     <Label htmlFor="seed-input" className="text-white">
-                      Seed for next generation
+                      Seed
                     </Label>
                     <div className="flex items-center space-x-2">
                       <Input
@@ -521,16 +530,19 @@ export default function FluxAIImageGenerator() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ duration: 0.3 }}
-                    className={`grid gap-4 ${
-                      imageResults[imageResults.length - 1].imageUrls.length === 1 ? 'grid-cols-1' :
-                      'grid-cols-2'
-                    }`}
+                    className="grid gap-4"
+                    style={{
+                      gridTemplateColumns: `repeat(${Math.min(imageResults.length, 2)}, 1fr)`,
+                    }}
                   >
-                    {imageResults[imageResults.length - 1].imageUrls.map((url, index) => (
-                      <div 
-                        key={index} 
+                    {imageResults.map((result, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: index * 0.1 }}
                         className={`relative ${getAspectRatioClass(generatedAspectRatio)} rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer group`}
-                        onClick={() => handleImageClick(url)}
+                        onClick={() => handleImageClick(result.imageUrls[0])}
                       >
                         {showGlow && (
                           <motion.div
@@ -542,31 +554,32 @@ export default function FluxAIImageGenerator() {
                           />
                         )}
                         <Image
-                          src={url}
+                          src={result.imageUrls[0]}
                           alt={`Generated ${index + 1}`}
                           layout="fill"
                           objectFit="cover"
-                          className="w-full h-full"
+                          className="w-full h-full transition-transform duration-300 group-hover:scale-105"
                           unoptimized={isSimulationMode}
                         />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity duration-300" />
                         <ShinyButton
                           onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
-                            handleDownload(url, index);
+                            handleDownload(result.imageUrls[0], index);
                           }}
-                          className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
+                          className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
                           disabled={downloadingIndex === index}
                           text={downloadingIndex === index ? "..." : "Download"}
                         />
                         <ShinyButton
                           onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
-                            handleCopySeed(imageResults[imageResults.length - 1].seed);
+                            handleCopySeed(result.seed);
                           }}
-                          className="absolute bottom-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
+                          className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
                           text="Use Seed"
                         />
-                      </div>
+                      </motion.div>
                     ))}
                   </motion.div>
                 )}
