@@ -155,33 +155,45 @@ export default function FluxAIImageGenerator() {
   const handleCopySeed = useCallback((seed: number) => {
     setCopiedSeed(seed);
     setShowSeedInput(true);
-    setOriginalPrompt(prompt); // Store the original prompt
-    setFollowUpPrompt(''); // Initialize an empty follow-up prompt
+    if (!showSeedInput) {
+      setOriginalPrompt(prompt);
+    } else {
+      setOriginalPrompt(prevOriginal => `${prevOriginal}, ${followUpPrompt}`);
+    }
+    setFollowUpPrompt('');
     
     toast({
       title: "Seed Set",
       description: `Seed ${seed} has been set for the next generation. You can now enter a follow-up prompt.`,
     });
-  }, [prompt, toast]);
+  }, [prompt, followUpPrompt, showSeedInput, toast]);
 
   const clearSeed = useCallback(() => {
     setCopiedSeed(null);
     setShowSeedInput(false);
     setFollowUpPrompt(null);
+    setPrompt(originalPrompt);
     setOriginalPrompt('');
-  }, []);
+    toast({
+      title: "Seed Cleared",
+      description: "The seed has been cleared, and you're back to the original prompt.",
+    });
+  }, [originalPrompt, toast]);
 
   const handleNewImage = useCallback(() => {
-    setPrompt('')
-    setFollowUpPrompt(null)
-    setCopiedSeed(null)
-    setImageUrls([])
-    setError(null)
-    setResetKey(prev => prev + 1)
-    if (promptInputRef.current) {
-      promptInputRef.current.style.height = 'auto'
-    }
-  }, [])
+    setFollowUpPrompt(null);
+    setCopiedSeed(null);
+    setShowSeedInput(false);
+    setImageUrls([]);
+    setError(null);
+    setResetKey(prev => prev + 1);
+    setImageResults([]);
+    // Keep the prompt
+    toast({
+      title: "Reset Complete",
+      description: "Ready for a new image generation while keeping your current prompt.",
+    });
+  }, []);
 
   const handleDownload = useCallback(async (url: string, index: number) => {
     setDownloadingIndex(index)
@@ -394,7 +406,7 @@ export default function FluxAIImageGenerator() {
                       />
                       <Button
                         type="button"
-                        onClick={() => setCopiedSeed(null)}
+                        onClick={clearSeed}
                         variant="secondary"
                         className="px-2 py-1"
                       >
