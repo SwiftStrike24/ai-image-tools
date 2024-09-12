@@ -72,9 +72,10 @@ export default function FluxAIImageGenerator() {
   const [showSeedInput, setShowSeedInput] = useState(false)
   const [originalPrompt, setOriginalPrompt] = useState('')
   const [isProcessingSeed, setIsProcessingSeed] = useState(false)
-  const [promptHistory, setPromptHistory] = useState<Array<{ prompt: string, images: FluxImageResult[] }>>([]);
-  const [currentPromptIndex, setCurrentPromptIndex] = useState(-1);
-  const [focusedImageIndex, setFocusedImageIndex] = useState<number | null>(null);
+  const [promptHistory, setPromptHistory] = useState<Array<{ prompt: string, images: FluxImageResult[] }>>([])
+  const [currentPromptIndex, setCurrentPromptIndex] = useState(-1)
+  const [focusedImageIndex, setFocusedImageIndex] = useState<number | null>(null)
+  const [isFocused, setIsFocused] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,7 +135,7 @@ export default function FluxAIImageGenerator() {
       console.log("Results received from generateFluxImage:", results);
 
       if (Array.isArray(results) && results.length > 0) {
-        const newImageResults = results.map((result: FluxImageResult) => ({
+        const newImageResults = results.slice(0, 4).map((result: FluxImageResult) => ({
           ...result,
           isFollowUp: showSeedInput && copiedSeed !== null,
         }));
@@ -143,11 +144,8 @@ export default function FluxAIImageGenerator() {
         let newHistory;
         
         if (showSeedInput && currentPromptIndex < promptHistory.length - 1) {
-          // If it's a follow-up prompt and we're not at the end of the history,
-          // replace the subsequent history entries
           newHistory = [...promptHistory.slice(0, currentPromptIndex + 1), newHistoryEntry];
         } else {
-          // Otherwise, append to the history
           newHistory = [...promptHistory, newHistoryEntry];
         }
         
@@ -158,7 +156,8 @@ export default function FluxAIImageGenerator() {
         setImageUrls(newImageResults.map(result => result.imageUrls[0]));
         setShowGlow(true);
         setGeneratedAspectRatio(aspectRatio);
-        setFocusedImageIndex(null); // Reset focused image index
+        setFocusedImageIndex(null);
+        setIsFocused(false);
 
         toast({
           title: isSimulationMode ? "Images Simulated" : "Images Generated",
@@ -187,44 +186,44 @@ export default function FluxAIImageGenerator() {
   const handleCopySeed = useCallback((seed: number, selectedImage: FluxImageResult, index: number) => {
     if (isProcessingSeed) return;
     setIsProcessingSeed(true);
-    setCopiedSeed(seed);
-    setShowSeedInput(true);
-    setOriginalPrompt(selectedImage.prompt);
-    setFollowUpPrompt('');
-    setFocusedImageIndex(index);
-    
-    // Update prompt history if it's empty (first seed copy)
-    if (promptHistory.length === 0) {
-      setPromptHistory([{ prompt: selectedImage.prompt, images: [selectedImage] }]);
-      setCurrentPromptIndex(0);
-    } else {
-      // Find the index of the current prompt in the history
-      const currentIndex = promptHistory.findIndex(entry => entry.images.some(img => img.seed === seed));
-      if (currentIndex !== -1) {
-        setCurrentPromptIndex(currentIndex);
-      }
+
+    try {
+      setCopiedSeed(seed);
+      setShowSeedInput(true);
+      setOriginalPrompt(selectedImage.prompt);
+      setFollowUpPrompt('');
+      setFocusedImageIndex(index);
+      setIsFocused(true);
+      
+      // Keep the current images instead of going back to the original ones
+      const currentImages = imageResults;
+      setImageResults(currentImages);
+      setImageUrls(currentImages.map(result => result.imageUrls[0]));
+
+      toast({
+        title: "Seed Set",
+        description: `Seed ${seed} has been set for the next generation. You can now enter a follow-up prompt.`,
+      });
+    } catch (error) {
+      console.error("Error in handleCopySeed:", error);
+      toast({
+        title: "Error",
+        description: "An error occurred while setting the seed. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setTimeout(() => setIsProcessingSeed(false), 500);
     }
-    
-    toast({
-      title: "Seed Set",
-      description: `Seed ${seed} has been set for the next generation. You can now enter a follow-up prompt.`,
-    });
-    setTimeout(() => setIsProcessingSeed(false), 500);
-  }, [isProcessingSeed, promptHistory, toast]);
+  }, [isProcessingSeed, imageResults, toast]);
 
   const clearFocusedImage = useCallback(() => {
     setFocusedImageIndex(null);
     setCopiedSeed(null);
     setShowSeedInput(false);
     setFollowUpPrompt('');
-    // Keep the current prompt level
-    if (currentPromptIndex > 0) {
-      const currentEntry = promptHistory[currentPromptIndex];
-      setPrompt(currentEntry.prompt);
-      setImageResults(currentEntry.images);
-      setImageUrls(currentEntry.images.map(result => result.imageUrls[0]));
-    }
-  }, [currentPromptIndex, promptHistory]);
+    setIsFocused(false);
+    // Keep the current images instead of going back
+  }, []);
 
   const goToPreviousPrompt = useCallback(() => {
     if (currentPromptIndex > 0) {
@@ -238,6 +237,7 @@ export default function FluxAIImageGenerator() {
       setCopiedSeed(null);
       setShowSeedInput(false);
       setFollowUpPrompt('');
+      setIsFocused(false);
     }
   }, [currentPromptIndex, promptHistory]);
 
@@ -254,6 +254,7 @@ export default function FluxAIImageGenerator() {
     setPromptHistory([]);
     setCurrentPromptIndex(-1);
     setFocusedImageIndex(null);
+    setIsFocused(false);
     toast({
       title: "Reset Complete",
       description: "Ready for a new image generation.",
@@ -316,8 +317,8 @@ export default function FluxAIImageGenerator() {
       case '1:1': return 'aspect-square'
       case '4:3': return 'aspect-4/3'
       case '3:4': return 'aspect-3/4'
-      case '16:9': return 'aspect-16/9'
-      case '9:16': return 'aspect-9/16'
+      case '16:9': return 'aspect-video'
+      case '9:16': return 'aspect-[9/16]'
       case '4:5': return 'aspect-[4/5]'
       case '21:9': return 'aspect-[21/9]'
       case '2:3': return 'aspect-[2/3]'
@@ -594,24 +595,26 @@ export default function FluxAIImageGenerator() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
                     transition={{ duration: 0.3 }}
-                    className="grid gap-4"
-                    style={{
-                      gridTemplateColumns: `repeat(${Math.min(Math.max(promptHistory[currentPromptIndex].images.length, 2), 4)}, 1fr)`,
-                    }}
+                    className={cn(
+                      "grid gap-4",
+                      imageResults.length === 1 ? "grid-cols-1" : 
+                      imageResults.length === 2 ? "grid-cols-2" :
+                      "grid-cols-2 sm:grid-cols-4"
+                    )}
                   >
-                    {promptHistory[currentPromptIndex].images.map((result, index) => (
+                    {imageResults.map((result, index) => (
                       <motion.div
                         key={`${result.seed}-${index}`}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ 
-                          opacity: focusedImageIndex === null || focusedImageIndex === index ? 1 : 0.3,
+                          opacity: !isFocused || focusedImageIndex === index ? 1 : 0.3,
                           y: 0,
                           scale: focusedImageIndex === index ? 1.05 : 1
                         }}
                         transition={{ duration: 0.5, delay: index * 0.1 }}
                         className={cn(
                           `relative ${getAspectRatioClass(generatedAspectRatio)} rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer group`,
-                          focusedImageIndex !== null && focusedImageIndex !== index && 'pointer-events-none'
+                          isFocused && focusedImageIndex !== index && 'pointer-events-none'
                         )}
                         onClick={() => handleImageClick(result.imageUrls[0])}
                       >
@@ -651,21 +654,12 @@ export default function FluxAIImageGenerator() {
                   </motion.div>
                 )}
               </AnimatePresence>
-              {showSeedInput && (
-                <div className="space-y-2 mt-4">
-                  <ShinyButton
-                    onClick={clearFocusedImage}
-                    className="w-full py-2 md:py-3 text-base md:text-lg font-semibold"
-                    text="Clear Focused Image"
-                  />
-                  {currentPromptIndex > 0 && (
-                    <ShinyButton
-                      onClick={goToPreviousPrompt}
-                      className="w-full py-2 md:py-3 text-base md:text-lg font-semibold"
-                      text="Go Back to Previous Prompt"
-                    />
-                  )}
-                </div>
+              {isFocused && (
+                <ShinyButton
+                  onClick={clearFocusedImage}
+                  className="w-full py-2 md:py-3 text-base md:text-lg font-semibold"
+                  text="Clear Focused Image"
+                />
               )}
               {promptHistory.length > 0 && (
                 <ShinyButton
