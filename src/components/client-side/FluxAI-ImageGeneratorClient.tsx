@@ -22,6 +22,7 @@ import { FluxImageParams, FluxImageResult } from "@/types/imageTypes"
 import RetroGrid from "@/components/magicui/retro-grid"
 import ShinyButton from "@/components/magicui/shiny-button"
 import { Global, css } from '@emotion/react'
+import { v4 as uuidv4 } from 'uuid';
 
 const GlobalStyles = () => (
   <Global
@@ -76,6 +77,8 @@ export default function FluxAIImageGenerator() {
   const [currentPromptIndex, setCurrentPromptIndex] = useState(-1)
   const [focusedImageIndex, setFocusedImageIndex] = useState<number | null>(null)
   const [isFocused, setIsFocused] = useState(false)
+  const [followUpLevel, setFollowUpLevel] = useState(0)
+  const [simulationId, setSimulationId] = useState(uuidv4())
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,11 +141,16 @@ export default function FluxAIImageGenerator() {
         const newImageResults = results.slice(0, 4).map((result: FluxImageResult) => ({
           ...result,
           isFollowUp: showSeedInput && copiedSeed !== null,
+          followUpLevel: followUpLevel + 1,
         }));
 
-        const newHistoryEntry = { prompt: finalPrompt, images: newImageResults };
-        let newHistory;
+        const newHistoryEntry = { 
+          prompt: finalPrompt, 
+          images: newImageResults,
+          followUpLevel: followUpLevel + 1
+        };
         
+        let newHistory;
         if (showSeedInput && currentPromptIndex < promptHistory.length - 1) {
           newHistory = [...promptHistory.slice(0, currentPromptIndex + 1), newHistoryEntry];
         } else {
@@ -151,13 +159,13 @@ export default function FluxAIImageGenerator() {
         
         setPromptHistory(newHistory);
         setCurrentPromptIndex(newHistory.length - 1);
-
         setImageResults(newImageResults);
         setImageUrls(newImageResults.map(result => result.imageUrls[0]));
         setShowGlow(true);
         setGeneratedAspectRatio(aspectRatio);
         setFocusedImageIndex(null);
         setIsFocused(false);
+        setFollowUpLevel(followUpLevel + 1);
 
         toast({
           title: isSimulationMode ? "Images Simulated" : "Images Generated",
@@ -169,6 +177,10 @@ export default function FluxAIImageGenerator() {
 
       if (showSeedInput) {
         setFollowUpPrompt('');
+      }
+
+      if (isSimulationMode) {
+        setSimulationId(uuidv4());
       }
     } catch (error) {
       console.error('Image generation error:', error);
@@ -195,7 +207,6 @@ export default function FluxAIImageGenerator() {
       setFocusedImageIndex(index);
       setIsFocused(true);
       
-      // Keep the current images instead of going back to the original ones
       const currentImages = imageResults;
       setImageResults(currentImages);
       setImageUrls(currentImages.map(result => result.imageUrls[0]));
@@ -222,8 +233,12 @@ export default function FluxAIImageGenerator() {
     setShowSeedInput(false);
     setFollowUpPrompt('');
     setIsFocused(false);
-    // Keep the current images instead of going back
-  }, []);
+    
+    if (followUpLevel > 0 && currentPromptIndex >= 0) {
+      const currentEntry = promptHistory[currentPromptIndex];
+      setPrompt(currentEntry.prompt);
+    }
+  }, [followUpLevel, currentPromptIndex, promptHistory]);
 
   const goToPreviousPrompt = useCallback(() => {
     if (currentPromptIndex > 0) {
@@ -255,6 +270,7 @@ export default function FluxAIImageGenerator() {
     setCurrentPromptIndex(-1);
     setFocusedImageIndex(null);
     setIsFocused(false);
+    setFollowUpLevel(0);
     toast({
       title: "Reset Complete",
       description: "Ready for a new image generation.",
@@ -343,13 +359,32 @@ export default function FluxAIImageGenerator() {
 
   const simulateImageGeneration = useCallback(async (params: FluxImageParams) => {
     await new Promise(resolve => setTimeout(resolve, 2000));
-    // Use a default stock image URL (replace this with an actual image URL from your project)
-    const defaultImageUrl = '/images/simulated-image.jpg'; // Assuming you have this image in your public folder
-    return {
-      imageUrls: Array(params.num_outputs).fill(defaultImageUrl),
-      seed: Math.floor(Math.random() * 1000000)
+    
+    const baseUrl = '/images/simulated';
+    const aspectRatioMap: { [key: string]: string } = {
+      '1:1': 'square',
+      '16:9': 'widescreen',
+      '9:16': 'vertical',
+      '4:5': 'instagram-portrait',
+      '21:9': 'ultrawide',
+      '2:3': 'classic-portrait',
+      '3:2': 'classic-landscape',
+      '5:4': 'large-format',
+      '9:21': 'vertical-ultrawide'
     };
-  }, []);
+    
+    const aspectRatioKey = aspectRatioMap[params.aspect_ratio] || 'square';
+    const imageUrls = Array(params.num_outputs).fill(null).map((_, index) => 
+      `${baseUrl}/${aspectRatioKey}-${index + 1}.jpg?id=${simulationId}`
+    );
+
+    return imageUrls.map(url => ({
+      imageUrls: [url],
+      seed: Math.floor(Math.random() * 1000000),
+      prompt: params.prompt,
+      followUpLevel: followUpLevel + 1,
+    }));
+  }, [followUpLevel, simulationId]);
 
   const getModalSizeClass = (ratio: string) => {
     switch (ratio) {
@@ -381,6 +416,22 @@ export default function FluxAIImageGenerator() {
       });
     }
   };
+
+  const goToPreviousFollowUp = useCallback(() => {
+    if (followUpLevel > 0) {
+      setFollowUpLevel(prev => prev - 1);
+      const previousEntry = promptHistory.find(entry => entry.followUpLevel === followUpLevel - 1);
+      if (previousEntry) {
+        setPrompt(previousEntry.prompt);
+        setImageResults(previousEntry.images);
+        setImageUrls(previousEntry.images.map(result => result.imageUrls[0]));
+      }
+      setFocusedImageIndex(null);
+      setCopiedSeed(null);
+      setShowSeedInput(false);
+      setFollowUpPrompt('');
+    }
+  }, [followUpLevel, promptHistory]);
 
   return (
     <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
@@ -447,7 +498,9 @@ export default function FluxAIImageGenerator() {
                   </Label>
                   {showSeedInput && (
                     <div className="text-sm text-gray-400 mb-2">
-                      Current prompt: {promptHistory[currentPromptIndex].prompt}
+                      Follow-up Level: {followUpLevel}
+                      <br />
+                      Current prompt: {promptHistory[currentPromptIndex]?.prompt}
                     </div>
                   )}
                   <Input
@@ -627,6 +680,13 @@ export default function FluxAIImageGenerator() {
                           unoptimized={isSimulationMode}
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity duration-300" />
+                        {isSimulationMode && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-center p-2">
+                            <p className="text-lg font-bold">Simulated Image</p>
+                            <p className="text-sm">Follow-up Level: {result.followUpLevel}</p>
+                            <p className="text-xs mt-2">Prompt: {result.prompt.slice(0, 50)}...</p>
+                          </div>
+                        )}
                         <ShinyButton
                           onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
@@ -659,6 +719,13 @@ export default function FluxAIImageGenerator() {
                   onClick={clearFocusedImage}
                   className="w-full py-2 md:py-3 text-base md:text-lg font-semibold"
                   text="Clear Focused Image"
+                />
+              )}
+              {followUpLevel > 0 && (
+                <ShinyButton
+                  onClick={goToPreviousFollowUp}
+                  className="w-full py-2 md:py-3 text-base md:text-lg font-semibold mt-2"
+                  text="Go to Previous Follow-up"
                 />
               )}
               {promptHistory.length > 0 && (
