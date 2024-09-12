@@ -694,7 +694,7 @@ export default function FluxAIImageGenerator() {
                               handleCopySeed(result.seed, result, index);
                             }}
                             className="text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
-                            text={<Sparkles className="h-4 w-4" />}
+                            text="Use Seed"
                           />
                         </div>
                         <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
