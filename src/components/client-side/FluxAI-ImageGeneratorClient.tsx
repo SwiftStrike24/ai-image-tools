@@ -71,11 +71,10 @@ export default function FluxAIImageGenerator() {
   const [followUpPrompt, setFollowUpPrompt] = useState<string | null>(null)
   const [showSeedInput, setShowSeedInput] = useState(false)
   const [originalPrompt, setOriginalPrompt] = useState('')
-  const [originalImage, setOriginalImage] = useState<FluxImageResult | null>(null)
   const [isProcessingSeed, setIsProcessingSeed] = useState(false)
-  const [followUpImages, setFollowUpImages] = useState<FluxImageResult[]>([])
   const [promptHistory, setPromptHistory] = useState<Array<{ prompt: string, images: FluxImageResult[] }>>([]);
   const [currentPromptIndex, setCurrentPromptIndex] = useState(-1);
+  const [focusedImageIndex, setFocusedImageIndex] = useState<number | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,7 +140,17 @@ export default function FluxAIImageGenerator() {
         }));
 
         const newHistoryEntry = { prompt: finalPrompt, images: newImageResults };
-        const newHistory = promptHistory.slice(0, currentPromptIndex + 1).concat(newHistoryEntry);
+        let newHistory;
+        
+        if (showSeedInput && currentPromptIndex < promptHistory.length - 1) {
+          // If it's a follow-up prompt and we're not at the end of the history,
+          // replace the subsequent history entries
+          newHistory = [...promptHistory.slice(0, currentPromptIndex + 1), newHistoryEntry];
+        } else {
+          // Otherwise, append to the history
+          newHistory = [...promptHistory, newHistoryEntry];
+        }
+        
         setPromptHistory(newHistory);
         setCurrentPromptIndex(newHistory.length - 1);
 
@@ -174,20 +183,25 @@ export default function FluxAIImageGenerator() {
     }
   };
 
-  const handleCopySeed = useCallback((seed: number, selectedImage: FluxImageResult) => {
+  const handleCopySeed = useCallback((seed: number, selectedImage: FluxImageResult, index: number) => {
     if (isProcessingSeed) return;
     setIsProcessingSeed(true);
     setCopiedSeed(seed);
     setShowSeedInput(true);
     setOriginalPrompt(selectedImage.prompt);
-    setOriginalImage(selectedImage);
     setFollowUpPrompt('');
-    setFollowUpImages([]);
+    setFocusedImageIndex(index);
     
     // Update prompt history if it's empty (first seed copy)
     if (promptHistory.length === 0) {
       setPromptHistory([{ prompt: selectedImage.prompt, images: [selectedImage] }]);
       setCurrentPromptIndex(0);
+    } else {
+      // Find the index of the current prompt in the history
+      const currentIndex = promptHistory.findIndex(entry => entry.images.some(img => img.seed === seed));
+      if (currentIndex !== -1) {
+        setCurrentPromptIndex(currentIndex);
+      }
     }
     
     toast({
@@ -195,7 +209,7 @@ export default function FluxAIImageGenerator() {
       description: `Seed ${seed} has been set for the next generation. You can now enter a follow-up prompt.`,
     });
     setTimeout(() => setIsProcessingSeed(false), 500);
-  }, [isProcessingSeed, promptHistory]);
+  }, [isProcessingSeed, promptHistory, toast]);
 
   const clearSeed = useCallback(() => {
     if (currentPromptIndex > 0) {
@@ -208,18 +222,19 @@ export default function FluxAIImageGenerator() {
     } else {
       setCopiedSeed(null);
       setShowSeedInput(false);
-      setPrompt(originalPrompt); // Set the original prompt when going back to the initial state
+      setPrompt(originalPrompt);
       setImageResults([]);
       setImageUrls([]);
       setPromptHistory([]);
       setCurrentPromptIndex(-1);
     }
     setFollowUpPrompt('');
+    setFocusedImageIndex(null);
     toast({
       title: "Prompt Updated",
       description: currentPromptIndex > 0 ? "Reverted to the previous prompt and images." : "Cleared all prompts, seeds, and images.",
     });
-  }, [currentPromptIndex, promptHistory, originalPrompt]);
+  }, [currentPromptIndex, promptHistory, originalPrompt, toast]);
 
   const handleNewImage = useCallback(() => {
     setFollowUpPrompt(null);
@@ -229,17 +244,16 @@ export default function FluxAIImageGenerator() {
     setError(null);
     setResetKey(prev => prev + 1);
     setImageResults([]);
-    setFollowUpImages([]);
-    setOriginalImage(null);
     setOriginalPrompt('');
     setPrompt('');
     setPromptHistory([]);
     setCurrentPromptIndex(-1);
+    setFocusedImageIndex(null);
     toast({
       title: "Reset Complete",
       description: "Ready for a new image generation.",
     });
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     if (error) {
@@ -361,6 +375,13 @@ export default function FluxAIImageGenerator() {
       });
     }
   };
+
+  const clearFocusedImage = useCallback(() => {
+    setFocusedImageIndex(null);
+    setCopiedSeed(null);
+    setShowSeedInput(false);
+    setFollowUpPrompt('');
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
@@ -584,9 +605,16 @@ export default function FluxAIImageGenerator() {
                       <motion.div
                         key={`${result.seed}-${index}`}
                         initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
+                        animate={{ 
+                          opacity: focusedImageIndex === null || focusedImageIndex === index ? 1 : 0.3,
+                          y: 0,
+                          scale: focusedImageIndex === index ? 1.05 : 1
+                        }}
                         transition={{ duration: 0.5, delay: index * 0.1 }}
-                        className={`relative ${getAspectRatioClass(generatedAspectRatio)} rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer group`}
+                        className={cn(
+                          `relative ${getAspectRatioClass(generatedAspectRatio)} rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer group`,
+                          focusedImageIndex !== null && focusedImageIndex !== index && 'pointer-events-none'
+                        )}
                         onClick={() => handleImageClick(result.imageUrls[0])}
                       >
                         <Image
@@ -610,7 +638,7 @@ export default function FluxAIImageGenerator() {
                         <ShinyButton
                           onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
-                            handleCopySeed(result.seed, result);
+                            handleCopySeed(result.seed, result, index);
                           }}
                           className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
                           text="Use Seed"
@@ -625,6 +653,13 @@ export default function FluxAIImageGenerator() {
                   </motion.div>
                 )}
               </AnimatePresence>
+              {showSeedInput && (
+                <ShinyButton
+                  onClick={clearFocusedImage}
+                  className="w-full mt-4 py-2 md:py-3 text-base md:text-lg font-semibold"
+                  text="Clear Focused Image"
+                />
+              )}
               {promptHistory.length > 0 && (
                 <ShinyButton
                   onClick={handleNewImage}
