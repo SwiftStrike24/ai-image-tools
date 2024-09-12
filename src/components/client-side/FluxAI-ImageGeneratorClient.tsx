@@ -136,7 +136,7 @@ export default function FluxAIImageGenerator() {
       if (Array.isArray(results) && results.length > 0) {
         const newImageResults = results.map((result: FluxImageResult) => ({
           ...result,
-          isFollowUp: showSeedInput,
+          isFollowUp: showSeedInput && copiedSeed !== null,
         }));
 
         const newHistoryEntry = { prompt: finalPrompt, images: newImageResults };
@@ -158,6 +158,7 @@ export default function FluxAIImageGenerator() {
         setImageUrls(newImageResults.map(result => result.imageUrls[0]));
         setShowGlow(true);
         setGeneratedAspectRatio(aspectRatio);
+        setFocusedImageIndex(null); // Reset focused image index
 
         toast({
           title: isSimulationMode ? "Images Simulated" : "Images Generated",
@@ -211,7 +212,21 @@ export default function FluxAIImageGenerator() {
     setTimeout(() => setIsProcessingSeed(false), 500);
   }, [isProcessingSeed, promptHistory, toast]);
 
-  const clearSeed = useCallback(() => {
+  const clearFocusedImage = useCallback(() => {
+    setFocusedImageIndex(null);
+    setCopiedSeed(null);
+    setShowSeedInput(false);
+    setFollowUpPrompt('');
+    // Keep the current prompt level
+    if (currentPromptIndex > 0) {
+      const currentEntry = promptHistory[currentPromptIndex];
+      setPrompt(currentEntry.prompt);
+      setImageResults(currentEntry.images);
+      setImageUrls(currentEntry.images.map(result => result.imageUrls[0]));
+    }
+  }, [currentPromptIndex, promptHistory]);
+
+  const goToPreviousPrompt = useCallback(() => {
     if (currentPromptIndex > 0) {
       const newIndex = currentPromptIndex - 1;
       setCurrentPromptIndex(newIndex);
@@ -219,22 +234,12 @@ export default function FluxAIImageGenerator() {
       setPrompt(previousEntry.prompt);
       setImageResults(previousEntry.images);
       setImageUrls(previousEntry.images.map(result => result.imageUrls[0]));
-    } else {
+      setFocusedImageIndex(null);
       setCopiedSeed(null);
       setShowSeedInput(false);
-      setPrompt(originalPrompt);
-      setImageResults([]);
-      setImageUrls([]);
-      setPromptHistory([]);
-      setCurrentPromptIndex(-1);
+      setFollowUpPrompt('');
     }
-    setFollowUpPrompt('');
-    setFocusedImageIndex(null);
-    toast({
-      title: "Prompt Updated",
-      description: currentPromptIndex > 0 ? "Reverted to the previous prompt and images." : "Cleared all prompts, seeds, and images.",
-    });
-  }, [currentPromptIndex, promptHistory, originalPrompt, toast]);
+  }, [currentPromptIndex, promptHistory]);
 
   const handleNewImage = useCallback(() => {
     setFollowUpPrompt(null);
@@ -376,13 +381,6 @@ export default function FluxAIImageGenerator() {
     }
   };
 
-  const clearFocusedImage = useCallback(() => {
-    setFocusedImageIndex(null);
-    setCopiedSeed(null);
-    setShowSeedInput(false);
-    setFollowUpPrompt('');
-  }, []);
-
   return (
     <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
       <GlobalStyles />
@@ -485,7 +483,7 @@ export default function FluxAIImageGenerator() {
                       />
                       <Button
                         type="button"
-                        onClick={clearSeed}
+                        onClick={clearFocusedImage}
                         variant="secondary"
                         className="px-2 py-1"
                       >
@@ -643,7 +641,7 @@ export default function FluxAIImageGenerator() {
                           className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
                           text="Use Seed"
                         />
-                        {currentPromptIndex > 0 && (
+                        {result.isFollowUp && (
                           <div className="absolute top-2 left-2 bg-purple-900/70 text-white text-xs px-2 py-1 rounded">
                             Follow-up
                           </div>
@@ -654,11 +652,20 @@ export default function FluxAIImageGenerator() {
                 )}
               </AnimatePresence>
               {showSeedInput && (
-                <ShinyButton
-                  onClick={clearFocusedImage}
-                  className="w-full mt-4 py-2 md:py-3 text-base md:text-lg font-semibold"
-                  text="Clear Focused Image"
-                />
+                <div className="space-y-2 mt-4">
+                  <ShinyButton
+                    onClick={clearFocusedImage}
+                    className="w-full py-2 md:py-3 text-base md:text-lg font-semibold"
+                    text="Clear Focused Image"
+                  />
+                  {currentPromptIndex > 0 && (
+                    <ShinyButton
+                      onClick={goToPreviousPrompt}
+                      className="w-full py-2 md:py-3 text-base md:text-lg font-semibold"
+                      text="Go Back to Previous Prompt"
+                    />
+                  )}
+                </div>
               )}
               {promptHistory.length > 0 && (
                 <ShinyButton
