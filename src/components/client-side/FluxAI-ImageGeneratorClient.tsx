@@ -652,7 +652,7 @@ export default function FluxAIImageGenerator() {
                       "grid gap-4",
                       imageResults.length === 1 ? "grid-cols-1" : 
                       imageResults.length === 2 ? "grid-cols-2" :
-                      "grid-cols-2 sm:grid-cols-4"
+                      "grid-cols-2 sm:grid-cols-2"
                     )}
                   >
                     {imageResults.map((result, index) => (
