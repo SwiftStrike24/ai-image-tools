@@ -4,7 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { AlertCircle, X, Info } from "lucide-react"
+import { AlertCircle, X, Info, Download, Sparkles, Loader2 } from "lucide-react"
 import { generateFluxImage } from "@/actions/replicate/generateFluxImage"
 import { enhancePrompt } from "@/actions/replicate/enhancePrompt"
 import { useToast } from "@/hooks/use-toast"
@@ -687,23 +687,27 @@ export default function FluxAIImageGenerator() {
                             <p className="text-xs mt-2">Prompt: {result.prompt.slice(0, 50)}...</p>
                           </div>
                         )}
-                        <ShinyButton
-                          onClick={(e: React.MouseEvent) => {
-                            e.stopPropagation();
-                            handleDownload(result.imageUrls[0], index);
-                          }}
-                          className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
-                          disabled={downloadingIndex === index}
-                          text={downloadingIndex === index ? "..." : "Download"}
-                        />
-                        <ShinyButton
-                          onClick={(e: React.MouseEvent) => {
-                            e.stopPropagation();
-                            handleCopySeed(result.seed, result, index);
-                          }}
-                          className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
-                          text="Use Seed"
-                        />
+                        <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <ShinyButton
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              handleCopySeed(result.seed, result, index);
+                            }}
+                            className="text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
+                            text={<Sparkles className="h-4 w-4" />}
+                          />
+                        </div>
+                        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                          <ShinyButton
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              handleDownload(result.imageUrls[0], index);
+                            }}
+                            className="text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
+                            disabled={downloadingIndex === index}
+                            text={downloadingIndex === index ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                          />
+                        </div>
                         {result.isFollowUp && (
                           <div className="absolute top-2 left-2 bg-purple-900/70 text-white text-xs px-2 py-1 rounded">
                             Follow-up
