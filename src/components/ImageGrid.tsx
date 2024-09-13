@@ -17,6 +17,7 @@ interface ImageGridProps {
   handleDownload: (url: string, index: number) => void;
   isSimulationMode: boolean;
   downloadingIndex: number | null;
+  showSeedInput: boolean;
 }
 
 const ImageGrid: React.FC<ImageGridProps> = ({
@@ -29,6 +30,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
   handleDownload,
   isSimulationMode,
   downloadingIndex,
+  showSeedInput,
 }) => {
   return (
     <motion.div
@@ -86,7 +88,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
                 handleCopySeed(result.seed, result, index);
               }}
               className="text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
-              text="Use Seed"
+              text={focusedImageIndex === index ? "Focused" : "Focus"}
             />
           </div>
           <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -97,14 +99,13 @@ const ImageGrid: React.FC<ImageGridProps> = ({
               }}
               className="text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
               disabled={downloadingIndex === index}
-              text={
-                downloadingIndex === index ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )
-              }
-            />
+            >
+              {downloadingIndex === index ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+            </ShinyButton>
           </div>
           {result.isFollowUp && (
             <div className="absolute top-2 left-2 bg-purple-900/70 text-white text-xs px-2 py-1 rounded">

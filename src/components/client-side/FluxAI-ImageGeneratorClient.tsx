@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import { FluxImageParams, FluxImageResult } from "@/types/imageTypes"
+import { FluxImageParams, FluxImageResult, PromptHistoryEntry } from "@/types/imageTypes"
 import RetroGrid from "@/components/magicui/retro-grid"
 import ShinyButton from "@/components/magicui/shiny-button"
 import { v4 as uuidv4 } from 'uuid'
@@ -50,12 +50,15 @@ export default function FluxAIImageGenerator() {
   const [followUpPrompt, setFollowUpPrompt] = useState<string | null>(null)
   const [showSeedInput, setShowSeedInput] = useState(false)
   const [isProcessingSeed, setIsProcessingSeed] = useState(false)
-  const [promptHistory, setPromptHistory] = useState<Array<{ prompt: string, images: FluxImageResult[] }>>([])
+  const [promptHistory, setPromptHistory] = useState<PromptHistoryEntry[]>([])
   const [currentPromptIndex, setCurrentPromptIndex] = useState(-1)
   const [focusedImageIndex, setFocusedImageIndex] = useState<number | null>(null)
   const [isFocused, setIsFocused] = useState(false)
   const [followUpLevel, setFollowUpLevel] = useState(0)
   const [simulationId, setSimulationId] = useState(uuidv4())
+  const [originalPrompt, setOriginalPrompt] = useState('')
+  const [followUpPrompts, setFollowUpPrompts] = useState<string[]>([])
+  const [currentSeed, setCurrentSeed] = useState<number | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,8 +82,11 @@ export default function FluxAIImageGenerator() {
       let finalPrompt = currentPrompt;
 
       if (showSeedInput) {
-        const lastPrompt = promptHistory[currentPromptIndex].prompt;
-        finalPrompt = `${lastPrompt}, ${currentPrompt}`.trim();
+        finalPrompt = `${originalPrompt}, ${currentPrompt}`.trim();
+        setFollowUpPrompts([...followUpPrompts, currentPrompt]);
+        setOriginalPrompt(finalPrompt); // Update the original prompt for follow-ups
+      } else {
+        setOriginalPrompt(currentPrompt);
       }
 
       if (isEnhancePromptEnabled) {
@@ -103,7 +109,7 @@ export default function FluxAIImageGenerator() {
         output_quality: outputQuality,
         enhance_prompt: isEnhancePromptEnabled,
         disable_safety_checker: true,
-        seed: copiedSeed !== null ? copiedSeed : undefined,
+        seed: followUpLevel >= 1 ? currentSeed ?? undefined : undefined,
       };
 
       console.log("Params sent to generateFluxImage:", params);
@@ -117,31 +123,33 @@ export default function FluxAIImageGenerator() {
       if (Array.isArray(results) && results.length > 0) {
         const newImageResults = results.slice(0, 4).map((result: FluxImageResult) => ({
           ...result,
-          isFollowUp: showSeedInput && copiedSeed !== null,
           followUpLevel: followUpLevel + 1,
         }));
 
-        const newHistoryEntry = { 
+        const newSeed = newImageResults[0].seed;
+        if (followUpLevel === 0) {
+          setCurrentSeed(newSeed);
+        }
+
+        const newHistoryEntry: PromptHistoryEntry = { 
           prompt: finalPrompt, 
           images: newImageResults,
-          followUpLevel: followUpLevel + 1
+          followUpLevel: followUpLevel + 1,
+          seed: followUpLevel >= 1 ? currentSeed! : newSeed,
         };
         
-        let newHistory;
-        if (showSeedInput && currentPromptIndex < promptHistory.length - 1) {
-          newHistory = [...promptHistory.slice(0, currentPromptIndex + 1), newHistoryEntry];
-        } else {
-          newHistory = [...promptHistory, newHistoryEntry];
-        }
-        
-        setPromptHistory(newHistory);
-        setCurrentPromptIndex(newHistory.length - 1);
+        // Update promptHistory by removing any entries after the current level
+        const updatedHistory = promptHistory.slice(0, followUpLevel);
+        setPromptHistory([...updatedHistory, newHistoryEntry]);
+        setCurrentPromptIndex(followUpLevel);
         setImageResults(newImageResults);
         setImageUrls(newImageResults.map(result => result.imageUrls[0]));
         setGeneratedAspectRatio(aspectRatio);
         setFocusedImageIndex(null);
         setIsFocused(false);
         setFollowUpLevel(followUpLevel + 1);
+        setShowSeedInput(true);
+        setFollowUpPrompt(''); // Clear the follow-up prompt after submission
 
         toast({
           title: isSimulationMode ? "Images Simulated" : "Images Generated",
@@ -149,10 +157,6 @@ export default function FluxAIImageGenerator() {
         });
       } else {
         throw new Error('No images were generated. Please try again.');
-      }
-
-      if (showSeedInput) {
-        setFollowUpPrompt('');
       }
 
       if (isSimulationMode) {
@@ -176,48 +180,43 @@ export default function FluxAIImageGenerator() {
     setIsProcessingSeed(true);
 
     try {
-      setCopiedSeed(seed);
+      // Only update the seed if we're at the latest follow-up level
+      if (followUpLevel === promptHistory.length) {
+        setCurrentSeed(seed);
+      }
       setShowSeedInput(true);
-      setFollowUpPrompt('');
       setFocusedImageIndex(index);
       setIsFocused(true);
       
-      const currentImages = imageResults;
-      setImageResults(currentImages);
-      setImageUrls(currentImages.map(result => result.imageUrls[0]));
-
       toast({
-        title: "Seed Set",
-        description: `Seed ${seed} has been set for the next generation. You can now enter a follow-up prompt.`,
+        title: "Image Focused",
+        description: `You can now enter a follow-up prompt for this image.`,
       });
     } catch (error) {
       console.error("Error in handleCopySeed:", error);
       toast({
         title: "Error",
-        description: "An error occurred while setting the seed. Please try again.",
+        description: "An error occurred while focusing the image. Please try again.",
         variant: "destructive",
       });
     } finally {
       setTimeout(() => setIsProcessingSeed(false), 500);
     }
-  }, [isProcessingSeed, imageResults, toast]);
+  }, [isProcessingSeed, followUpLevel, promptHistory.length, toast]);
 
   const clearFocusedImage = useCallback(() => {
     setFocusedImageIndex(null);
-    setCopiedSeed(null);
-    setShowSeedInput(false);
-    setFollowUpPrompt('');
     setIsFocused(false);
     
-    if (followUpLevel > 0 && currentPromptIndex >= 0) {
-      const currentEntry = promptHistory[currentPromptIndex];
-      setPrompt(currentEntry.prompt);
-    }
-  }, [followUpLevel, currentPromptIndex, promptHistory]);
+    toast({
+      title: "Focus Cleared",
+      description: "You can now focus on a different image or continue with your follow-up prompt.",
+    });
+  }, [toast]);
 
   const handleNewImage = useCallback(() => {
     setFollowUpPrompt(null);
-    setCopiedSeed(null);
+    setCurrentSeed(null);
     setShowSeedInput(false);
     setImageUrls([]);
     setError(null);
@@ -229,6 +228,8 @@ export default function FluxAIImageGenerator() {
     setFocusedImageIndex(null);
     setIsFocused(false);
     setFollowUpLevel(0);
+    setOriginalPrompt('');
+    setFollowUpPrompts([]);
     toast({
       title: "Reset Complete",
       description: "Ready for a new image generation.",
@@ -302,17 +303,41 @@ export default function FluxAIImageGenerator() {
 
   const goToPreviousFollowUp = useCallback(() => {
     if (followUpLevel > 0) {
-      setFollowUpLevel(prev => prev - 1);
-      const previousEntry = promptHistory.find(entry => entry.followUpLevel === followUpLevel - 1);
+      const newFollowUpLevel = followUpLevel - 1;
+      setFollowUpLevel(newFollowUpLevel);
+      
+      // Get the previous entry from the history
+      const previousEntry = promptHistory[newFollowUpLevel];
       if (previousEntry) {
-        setPrompt(previousEntry.prompt);
         setImageResults(previousEntry.images);
         setImageUrls(previousEntry.images.map(result => result.imageUrls[0]));
+        setCurrentSeed(previousEntry.seed);
+
+        // Update the original prompt to the previous level's prompt
+        setOriginalPrompt(previousEntry.prompt);
+
+        if (newFollowUpLevel === 0) {
+          setShowSeedInput(false);
+          setFollowUpPrompt('');
+          setPrompt(previousEntry.prompt);
+        } else {
+          setShowSeedInput(true);
+          // Extract all parts of the prompt except the last one
+          const promptParts = previousEntry.prompt.split(',');
+          const newOriginalPrompt = promptParts.slice(0, -1).join(',').trim();
+          setOriginalPrompt(newOriginalPrompt);
+          // Set the last part as the follow-up prompt
+          setFollowUpPrompt(promptParts[promptParts.length - 1]?.trim() || '');
+        }
       }
-      setFocusedImageIndex(null);
-      setCopiedSeed(null);
-      setShowSeedInput(false);
-      setFollowUpPrompt('');
+
+      // Trim the prompt history to remove entries after the current level
+      setPromptHistory(prevHistory => prevHistory.slice(0, newFollowUpLevel + 1));
+      setCurrentPromptIndex(newFollowUpLevel);
+
+      // Don't reset focused image when going back
+      // setFocusedImageIndex(null);
+      // setIsFocused(false);
     }
   }, [followUpLevel, promptHistory]);
 
@@ -383,17 +408,21 @@ export default function FluxAIImageGenerator() {
                     <div className="text-sm text-gray-400 mb-2">
                       Follow-up Level: {followUpLevel}
                       <br />
-                      Current prompt: {promptHistory[currentPromptIndex]?.prompt}
+                      Current prompt: {originalPrompt}
+                      {followUpLevel >= 1 && (
+                        <>
+                          <br />
+                          Seed: {currentSeed}
+                        </>
+                      )}
                     </div>
                   )}
                   <Input
                     id="prompt"
                     value={showSeedInput ? followUpPrompt || '' : prompt}
-                    onChange={showSeedInput ?                       (e) => setFollowUpPrompt(e.target.value) :
-                      handlePromptChange
-                    }
+                    onChange={showSeedInput ? (e) => setFollowUpPrompt(e.target.value) : handlePromptChange}
                     placeholder={showSeedInput ? 
-                                      "Enter additional details for your follow-up prompt..." :
+                      "Enter additional details for your follow-up prompt..." :
                       "Enter your image prompt here..."
                     }
                     className="bg-gray-800 text-white border-gray-700 focus:border-purple-500 transition-colors duration-200"
@@ -405,31 +434,6 @@ export default function FluxAIImageGenerator() {
                     {(showSeedInput ? followUpPrompt?.length || 0 : prompt.length)}/1000
                   </div>
                 </div>
-                {showSeedInput && (
-                  <div className="space-y-2">
-                    <Label htmlFor="seed-input" className="text-white">
-                      Seed
-                    </Label>
-                    <div className="flex items-center space-x-2">
-                      <Input
-                        id="seed-input"
-                        value={copiedSeed?.toString() || ''}
-                        onChange={(e) => setCopiedSeed(parseInt(e.target.value))}
-                        className="bg-gray-800 text-white border-gray-700 focus:border-purple-500 transition-colors duration-200"
-                        readOnly
-                      />
-                      <Button
-                        type="button"
-                        onClick={clearFocusedImage}
-                        variant="secondary"
-                        className="px-2 py-1"
-                      >
-                        <X className="h-4 w-4" />
-                        <span className="sr-only">Clear seed</span>
-                      </Button>
-                    </div>
-                  </div>
-                )}
                 <div className="space-y-2">
                   <Label htmlFor="aspect-ratio" className="text-white">Aspect Ratio</Label>
                   <Select value={aspectRatio} onValueChange={setAspectRatio}>
@@ -535,13 +539,14 @@ export default function FluxAIImageGenerator() {
                   handleDownload={handleDownload}
                   isSimulationMode={isSimulationMode}
                   downloadingIndex={downloadingIndex}
+                  showSeedInput={showSeedInput}
                 />
               )}
               {isFocused && (
                 <ShinyButton
                   onClick={clearFocusedImage}
                   className="w-full py-2 md:py-3 text-base md:text-lg font-semibold"
-                  text="Clear Focused Image"
+                  text="Clear Focus"
                 />
               )}
               {followUpLevel > 0 && (
