@@ -137,8 +137,8 @@ export default function FluxAIImageGenerator() {
           seed: newSeed,
         };
         
-        setPromptHistory([...promptHistory, newHistoryEntry]);
-        setCurrentPromptIndex(promptHistory.length);
+        setPromptHistory(prevHistory => [...prevHistory.slice(0, followUpLevel), newHistoryEntry]);
+        setCurrentPromptIndex(followUpLevel);
         setImageResults(newImageResults);
         setImageUrls(newImageResults.map(result => result.imageUrls[0]));
         setGeneratedAspectRatio(aspectRatio);
@@ -297,35 +297,45 @@ export default function FluxAIImageGenerator() {
   };
 
   const goToPreviousFollowUp = useCallback(() => {
-    if (followUpLevel > 0) {
+    if (followUpLevel > 1) {
       const newFollowUpLevel = followUpLevel - 1;
       setFollowUpLevel(newFollowUpLevel);
       
-      const previousEntry = promptHistory[newFollowUpLevel];
+      const previousEntry = promptHistory[newFollowUpLevel - 1]; // Adjust index to get the correct previous entry
       if (previousEntry) {
         setImageResults(previousEntry.images);
         setImageUrls(previousEntry.images.map(result => result.imageUrls[0]));
         setCurrentSeed(previousEntry.seed);
 
-        setOriginalPrompt(previousEntry.prompt);
-
-        if (newFollowUpLevel === 0) {
+        if (newFollowUpLevel === 1) {
+          // If going back to the initial generation
           setShowSeedInput(false);
           setFollowUpPrompt('');
           setPrompt(previousEntry.prompt);
+          setOriginalPrompt(previousEntry.prompt);
         } else {
+          // For follow-up levels 2 and above
           setShowSeedInput(true);
           const promptParts = previousEntry.prompt.split(',');
           const newOriginalPrompt = promptParts.slice(0, -1).join(',').trim();
           setOriginalPrompt(newOriginalPrompt);
           setFollowUpPrompt(promptParts[promptParts.length - 1]?.trim() || '');
         }
-      }
 
-      setPromptHistory(prevHistory => prevHistory.slice(0, newFollowUpLevel + 1));
-      setCurrentPromptIndex(newFollowUpLevel);
+        // Update current prompt index
+        setCurrentPromptIndex(newFollowUpLevel - 1);
+
+        // Clear focus
+        setFocusedImageIndex(null);
+        setIsFocused(false);
+
+        toast({
+          title: "Previous Follow-up Loaded",
+          description: `Returned to Follow-up Level: ${newFollowUpLevel}`,
+        });
+      }
     }
-  }, [followUpLevel, promptHistory]);
+  }, [followUpLevel, promptHistory, toast]);
 
   return (
     <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
@@ -535,11 +545,11 @@ export default function FluxAIImageGenerator() {
                   text="Clear Focus"
                 />
               )}
-              {followUpLevel > 0 && (
+              {followUpLevel > 1 && (
                 <ShinyButton
                   onClick={goToPreviousFollowUp}
                   className="w-full py-2 md:py-3 text-base md:text-lg font-semibold mt-2"
-                  text="Go to Previous Follow-up"
+                  text={`Go to Previous Follow-up (Level ${followUpLevel - 1})`}
                 />
               )}
               {promptHistory.length > 0 && (
