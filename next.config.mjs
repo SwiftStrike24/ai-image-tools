@@ -17,6 +17,7 @@ const nextConfig = {
       },
       // Add any other domains you're loading images from
     ],
+    domains: ['your-image-hosting-domain.com'], // Replace with the actual domain where you'll host the sample images
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
