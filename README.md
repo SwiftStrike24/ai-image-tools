@@ -14,6 +14,11 @@
 - **🖱️ Interactive Image Viewer**: Zoom and pan functionality for uploaded and generated images
 - **💾 Easy Download**: One-click download for generated and upscaled images
 - **🌓 Dark Mode Interface**: Sleek, modern dark theme with purple accents
+- **🔄 Follow-up Prompts**: Generate variations based on previous outputs
+- **🔢 Multi-Image Generation**: Create up to 4 images per prompt
+- **🔍 Image Focus**: Zoom in on specific images for detailed viewing
+- **⏪ History Navigation**: Go back to previous follow-up levels
+- **🎨 Customizable Outputs**: Adjust number of outputs, format, and quality
 
 ## 🛠️ Tech Stack
 
@@ -26,17 +31,19 @@
 
 ## 🧩 Key Components
 
-- `ImageUpscaler`: Handles image uploading and upscaling functionality
-- `FluxAIImageGenerator`: Manages AI image generation from text prompts
+- `FluxAIImageGeneratorClient`: Manages AI image generation from text prompts
+- `ImageUpscalerClient`: Handles image uploading and upscaling functionality
+- `ImageGrid`: Displays generated images with focus and download options
+- `ImageModal`: Provides a detailed view of selected images
 - `Header`: Navigation component with animated tab switching
 - `RetroGrid`: Background component for visual appeal
 - `ShinyButton`: Custom button component with animated effects
 
 ## 🔌 APIs and Server Actions
 
-- `upscaleImage`: Upscales images using Real-ESRGAN model
 - `generateFluxImage`: Generates images from text prompts using FLUX.1 model
-- `enhancePrompt`: Improves user prompts for better image generation results using Meta's Meta-Llama 3 3.8b model
+- `upscaleImage`: Upscales images using Real-ESRGAN model
+- `enhancePrompt`: Improves user prompts for better image generation results
 
 ## 🏁 Getting Started
 
