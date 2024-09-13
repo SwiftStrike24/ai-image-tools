@@ -5,11 +5,13 @@ import { cn } from "@/lib/utils";
 import "@/styles/shiny-button.css";
 
 interface ShinyButtonProps extends HTMLMotionProps<"button"> {
-  text: string;
+  text?: string;
+  children?: React.ReactNode;
 }
 
 const ShinyButton = ({
   text,
+  children,
   className,
   ...props
 }: ShinyButtonProps) => {
@@ -24,7 +26,7 @@ const ShinyButton = ({
       {...props}
     >
       <span className="relative block h-full w-full text-sm uppercase tracking-wide shiny-button-text">
-        {text}
+        {text || children}
       </span>
       <span className="absolute inset-0 z-10 block rounded-[inherit] bg-[linear-gradient(-75deg,rgba(147,51,234,0.1)_calc(var(--x)+20%),rgba(147,51,234,0.3)_calc(var(--x)+25%),rgba(147,51,234,0.1)_calc(var(--x)+100%))] p-px shiny-button-overlay" />
     </motion.button>

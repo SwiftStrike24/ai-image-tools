@@ -84,7 +84,7 @@ export default function FluxAIImageGenerator() {
       if (showSeedInput) {
         finalPrompt = `${originalPrompt}, ${currentPrompt}`.trim();
         setFollowUpPrompts([...followUpPrompts, currentPrompt]);
-        setOriginalPrompt(finalPrompt); // Update the original prompt for follow-ups
+        setOriginalPrompt(finalPrompt);
       } else {
         setOriginalPrompt(currentPrompt);
       }
@@ -109,7 +109,8 @@ export default function FluxAIImageGenerator() {
         output_quality: outputQuality,
         enhance_prompt: isEnhancePromptEnabled,
         disable_safety_checker: true,
-        seed: followUpLevel >= 1 ? currentSeed ?? undefined : undefined,
+        seed: followUpLevel >= 2 ? currentSeed : undefined,
+        followUpLevel: followUpLevel + 1,
       };
 
       console.log("Params sent to generateFluxImage:", params);
@@ -121,27 +122,23 @@ export default function FluxAIImageGenerator() {
       console.log("Results received from generateFluxImage:", results);
 
       if (Array.isArray(results) && results.length > 0) {
-        const newImageResults = results.slice(0, 4).map((result: FluxImageResult) => ({
+        const newImageResults = results.map((result: FluxImageResult) => ({
           ...result,
           followUpLevel: followUpLevel + 1,
         }));
 
         const newSeed = newImageResults[0].seed;
-        if (followUpLevel === 0) {
-          setCurrentSeed(newSeed);
-        }
+        setCurrentSeed(newSeed);
 
         const newHistoryEntry: PromptHistoryEntry = { 
           prompt: finalPrompt, 
           images: newImageResults,
           followUpLevel: followUpLevel + 1,
-          seed: followUpLevel >= 1 ? currentSeed! : newSeed,
+          seed: newSeed,
         };
         
-        // Update promptHistory by removing any entries after the current level
-        const updatedHistory = promptHistory.slice(0, followUpLevel);
-        setPromptHistory([...updatedHistory, newHistoryEntry]);
-        setCurrentPromptIndex(followUpLevel);
+        setPromptHistory([...promptHistory, newHistoryEntry]);
+        setCurrentPromptIndex(promptHistory.length);
         setImageResults(newImageResults);
         setImageUrls(newImageResults.map(result => result.imageUrls[0]));
         setGeneratedAspectRatio(aspectRatio);
@@ -149,7 +146,7 @@ export default function FluxAIImageGenerator() {
         setIsFocused(false);
         setFollowUpLevel(followUpLevel + 1);
         setShowSeedInput(true);
-        setFollowUpPrompt(''); // Clear the follow-up prompt after submission
+        setFollowUpPrompt('');
 
         toast({
           title: isSimulationMode ? "Images Simulated" : "Images Generated",
@@ -180,17 +177,15 @@ export default function FluxAIImageGenerator() {
     setIsProcessingSeed(true);
 
     try {
-      // Only update the seed if we're at the latest follow-up level
-      if (followUpLevel === promptHistory.length) {
-        setCurrentSeed(seed);
-      }
+      setCurrentSeed(seed);
       setShowSeedInput(true);
       setFocusedImageIndex(index);
       setIsFocused(true);
+      setFollowUpLevel(Math.max(2, followUpLevel)); // Ensure we're at least at follow-up level 2
       
       toast({
         title: "Image Focused",
-        description: `You can now enter a follow-up prompt for this image.`,
+        description: `You can now enter a follow-up prompt for this image (index: ${selectedImage.index}).`,
       });
     } catch (error) {
       console.error("Error in handleCopySeed:", error);
@@ -202,7 +197,7 @@ export default function FluxAIImageGenerator() {
     } finally {
       setTimeout(() => setIsProcessingSeed(false), 500);
     }
-  }, [isProcessingSeed, followUpLevel, promptHistory.length, toast]);
+  }, [isProcessingSeed, toast, followUpLevel]);
 
   const clearFocusedImage = useCallback(() => {
     setFocusedImageIndex(null);
@@ -306,14 +301,12 @@ export default function FluxAIImageGenerator() {
       const newFollowUpLevel = followUpLevel - 1;
       setFollowUpLevel(newFollowUpLevel);
       
-      // Get the previous entry from the history
       const previousEntry = promptHistory[newFollowUpLevel];
       if (previousEntry) {
         setImageResults(previousEntry.images);
         setImageUrls(previousEntry.images.map(result => result.imageUrls[0]));
         setCurrentSeed(previousEntry.seed);
 
-        // Update the original prompt to the previous level's prompt
         setOriginalPrompt(previousEntry.prompt);
 
         if (newFollowUpLevel === 0) {
@@ -322,22 +315,15 @@ export default function FluxAIImageGenerator() {
           setPrompt(previousEntry.prompt);
         } else {
           setShowSeedInput(true);
-          // Extract all parts of the prompt except the last one
           const promptParts = previousEntry.prompt.split(',');
           const newOriginalPrompt = promptParts.slice(0, -1).join(',').trim();
           setOriginalPrompt(newOriginalPrompt);
-          // Set the last part as the follow-up prompt
           setFollowUpPrompt(promptParts[promptParts.length - 1]?.trim() || '');
         }
       }
 
-      // Trim the prompt history to remove entries after the current level
       setPromptHistory(prevHistory => prevHistory.slice(0, newFollowUpLevel + 1));
       setCurrentPromptIndex(newFollowUpLevel);
-
-      // Don't reset focused image when going back
-      // setFocusedImageIndex(null);
-      // setIsFocused(false);
     }
   }, [followUpLevel, promptHistory]);
 

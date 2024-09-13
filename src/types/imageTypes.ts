@@ -7,6 +7,7 @@ export interface FluxImageParams {
   disable_safety_checker: boolean;
   enhance_prompt: boolean;
   seed?: number;
+  followUpLevel: number;
 }
 
 export interface FluxImageResult {
@@ -14,6 +15,7 @@ export interface FluxImageResult {
   seed: number;
   prompt: string;
   followUpLevel: number;
+  index: number;
 }
 
 export interface PromptHistoryEntry {

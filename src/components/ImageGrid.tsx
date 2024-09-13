@@ -47,27 +47,27 @@ const ImageGrid: React.FC<ImageGridProps> = ({
           : 'grid-cols-2 sm:grid-cols-2'
       )}
     >
-      {imageResults.map((result, index) => (
+      {imageResults.map((result, arrayIndex) => (
         <motion.div
-          key={`${result.seed}-${index}`}
+          key={`${result.seed}-${result.index}`}
           initial={{ opacity: 0, y: 20 }}
           animate={{
-            opacity: !isFocused || focusedImageIndex === index ? 1 : 0.3,
+            opacity: !isFocused || focusedImageIndex === result.index ? 1 : 0.3,
             y: 0,
-            scale: focusedImageIndex === index ? 1.05 : 1,
+            scale: focusedImageIndex === result.index ? 1.05 : 1,
           }}
-          transition={{ duration: 0.5, delay: index * 0.1 }}
+          transition={{ duration: 0.5, delay: arrayIndex * 0.1 }}
           className={cn(
             `relative ${getAspectRatioClass(
               generatedAspectRatio
             )} rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer group`,
-            isFocused && focusedImageIndex !== index && 'pointer-events-none'
+            isFocused && focusedImageIndex !== result.index && 'pointer-events-none'
           )}
           onClick={() => handleImageClick(result.imageUrls[0])}
         >
           <Image
             src={result.imageUrls[0]}
-            alt={`Generated ${index + 1}`}
+            alt={`Generated ${arrayIndex + 1}`}
             layout="fill"
             objectFit="cover"
             className="w-full h-full transition-transform duration-300 group-hover:scale-105"
@@ -85,31 +85,31 @@ const ImageGrid: React.FC<ImageGridProps> = ({
             <ShinyButton
               onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
-                handleCopySeed(result.seed, result, index);
+                handleCopySeed(result.seed, result, result.index);
               }}
               className="text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
-              text={focusedImageIndex === index ? "Focused" : "Focus"}
+              text={focusedImageIndex === result.index ? "Focused" : "Focus"}
             />
           </div>
           <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             <ShinyButton
               onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
-                handleDownload(result.imageUrls[0], index);
+                handleDownload(result.imageUrls[0], result.index);
               }}
               className="text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
-              disabled={downloadingIndex === index}
+              disabled={downloadingIndex === result.index}
             >
-              {downloadingIndex === index ? (
+              {downloadingIndex === result.index ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Download className="h-4 w-4" />
               )}
             </ShinyButton>
           </div>
-          {result.isFollowUp && (
+          {result.followUpLevel > 1 && (
             <div className="absolute top-2 left-2 bg-purple-900/70 text-white text-xs px-2 py-1 rounded">
-              Follow-up
+              Follow-up (Level: {result.followUpLevel})
             </div>
           )}
         </motion.div>
