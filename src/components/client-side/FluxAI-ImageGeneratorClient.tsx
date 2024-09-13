@@ -177,27 +177,39 @@ export default function FluxAIImageGenerator() {
     setIsProcessingSeed(true);
 
     try {
-      setCurrentSeed(seed);
-      setShowSeedInput(true);
-      setFocusedImageIndex(index);
-      setIsFocused(true);
-      setFollowUpLevel(Math.max(2, followUpLevel)); // Ensure we're at least at follow-up level 2
-      
-      toast({
-        title: "Image Focused",
-        description: `You can now enter a follow-up prompt for this image (index: ${selectedImage.index}).`,
-      });
+      if (focusedImageIndex === index) {
+        // Unfocus if clicking on the already focused image
+        setFocusedImageIndex(null);
+        setIsFocused(false);
+        
+        toast({
+          title: "Focus Cleared",
+          description: "You can now select a different image or continue with your current prompt.",
+        });
+      } else {
+        // Focus on the new image
+        setCurrentSeed(seed);
+        setShowSeedInput(true);
+        setFocusedImageIndex(index);
+        setIsFocused(true);
+        setFollowUpLevel(Math.max(2, followUpLevel)); // Ensure we're at least at follow-up level 2
+        
+        toast({
+          title: "Image Focused",
+          description: "You can now enter a follow-up prompt based on this image.",
+        });
+      }
     } catch (error) {
       console.error("Error in handleCopySeed:", error);
       toast({
         title: "Error",
-        description: "An error occurred while focusing the image. Please try again.",
+        description: "An error occurred while managing image focus. Please try again.",
         variant: "destructive",
       });
     } finally {
       setTimeout(() => setIsProcessingSeed(false), 500);
     }
-  }, [isProcessingSeed, toast, followUpLevel]);
+  }, [isProcessingSeed, toast, followUpLevel, focusedImageIndex]);
 
   const clearFocusedImage = useCallback(() => {
     setFocusedImageIndex(null);
@@ -205,7 +217,7 @@ export default function FluxAIImageGenerator() {
     
     toast({
       title: "Focus Cleared",
-      description: "You can now focus on a different image or continue with your follow-up prompt.",
+      description: "You can now select a different image or continue with your current prompt.",
     });
   }, [toast]);
 
