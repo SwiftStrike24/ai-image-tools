@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from 'react'
-import { motion, useAnimation } from 'framer-motion'
+import { motion, useAnimation, AnimatePresence } from 'framer-motion'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowRight, Wand2, Maximize, Layout, Download } from 'lucide-react'
@@ -146,129 +146,153 @@ export default function LandingPage() {
     setFormError(null)
   }
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        when: "beforeChildren",
+        staggerChildren: 0.2,
+      },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+      },
+    },
+  }
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white" ref={containerRef}>
-      <nav className="p-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-purple-500">FluxScale AI</h1>
-        <Button variant="ghost" className="text-purple-400 hover:text-purple-300">
-          Sign In <ArrowRight className="ml-2 w-4 h-4" />
-        </Button>
-      </nav>
-      
-      <main className="container mx-auto px-4 py-16">
-        <motion.div 
-          className="text-center"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+    <AnimatePresence>
+      <motion.div
+        className="min-h-screen bg-gray-900 text-white"
+        ref={containerRef}
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+      >
+        <motion.nav
+          className="p-4 flex justify-between items-center"
+          variants={itemVariants}
         >
-          <h2 className="text-4xl md:text-6xl font-bold mb-4">Supercharge Your Visuals with AI</h2>
-          <p className="text-xl md:text-2xl mb-8 text-gray-300">Transform ideas into stunning images in seconds</p>
-        </motion.div>
+          <h1 className="text-2xl font-bold text-purple-500">FluxScale AI</h1>
+          <Button variant="ghost" className="text-purple-400 hover:text-purple-300">
+            Sign In <ArrowRight className="ml-2 w-4 h-4" />
+          </Button>
+        </motion.nav>
+        
+        <main className="container mx-auto px-4 py-16">
+          <motion.div 
+            className="text-center"
+            variants={itemVariants}
+          >
+            <h2 className="text-4xl md:text-6xl font-bold mb-4">Supercharge Your Visuals with AI</h2>
+            <p className="text-xl md:text-2xl mb-8 text-gray-300">Transform ideas into stunning images in seconds</p>
+          </motion.div>
 
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.8 }}
-        >
-          <ImageCarousel />
-        </motion.div>
+          <motion.div variants={itemVariants}>
+            <ImageCarousel />
+          </motion.div>
 
-        <motion.div 
-          className="flex justify-center my-16"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.8 }}
-        >
-          <form onSubmit={handleSubmit} className="w-full max-w-md">
-            <div className="relative">
-              <Input 
-                type="email" 
-                placeholder="Enter your email for early access" 
-                value={email} 
-                onChange={handleEmailChange}
-                maxLength={MAX_EMAIL_LENGTH}
-                className={`mb-4 bg-gray-800 text-white border-purple-500 ${formError ? 'border-red-500' : ''}`}
-                required
-              />
-              {formError && (
-                <p className="text-red-400 text-sm mt-1 mb-2">{formError}</p>
-              )}
-              <p className="text-gray-400 text-xs mt-1">
-                {email.length}/{MAX_EMAIL_LENGTH}
-              </p>
-            </div>
-            <Button 
-              type="submit" 
-              className="w-full bg-purple-600 hover:bg-purple-700"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Joining...' : 'Join Waitlist'} 
-              <ArrowRight className="ml-2 w-4 h-4" />
-            </Button>
-          </form>
-        </motion.div>
-
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8, duration: 0.8 }}
-        >
-          {features.map((feature, index) => (
-            <motion.div 
-              key={index}
-              className="bg-gray-800 p-6 rounded-lg"
-              whileHover={{ scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <div className="flex items-center mb-4">
-                {feature.icon}
-                <h3 className="text-xl font-semibold ml-3">{feature.title}</h3>
+          <motion.div 
+            className="flex justify-center my-16"
+            variants={itemVariants}
+          >
+            <form onSubmit={handleSubmit} className="w-full max-w-md">
+              <div className="relative">
+                <Input 
+                  type="email" 
+                  placeholder="Enter your email for early access" 
+                  value={email} 
+                  onChange={handleEmailChange}
+                  maxLength={MAX_EMAIL_LENGTH}
+                  className={`mb-4 bg-gray-800 text-white border-purple-500 ${formError ? 'border-red-500' : ''}`}
+                  required
+                />
+                {formError && (
+                  <p className="text-red-400 text-sm mt-1 mb-2">{formError}</p>
+                )}
+                <p className="text-gray-400 text-xs mt-1">
+                  {email.length}/{MAX_EMAIL_LENGTH}
+                </p>
               </div>
-              <p className="text-gray-400">{feature.description}</p>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1, duration: 0.8 }}
-          className="mb-16 p-8 rounded-lg bg-gray-800 max-w-4xl mx-auto"
-        >
-          <h3 className="text-2xl font-bold mb-4 text-center">See the Difference</h3>
-          <p className="text-gray-300 text-center mb-6">Experience the power of AI-enhanced images</p>
-          <div className="max-w-3xl mx-auto">
-            <BeforeAfterSlider
-              beforeImage="/images/landing-page/before-after-images/before-image.jpg"
-              afterImage="/images/landing-page/before-after-images/after-image.jpg"
-              beforeAlt="Image before AI enhancement"
-              afterAlt="Image after AI enhancement"
-            />
-          </div>
-        </motion.div>
-
-        <motion.div 
-          className="relative h-[400px] bg-purple-900 rounded-lg overflow-hidden"
-          style={{ scale: 1, y: '0%', opacity: 1 }}
-        >
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center">
-              <h3 className="text-3xl font-bold mb-4">Experience the Magic</h3>
-              <p className="text-xl mb-8">Join now and revolutionize your creative process</p>
-              <Button className="bg-white text-purple-900 hover:bg-gray-200">
-                Get Started <ArrowRight className="ml-2 w-4 h-4" />
+              <Button 
+                type="submit" 
+                className="w-full bg-purple-600 hover:bg-purple-700"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Joining...' : 'Join Waitlist'} 
+                <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
+            </form>
+          </motion.div>
+
+          <motion.div 
+            className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16"
+            variants={itemVariants}
+          >
+            {features.map((feature, index) => (
+              <motion.div 
+                key={index}
+                className="bg-gray-800 p-6 rounded-lg"
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <div className="flex items-center mb-4">
+                  {feature.icon}
+                  <h3 className="text-xl font-semibold ml-3">{feature.title}</h3>
+                </div>
+                <p className="text-gray-400">{feature.description}</p>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          <motion.div
+            variants={itemVariants}
+            className="mb-16 p-8 rounded-lg max-w-5xl mx-auto"
+          >
+            <h3 className="text-2xl font-bold mb-4 text-center">See the Difference</h3>
+            <p className="text-gray-300 text-center mb-6">Experience the power of AI-enhanced images</p>
+            <div className="w-full">
+              <BeforeAfterSlider
+                beforeImage="/images/landing-page/before-after-images/before-image.jpg"
+                afterImage="/images/landing-page/before-after-images/after-image.jpg"
+                beforeAlt="Image before AI enhancement"
+                afterAlt="Image after AI enhancement"
+              />
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
 
-      </main>
+          <motion.div 
+            variants={itemVariants}
+            className="relative h-[400px] bg-purple-900 rounded-lg overflow-hidden"
+          >
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <h3 className="text-3xl font-bold mb-4">Experience the Magic</h3>
+                <p className="text-xl mb-8">Join now and revolutionize your creative process</p>
+                <Button className="bg-white text-purple-900 hover:bg-gray-200">
+                  Get Started <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </main>
 
-      <footer className="text-center py-8 text-gray-400">
-        © 2024 FluxScale AI. All rights reserved.
-      </footer>
-    </div>
+        <motion.footer
+          variants={itemVariants}
+          className="text-center py-8 text-gray-400"
+        >
+          © 2024 FluxScale AI. All rights reserved.
+        </motion.footer>
+      </motion.div>
+    </AnimatePresence>
   )
 }
