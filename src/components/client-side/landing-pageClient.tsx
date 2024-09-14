@@ -16,6 +16,10 @@ const ImageCarousel = () => {
   const controls = useAnimation()
   const carouselRef = useRef<HTMLDivElement>(null)
 
+  // You can adjust this value to change the speed of the carousel
+  // Lower values will make it faster, higher values will make it slower
+  const CAROUSEL_DURATION_PER_IMAGE = 2 // seconds
+
   useEffect(() => {
     const fetchImages = async () => {
       try {
@@ -41,7 +45,7 @@ const ImageCarousel = () => {
             x: {
               repeat: Infinity,
               repeatType: "loop",
-              duration: images.length * 5,
+              duration: images.length * CAROUSEL_DURATION_PER_IMAGE,
               ease: "linear",
             },
           },
@@ -53,6 +57,7 @@ const ImageCarousel = () => {
 
   if (isLoading || images.length === 0) return null
 
+  // Duplicate the images array to create a seamless loop
   const extendedImages = [...images, ...images]
 
   return (
@@ -72,7 +77,7 @@ const ImageCarousel = () => {
           >
             <Image
               src={src}
-              alt={`AI Generated Image ${index + 1}`}
+              alt={`AI Generated Image ${(index % images.length) + 1}`}
               width={200}
               height={200}
               className="rounded-lg object-cover w-full h-full"
