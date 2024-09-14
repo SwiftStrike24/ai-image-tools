@@ -87,8 +87,11 @@ const ImageCarousel = () => {
 export default function LandingPage() {
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
   const containerRef = useRef(null)
   const { toast } = useToast()
+
+  const MAX_EMAIL_LENGTH = 40 // Set a reasonable maximum length for email addresses
 
   const features = [
     { icon: <Wand2 className="w-6 h-6 text-purple-400" />, title: "AI Image Generation", description: "Create stunning visuals from text prompts" },
@@ -104,21 +107,15 @@ export default function LandingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError(null);
+
     if (!email) {
-      toast({
-        title: "Error",
-        description: "Please enter an email address.",
-        variant: "destructive",
-      });
+      setFormError("Please enter an email address.");
       return;
     }
 
     if (!isValidEmail(email)) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid email address.",
-        variant: "destructive",
-      });
+      setFormError("Please enter a valid email address.");
       return;
     }
 
@@ -128,18 +125,21 @@ export default function LandingPage() {
 
     if (result.success) {
       toast({
-        title: "Success",
+        title: "Welcome aboard!",
         description: result.message,
+        duration: 5000,
       });
       setEmail('');
     } else {
-      toast({
-        title: "Error",
-        description: result.message,
-        variant: "destructive",
-      });
+      setFormError(result.message);
     }
   };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newEmail = e.target.value.slice(0, MAX_EMAIL_LENGTH) // Limit the input length
+    setEmail(newEmail)
+    setFormError(null)
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white" ref={containerRef}>
@@ -176,14 +176,23 @@ export default function LandingPage() {
           transition={{ delay: 0.6, duration: 0.8 }}
         >
           <form onSubmit={handleSubmit} className="w-full max-w-md">
-            <Input 
-              type="email" 
-              placeholder="Enter your email for early access" 
-              value={email} 
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-              className="mb-4 bg-gray-800 text-white border-purple-500"
-              required
-            />
+            <div className="relative">
+              <Input 
+                type="email" 
+                placeholder="Enter your email for early access" 
+                value={email} 
+                onChange={handleEmailChange}
+                maxLength={MAX_EMAIL_LENGTH}
+                className={`mb-4 bg-gray-800 text-white border-purple-500 ${formError ? 'border-red-500' : ''}`}
+                required
+              />
+              {formError && (
+                <p className="text-red-400 text-sm mt-1 mb-2">{formError}</p>
+              )}
+              <p className="text-gray-400 text-xs mt-1">
+                {email.length}/{MAX_EMAIL_LENGTH}
+              </p>
+            </div>
             <Button 
               type="submit" 
               className="w-full bg-purple-600 hover:bg-purple-700"

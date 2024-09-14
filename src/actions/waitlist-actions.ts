@@ -17,13 +17,13 @@ export async function addToWaitlist(email: string) {
     const alreadyExists = await kv.sismember(waitlistKey, email);
 
     if (alreadyExists) {
-      return { success: false, message: "This email is already on the waitlist." };
+      return { success: false, message: "You're already on the waitlist. We'll be in touch soon!" };
     }
 
     await kv.sadd(waitlistKey, email);
-    return { success: true, message: "Successfully added to the waitlist!" };
+    return { success: true, message: "You've successfully joined the waitlist. We're excited to have you on board!" };
   } catch (error) {
     console.error("Error adding to waitlist:", error);
-    return { success: false, message: "An error occurred. Please try again later." };
+    return { success: false, message: "Oops! Something went wrong on our end. Please try again later." };
   }
 }
