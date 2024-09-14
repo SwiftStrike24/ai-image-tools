@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from 'react'
-import { motion, useAnimation, AnimatePresence } from 'framer-motion'
+import { motion, useAnimation, AnimatePresence, useInView } from 'framer-motion'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowRight, Wand2, Maximize, Layout, Download } from 'lucide-react'
@@ -95,6 +95,7 @@ export default function LandingPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const containerRef = useRef(null)
   const { toast } = useToast()
+  const emailInputRef = useRef<HTMLInputElement>(null)
 
   const MAX_EMAIL_LENGTH = 40 // Set a reasonable maximum length for email addresses
 
@@ -169,6 +170,33 @@ export default function LandingPage() {
     },
   }
 
+  const scrollToEmailInput = () => {
+    emailInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    emailInputRef.current?.focus()
+  }
+
+  const controls = useAnimation()
+  const ref = useRef(null)
+  const inView = useInView(ref)
+
+  useEffect(() => {
+    if (inView) {
+      controls.start('visible')
+    }
+  }, [controls, inView])
+
+  const emailInputVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.5,
+        ease: 'easeOut'
+      }
+    }
+  }
+
   return (
     <AnimatePresence>
       <motion.div
@@ -202,40 +230,48 @@ export default function LandingPage() {
           </motion.div>
 
           <motion.div 
-            className="flex justify-center my-16"
-            variants={itemVariants}
+            ref={ref}
+            animate={controls}
+            initial="hidden"
+            variants={emailInputVariants}
+            className="flex justify-center my-16 px-4"
           >
-            <form onSubmit={handleSubmit} className="w-full max-w-md">
-              <div className="relative">
-                <Input 
-                  type="email" 
-                  placeholder="Enter your email for early access" 
-                  value={email} 
-                  onChange={handleEmailChange}
-                  maxLength={MAX_EMAIL_LENGTH}
-                  className={`mb-4 bg-gray-800 text-white border-purple-500 ${formError ? 'border-red-500' : ''}`}
-                  required
-                />
-                {formError && (
-                  <p className="text-red-400 text-sm mt-1 mb-2">{formError}</p>
-                )}
-                <p className="text-gray-400 text-xs mt-1">
-                  {email.length}/{MAX_EMAIL_LENGTH}
-                </p>
-              </div>
-              <Button 
-                type="submit" 
-                className="w-full bg-purple-600 hover:bg-purple-700"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Joining...' : 'Join Waitlist'} 
-                <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
-            </form>
+            <div className="w-full max-w-md">
+              <h3 className="text-2xl font-bold mb-4 text-center">Join the Waitlist</h3>
+              <p className="text-gray-300 text-center mb-6">Be the first to experience the future of AI-powered image enhancement</p>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="relative">
+                  <Input 
+                    ref={emailInputRef}
+                    type="email" 
+                    placeholder="Enter your email for early access" 
+                    value={email} 
+                    onChange={handleEmailChange}
+                    maxLength={MAX_EMAIL_LENGTH}
+                    className={`w-full bg-gray-800 text-white border-purple-500 ${formError ? 'border-red-500' : ''}`}
+                    required
+                  />
+                  {formError && (
+                    <p className="text-red-400 text-sm mt-1">{formError}</p>
+                  )}
+                  <p className="text-gray-400 text-xs mt-1">
+                    {email.length}/{MAX_EMAIL_LENGTH}
+                  </p>
+                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full bg-purple-600 hover:bg-purple-700"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Joining...' : 'Join Waitlist'} 
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </Button>
+              </form>
+            </div>
           </motion.div>
 
           <motion.div 
-            className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16"
+            className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16 mt-24"
             variants={itemVariants}
           >
             {features.map((feature, index) => (
@@ -278,7 +314,10 @@ export default function LandingPage() {
               <div className="text-center">
                 <h3 className="text-3xl font-bold mb-4">Experience the Magic</h3>
                 <p className="text-xl mb-8">Join now and revolutionize your creative process</p>
-                <Button className="bg-white text-purple-900 hover:bg-gray-200">
+                <Button 
+                  className="bg-white text-purple-900 hover:bg-gray-200"
+                  onClick={scrollToEmailInput}
+                >
                   Get Started <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
               </div>
