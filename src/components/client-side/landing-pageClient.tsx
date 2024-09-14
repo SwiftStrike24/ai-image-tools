@@ -167,15 +167,18 @@ export default function LandingPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1, duration: 0.8 }}
-          className="mb-16"
+          className="mb-16 p-8 rounded-lg bg-gray-800 max-w-4xl mx-auto"
         >
           <h3 className="text-2xl font-bold mb-4 text-center">See the Difference</h3>
-          <BeforeAfterSlider
-            beforeImage="/images/landing-page/before-after-images/before-image.jpg"
-            afterImage="/images/landing-page/before-after-images/after-image.jpg"
-            beforeAlt="Image before AI enhancement"
-            afterAlt="Image after AI enhancement"
-          />
+          <p className="text-gray-300 text-center mb-6">Experience the power of AI-enhanced images</p>
+          <div className="max-w-3xl mx-auto">
+            <BeforeAfterSlider
+              beforeImage="/images/landing-page/before-after-images/before-image.jpg"
+              afterImage="/images/landing-page/before-after-images/after-image.jpg"
+              beforeAlt="Image before AI enhancement"
+              afterAlt="Image after AI enhancement"
+            />
+          </div>
         </motion.div>
 
         <motion.div 
