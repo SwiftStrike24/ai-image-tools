@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import ReactBeforeSliderComponent from 'react-before-after-slider-component'
 import 'react-before-after-slider-component/dist/build.css'
 
@@ -17,25 +17,6 @@ const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
   beforeAlt = 'Before image',
   afterAlt = 'After image',
 }) => {
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 })
-
-  useEffect(() => {
-    const loadImage = (src: string) => {
-      return new Promise<HTMLImageElement>((resolve, reject) => {
-        const img = new Image()
-        img.onload = () => resolve(img)
-        img.onerror = reject
-        img.src = src
-      })
-    }
-
-    Promise.all([loadImage(beforeImage), loadImage(afterImage)]).then(([img1, img2]) => {
-      const maxWidth = Math.max(img1.width, img2.width)
-      const maxHeight = Math.max(img1.height, img2.height)
-      setDimensions({ width: maxWidth, height: maxHeight })
-    })
-  }, [beforeImage, afterImage])
-
   const FIRST_IMAGE = {
     imageUrl: beforeImage,
     alt: beforeAlt,
@@ -46,8 +27,8 @@ const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
-      <div style={{ width: '100%', aspectRatio: `${dimensions.width} / ${dimensions.height}` }}>
+    <div className="w-full max-w-2xl mx-auto">
+      <div style={{ width: '100%', aspectRatio: '9 / 16' }}>
         <ReactBeforeSliderComponent
           firstImage={FIRST_IMAGE}
           secondImage={SECOND_IMAGE}
