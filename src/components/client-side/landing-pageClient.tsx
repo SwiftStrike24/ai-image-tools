@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowRight, Wand2, Maximize, Layout, Download } from 'lucide-react'
 import Image from 'next/image'
+import BeforeAfterSlider from '@/components/BeforeAfterSlider'
 
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
@@ -162,6 +163,21 @@ export default function LandingPage() {
           ))}
         </motion.div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1, duration: 0.8 }}
+          className="mb-16"
+        >
+          <h3 className="text-2xl font-bold mb-4 text-center">See the Difference</h3>
+          <BeforeAfterSlider
+            beforeImage="/images/landing-page/before-after-images/before-image.jpg"
+            afterImage="/images/landing-page/before-after-images/after-image.jpg"
+            beforeAlt="Image before AI enhancement"
+            afterAlt="Image after AI enhancement"
+          />
+        </motion.div>
+
         <motion.div 
           className="relative h-[400px] bg-purple-900 rounded-lg overflow-hidden"
           style={{ scale: 1, y: '0%', opacity: 1 }}
@@ -176,6 +192,7 @@ export default function LandingPage() {
             </div>
           </div>
         </motion.div>
+
       </main>
 
       <footer className="text-center py-8 text-gray-400">
