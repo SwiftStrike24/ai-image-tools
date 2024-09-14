@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { ArrowRight, Wand2, Maximize, Layout, Download } from 'lucide-react'
 import Image from 'next/image'
 import BeforeAfterSlider from '@/components/BeforeAfterSlider'
+import { addToWaitlist } from '@/actions/waitlist-actions'
+import { useToast } from "@/hooks/use-toast"
 
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
@@ -84,7 +86,9 @@ const ImageCarousel = () => {
 
 export default function LandingPage() {
   const [email, setEmail] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const containerRef = useRef(null)
+  const { toast } = useToast()
 
   const features = [
     { icon: <Wand2 className="w-6 h-6 text-purple-400" />, title: "AI Image Generation", description: "Create stunning visuals from text prompts" },
@@ -92,6 +96,50 @@ export default function LandingPage() {
     { icon: <Layout className="w-6 h-6 text-purple-400" />, title: "Multiple Aspect Ratios", description: "Support for various dimensions" },
     { icon: <Download className="w-6 h-6 text-purple-400" />, title: "High-Quality Outputs", description: "Generate WebP, JPG, or PNG formats" },
   ]
+
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      toast({
+        title: "Error",
+        description: "Please enter an email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    const result = await addToWaitlist(email);
+    setIsSubmitting(false);
+
+    if (result.success) {
+      toast({
+        title: "Success",
+        description: result.message,
+      });
+      setEmail('');
+    } else {
+      toast({
+        title: "Error",
+        description: result.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white" ref={containerRef}>
@@ -127,18 +175,24 @@ export default function LandingPage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6, duration: 0.8 }}
         >
-          <div className="w-full max-w-md">
+          <form onSubmit={handleSubmit} className="w-full max-w-md">
             <Input 
               type="email" 
               placeholder="Enter your email for early access" 
               value={email} 
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
               className="mb-4 bg-gray-800 text-white border-purple-500"
+              required
             />
-            <Button className="w-full bg-purple-600 hover:bg-purple-700">
-              Join Waitlist <ArrowRight className="ml-2 w-4 h-4" />
+            <Button 
+              type="submit" 
+              className="w-full bg-purple-600 hover:bg-purple-700"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Joining...' : 'Join Waitlist'} 
+              <ArrowRight className="ml-2 w-4 h-4" />
             </Button>
-          </div>
+          </form>
         </motion.div>
 
         <motion.div 
