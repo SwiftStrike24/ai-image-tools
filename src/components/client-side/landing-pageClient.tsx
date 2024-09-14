@@ -8,9 +8,10 @@ import { ArrowRight, Wand2, Maximize, Layout, Download } from 'lucide-react'
 import Image from 'next/image'
 
 const ImageCarousel = () => {
-  const carouselRef = useRef<HTMLDivElement>(null)
-  const controls = useAnimation()
   const [images, setImages] = useState<string[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const controls = useAnimation()
+  const carouselRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const fetchImages = async () => {
@@ -20,25 +21,36 @@ const ImageCarousel = () => {
         setImages(data.images)
       } catch (error) {
         console.error('Failed to fetch images:', error)
+      } finally {
+        setIsLoading(false)
       }
     }
     fetchImages()
   }, [])
 
   useEffect(() => {
-    if (images.length === 0) return
-    controls.start({
-      x: [`0%`, `-${100}%`],
-      transition: {
-        x: {
-          repeat: Infinity,
-          repeatType: "loop",
-          duration: 40, // Slowed down the animation
-          ease: "linear",
-        },
-      },
-    })
-  }, [controls, images])
+    if (!isLoading && images.length > 0 && carouselRef.current) {
+      const animate = async () => {
+        const carouselWidth = carouselRef.current!.scrollWidth / 2
+        await controls.start({
+          x: [-carouselWidth, 0],
+          transition: {
+            x: {
+              repeat: Infinity,
+              repeatType: "loop",
+              duration: images.length * 5,
+              ease: "linear",
+            },
+          },
+        })
+      }
+      animate()
+    }
+  }, [isLoading, images, controls])
+
+  if (isLoading || images.length === 0) return null
+
+  const extendedImages = [...images, ...images]
 
   return (
     <div className="w-full overflow-hidden py-8">
@@ -46,8 +58,9 @@ const ImageCarousel = () => {
         ref={carouselRef}
         className="flex"
         animate={controls}
+        style={{ width: `${extendedImages.length * 160}px` }}
       >
-        {[...images, ...images].map((src, index) => (
+        {extendedImages.map((src, index) => (
           <motion.div
             key={index}
             className="flex-shrink-0 w-40 h-40 mx-2"
