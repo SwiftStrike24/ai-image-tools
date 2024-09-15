@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, useAnimation, AnimatePresence, useInView, useScroll } from 'framer-motion'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowRight, Wand2, Maximize, Layout, Download, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowRight, Wand2, Maximize, Layout, Download, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
 import Image from 'next/image'
 import BeforeAfterSlider from '@/components/BeforeAfterSlider'
 import { addToWaitlist } from '@/actions/waitlist-actions'
@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import ShinyButton from "@/components/magicui/shiny-button"
 import AnimatedCheckmark from '@/components/AnimatedCheckmark'
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
@@ -385,6 +387,30 @@ export default function LandingPage() {
               className="px-8 py-4 text-lg font-semibold"
               text="Join the AI Revolution"
             />
+          </motion.div>
+
+          {/* New Pricing Coming Soon component */}
+          <motion.div
+            variants={itemVariants}
+            className="mb-16"
+          >
+            <Card className="bg-gradient-to-br from-purple-900 to-indigo-900 border-2 border-purple-500 shadow-lg hover:shadow-purple-500/20 transition-shadow duration-300">
+              <CardContent className="p-6 text-center">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5 }}
+                  className="flex items-center justify-center mb-4"
+                >
+                  <Sparkles className="w-8 h-8 text-purple-400 mr-2" />
+                  <h3 className="text-2xl font-bold text-white">Pricing Coming Soon</h3>
+                </motion.div>
+                <p className="text-purple-200 mb-4">Get ready for flexible plans tailored to your needs</p>
+                <Badge variant="secondary" className="bg-purple-700 text-white hover:bg-purple-600 transition-colors duration-300">
+                  Stay Tuned
+                </Badge>
+              </CardContent>
+            </Card>
           </motion.div>
 
           <motion.footer
