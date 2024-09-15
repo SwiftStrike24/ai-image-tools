@@ -109,7 +109,7 @@ export default function FluxAIImageGenerator() {
         output_quality: outputQuality,
         enhance_prompt: isEnhancePromptEnabled,
         disable_safety_checker: true,
-        seed: followUpLevel >= 2 ? currentSeed : undefined,
+        seed: followUpLevel >= 2 && currentSeed !== null ? currentSeed : undefined,
         followUpLevel: followUpLevel + 1,
       };
 
@@ -122,9 +122,10 @@ export default function FluxAIImageGenerator() {
       console.log("Results received from generateFluxImage:", results);
 
       if (Array.isArray(results) && results.length > 0) {
-        const newImageResults = results.map((result: FluxImageResult) => ({
+        const newImageResults = results.map((result, index) => ({
           ...result,
           followUpLevel: followUpLevel + 1,
+          index, // Add the index property here
         }));
 
         const newSeed = newImageResults[0].seed;
