@@ -4,11 +4,12 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, useAnimation, AnimatePresence, useInView } from 'framer-motion'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowRight, Wand2, Maximize, Layout, Download } from 'lucide-react'
+import { ArrowRight, Wand2, Maximize, Layout, Download, ChevronDown, ChevronUp } from 'lucide-react'
 import Image from 'next/image'
 import BeforeAfterSlider from '@/components/BeforeAfterSlider'
 import { addToWaitlist } from '@/actions/waitlist-actions'
 import { useToast } from "@/hooks/use-toast"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
@@ -100,10 +101,29 @@ export default function LandingPage() {
   const MAX_EMAIL_LENGTH = 40 // Set a reasonable maximum length for email addresses
 
   const features = [
-    { icon: <Wand2 className="w-6 h-6 text-purple-400" />, title: "AI Image Generation", description: "Create stunning visuals from text prompts" },
+    { icon: <Wand2 className="w-6 h-6 text-purple-400" />, title: "AI Image Generation", description: "Create stunning visuals from text prompts using FLUX.1 model" },
     { icon: <Maximize className="w-6 h-6 text-purple-400" />, title: "Image Upscaling", description: "Enhance image quality up to 10x" },
     { icon: <Layout className="w-6 h-6 text-purple-400" />, title: "Multiple Aspect Ratios", description: "Support for various dimensions" },
     { icon: <Download className="w-6 h-6 text-purple-400" />, title: "High-Quality Outputs", description: "Generate WebP, JPG, or PNG formats" },
+  ]
+
+  const faqs = [
+    {
+      question: "What's included in the free tier?",
+      answer: "Our free tier offers 20 image upscales and 20 image generations per day. Each feature has its own counter, giving you plenty of room to experiment with both capabilities."
+    },
+    {
+      question: "Which AI model is used for image generation?",
+      answer: "We use the cutting-edge FLUX.1 model for image generation, known for its exceptional quality and versatility in creating stunning visuals from text prompts."
+    },
+    {
+      question: "How does image upscaling work?",
+      answer: "Our AI-powered upscaling technology enhances the resolution and quality of your images, making them sharper and more detailed without losing the original essence."
+    },
+    {
+      question: "Can I use the generated images commercially?",
+      answer: "Yes, all images generated using our platform are free for commercial use. However, please check our terms of service for any specific limitations or requirements."
+    }
   ]
 
   const isValidEmail = (email: string): boolean => {
@@ -308,7 +328,7 @@ export default function LandingPage() {
 
           <motion.div 
             variants={itemVariants}
-            className="relative h-[400px] bg-purple-900 rounded-lg overflow-hidden"
+            className="relative h-[400px] bg-purple-900 rounded-lg overflow-hidden mb-16"
           >
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
@@ -323,14 +343,48 @@ export default function LandingPage() {
               </div>
             </div>
           </motion.div>
-        </main>
 
-        <motion.footer
-          variants={itemVariants}
-          className="text-center py-8 text-gray-400"
-        >
-          © 2024 FluxScale AI. All rights reserved.
-        </motion.footer>
+          <motion.div
+            variants={itemVariants}
+            className="mb-16 p-8 rounded-lg max-w-4xl mx-auto"
+          >
+            <h3 className="text-3xl font-bold mb-8 text-center">Frequently Asked Questions</h3>
+            <Accordion type="single" collapsible className="w-full">
+              {faqs.map((faq, index) => (
+                <AccordionItem key={index} value={`item-${index}`}>
+                  <AccordionTrigger className="text-left">
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="flex items-center"
+                    >
+                      <ChevronDown className="w-5 h-5 mr-2 text-purple-400" />
+                      <span>{faq.question}</span>
+                    </motion.div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className="text-gray-300"
+                    >
+                      {faq.answer}
+                    </motion.div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </motion.div>
+
+          <motion.footer
+            variants={itemVariants}
+            className="text-center py-8 text-gray-400"
+          >
+            © 2024 FluxScale AI. All rights reserved.
+          </motion.footer>
+        </main>
       </motion.div>
     </AnimatePresence>
   )
