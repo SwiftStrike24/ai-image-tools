@@ -324,12 +324,18 @@ export default function LandingPage() {
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-xl font-semibold text-white">{feature.title}</CardTitle>
                     <motion.div
-                      className="text-purple-400"
-                      animate={{ rotate: 0 }}
-                      whileHover={{ rotate: 360, scale: 2 }}
+                      className="text-purple-400 relative w-8 h-8"
+                      whileHover={{ rotate: 360 }}
                       transition={{ duration: 0.5 }}
                     >
-                      {feature.icon}
+                      <motion.div
+                        className="absolute inset-0 flex items-center justify-center"
+                        initial={{ scale: 1 }}
+                        whileHover={{ scale: 2 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {feature.icon}
+                      </motion.div>
                     </motion.div>
                   </CardHeader>
                   <CardContent>
