@@ -1,14 +1,14 @@
 import { clerkMiddleware, auth } from "@clerk/nextjs/server";
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import type { NextRequest, NextFetchEvent } from 'next/server';
 
 export default function middleware(req: NextRequest) {
   // Run Clerk middleware
-  const clerkResponse = clerkMiddleware()(req);
+  const clerkResponse = clerkMiddleware()(req, { sourcePage: req.url } as NextFetchEvent);
 
   // If Clerk middleware redirects or modifies the response, return it
-  if (clerkResponse.status !== 200) {
-    return clerkResponse;
+  if ((clerkResponse as NextResponse).status !== 200) {
+    return clerkResponse as NextResponse;
   }
 
   const { userId } = auth();

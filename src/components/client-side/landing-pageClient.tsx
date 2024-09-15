@@ -10,7 +10,6 @@ import BeforeAfterSlider from '@/components/BeforeAfterSlider'
 import { addToWaitlist } from '@/actions/waitlist-actions'
 import { useToast } from "@/hooks/use-toast"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { useRouter } from 'next/navigation'
 
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
@@ -97,8 +96,7 @@ export default function LandingPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const containerRef = useRef(null)
   const { toast } = useToast()
-  const emailInputRef = useRef<HTMLInputElement>(null)
-  const router = useRouter()
+  const emailInputRef = useRef<HTMLTextAreaElement>(null)
 
   const MAX_EMAIL_LENGTH = 40 // Set a reasonable maximum length for email addresses
 
@@ -163,7 +161,7 @@ export default function LandingPage() {
     }
   };
 
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEmailChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newEmail = e.target.value.slice(0, MAX_EMAIL_LENGTH) // Limit the input length
     setEmail(newEmail)
     setFormError(null)
@@ -190,11 +188,6 @@ export default function LandingPage() {
         stiffness: 100,
       },
     },
-  }
-
-  const scrollToEmailInput = () => {
-    emailInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    emailInputRef.current?.focus()
   }
 
   const controls = useAnimation()
@@ -262,7 +255,6 @@ export default function LandingPage() {
                 <div className="relative">
                   <Input 
                     ref={emailInputRef}
-                    type="email" 
                     placeholder="Enter your email for early access" 
                     value={email} 
                     onChange={handleEmailChange}
@@ -322,24 +314,6 @@ export default function LandingPage() {
                 beforeAlt="Image before AI enhancement"
                 afterAlt="Image after AI enhancement"
               />
-            </div>
-          </motion.div>
-
-          <motion.div 
-            variants={itemVariants}
-            className="relative h-[400px] bg-purple-900 rounded-lg overflow-hidden mb-16"
-          >
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <h3 className="text-3xl font-bold mb-4">Experience the Magic</h3>
-                <p className="text-xl mb-8">Join now and revolutionize your creative process</p>
-                <Button 
-                  className="bg-white text-purple-900 hover:bg-gray-200"
-                  onClick={scrollToEmailInput}
-                >
-                  Get Started <ArrowRight className="ml-2 w-4 h-4" />
-                </Button>
-              </div>
             </div>
           </motion.div>
 

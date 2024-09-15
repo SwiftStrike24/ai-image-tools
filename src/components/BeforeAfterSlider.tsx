@@ -28,7 +28,7 @@ const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
 
   return (
     <div className="w-full mx-auto relative">
-      <div style={{ width: '100%', aspectRatio: '16 / 9' }}>
+      <div className="w-full aspect-video">
         <ReactBeforeSliderComponent
           firstImage={FIRST_IMAGE}
           secondImage={SECOND_IMAGE}
