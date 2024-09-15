@@ -12,8 +12,9 @@ import { useToast } from "@/hooks/use-toast"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import ShinyButton from "@/components/magicui/shiny-button"
 import AnimatedCheckmark from '@/components/AnimatedCheckmark'
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
@@ -107,10 +108,10 @@ export default function LandingPage() {
   const MAX_EMAIL_LENGTH = 40 // Set a reasonable maximum length for email addresses
 
   const features = [
-    { icon: <Wand2 className="w-6 h-6 text-purple-400" />, title: "AI Image Generation", description: "Create stunning visuals from text prompts using FLUX.1 model" },
-    { icon: <Maximize className="w-6 h-6 text-purple-400" />, title: "Image Upscaling", description: "Enhance image quality up to 10x" },
-    { icon: <Layout className="w-6 h-6 text-purple-400" />, title: "Multiple Aspect Ratios", description: "Support for various dimensions" },
-    { icon: <Download className="w-6 h-6 text-purple-400" />, title: "High-Quality Outputs", description: "Generate WebP, JPG, or PNG formats" },
+    { icon: <Wand2 className="w-6 h-6" />, title: "AI Image Generation", description: "Create stunning visuals from text prompts using FLUX.1 model", badge: "FLUX.1" },
+    { icon: <Maximize className="w-6 h-6" />, title: "Image Upscaling", description: "Enhance image quality up to 10x", badge: "2x-10x" },
+    { icon: <Layout className="w-6 h-6" />, title: "Multiple Aspect Ratios", description: "Support for various dimensions", badge: "Flexible" },
+    { icon: <Download className="w-6 h-6" />, title: "High-Quality Outputs", description: "Generate WebP, JPG, or PNG formats", badge: "HD" },
   ]
 
   const faqs = [
@@ -316,15 +317,31 @@ export default function LandingPage() {
             {features.map((feature, index) => (
               <motion.div 
                 key={index}
-                className="bg-gray-800 p-6 rounded-lg"
-                whileHover={{ scale: 1.05 }}
+                whileHover={{ scale: 1.05, zIndex: 1 }}
                 transition={{ type: "spring", stiffness: 300 }}
               >
-                <div className="flex items-center mb-4">
-                  {feature.icon}
-                  <h3 className="text-xl font-semibold ml-3">{feature.title}</h3>
-                </div>
-                <p className="text-gray-400">{feature.description}</p>
+                <Card className="bg-gradient-to-br from-gray-800 to-gray-900 border-purple-500 shadow-lg hover:shadow-purple-500/20 transition-all duration-300 group">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-xl font-semibold text-white">{feature.title}</CardTitle>
+                    <motion.div
+                      className="text-purple-400"
+                      animate={{ rotate: 0 }}
+                      whileHover={{ rotate: 360, scale: 2 }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      {feature.icon}
+                    </motion.div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-400">{feature.description}</p>
+                    <Badge 
+                      variant="secondary" 
+                      className="mt-4 bg-purple-700 text-white hover:bg-purple-600 transition-colors duration-300"
+                    >
+                      {feature.badge}
+                    </Badge>
+                  </CardContent>
+                </Card>
               </motion.div>
             ))}
           </motion.div>
