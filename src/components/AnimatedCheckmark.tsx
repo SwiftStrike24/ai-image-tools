@@ -9,7 +9,7 @@ const AnimatedCheckmark = () => {
       height="24"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor"
+      stroke="#4ade80" // Changed to a green color
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
