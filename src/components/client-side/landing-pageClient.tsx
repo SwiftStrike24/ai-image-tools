@@ -10,6 +10,7 @@ import BeforeAfterSlider from '@/components/BeforeAfterSlider'
 import { addToWaitlist } from '@/actions/waitlist-actions'
 import { useToast } from "@/hooks/use-toast"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { useRouter } from 'next/navigation'
 
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
@@ -97,6 +98,7 @@ export default function LandingPage() {
   const containerRef = useRef(null)
   const { toast } = useToast()
   const emailInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
 
   const MAX_EMAIL_LENGTH = 40 // Set a reasonable maximum length for email addresses
 
@@ -217,6 +219,10 @@ export default function LandingPage() {
     }
   }
 
+  const handleSignIn = () => {
+    router.push('/admin/login')
+  }
+
   return (
     <AnimatePresence>
       <motion.div
@@ -231,7 +237,7 @@ export default function LandingPage() {
           variants={itemVariants}
         >
           <h1 className="text-2xl font-bold text-purple-500">FluxScale AI</h1>
-          <Button variant="ghost" className="text-purple-400 hover:text-purple-300">
+          <Button variant="ghost" className="text-purple-400 hover:text-purple-300" onClick={handleSignIn}>
             Sign In <ArrowRight className="ml-2 w-4 h-4" />
           </Button>
         </motion.nav>
