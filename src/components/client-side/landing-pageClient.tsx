@@ -11,6 +11,7 @@ import { addToWaitlist } from '@/actions/waitlist-actions'
 import { useToast } from "@/hooks/use-toast"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import ShinyButton from "@/components/magicui/shiny-button"
+import AnimatedCheckmark from '@/components/AnimatedCheckmark'
 
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
@@ -99,6 +100,7 @@ export default function LandingPage() {
   const { toast } = useToast()
   const emailInputRef = useRef<HTMLTextAreaElement>(null)
   const waitlistRef = useRef<HTMLDivElement>(null)
+  const [isSuccess, setIsSuccess] = useState(false)
 
   const MAX_EMAIL_LENGTH = 40 // Set a reasonable maximum length for email addresses
 
@@ -152,12 +154,15 @@ export default function LandingPage() {
     setIsSubmitting(false);
 
     if (result.success) {
+      setIsSuccess(true);
       toast({
         title: "Welcome aboard!",
         description: result.message,
         duration: 5000,
       });
       setEmail('');
+      // Reset success state after 3 seconds
+      setTimeout(() => setIsSuccess(false), 3000);
     } else {
       setFormError(result.message);
     }
@@ -275,14 +280,29 @@ export default function LandingPage() {
                     {email.length}/{MAX_EMAIL_LENGTH}
                   </p>
                 </div>
-                <Button 
+                <ShinyButton 
                   type="submit" 
-                  className="w-full bg-purple-600 hover:bg-purple-700"
-                  disabled={isSubmitting}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded"
+                  disabled={isSubmitting || isSuccess}
                 >
-                  {isSubmitting ? 'Joining...' : 'Join Waitlist'} 
-                  <ArrowRight className="ml-2 w-4 h-4" />
-                </Button>
+                  {isSubmitting ? (
+                    'Joining...'
+                  ) : isSuccess ? (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 200, damping: 10 }}
+                      className="flex justify-center items-center"
+                    >
+                      <AnimatedCheckmark />
+                    </motion.div>
+                  ) : (
+                    <div className="flex items-center justify-center">
+                      <span>Join Waitlist</span>
+                      <ArrowRight className="ml-2 w-4 h-4" />
+                    </div>
+                  )}
+                </ShinyButton>
               </form>
             </div>
           </motion.div>
