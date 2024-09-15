@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from 'react'
-import { motion, useAnimation, AnimatePresence, useInView } from 'framer-motion'
+import { motion, useAnimation, AnimatePresence, useInView, useScroll } from 'framer-motion'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowRight, Wand2, Maximize, Layout, Download, ChevronDown, ChevronUp } from 'lucide-react'
@@ -10,6 +10,7 @@ import BeforeAfterSlider from '@/components/BeforeAfterSlider'
 import { addToWaitlist } from '@/actions/waitlist-actions'
 import { useToast } from "@/hooks/use-toast"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import ShinyButton from "@/components/magicui/shiny-button"
 
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
@@ -97,6 +98,7 @@ export default function LandingPage() {
   const containerRef = useRef(null)
   const { toast } = useToast()
   const emailInputRef = useRef<HTMLTextAreaElement>(null)
+  const waitlistRef = useRef<HTMLDivElement>(null)
 
   const MAX_EMAIL_LENGTH = 40 // Set a reasonable maximum length for email addresses
 
@@ -212,6 +214,10 @@ export default function LandingPage() {
     }
   }
 
+  const scrollToWaitlist = () => {
+    waitlistRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
   return (
     <AnimatePresence>
       <motion.div
@@ -248,7 +254,7 @@ export default function LandingPage() {
             variants={emailInputVariants}
             className="flex justify-center my-16 px-4"
           >
-            <div className="w-full max-w-md">
+            <div ref={waitlistRef} className="w-full max-w-md">
               <h3 className="text-2xl font-bold mb-4 text-center">Join the Waitlist</h3>
               <p className="text-gray-300 text-center mb-6">Be the first to experience the future of AI-powered image enhancement</p>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -348,6 +354,17 @@ export default function LandingPage() {
                 </AccordionItem>
               ))}
             </Accordion>
+          </motion.div>
+
+          <motion.div
+            variants={itemVariants}
+            className="flex justify-center mb-16"
+          >
+            <ShinyButton
+              onClick={scrollToWaitlist}
+              className="px-8 py-4 text-lg font-semibold"
+              text="Join the AI Revolution"
+            />
           </motion.div>
 
           <motion.footer
