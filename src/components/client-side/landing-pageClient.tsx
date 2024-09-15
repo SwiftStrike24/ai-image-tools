@@ -118,11 +118,11 @@ export default function LandingPage() {
     },
     {
       question: "How does image upscaling work?",
-      answer: "Our AI-powered upscaling technology enhances the resolution and quality of your images, making them sharper and more detailed without losing the original essence."
+      answer: "Our AI-powered upscaling technology enhances the resolution and quality of your images, making them sharper and more detailed without losing the original essence. We offer multiple upscale options: 2x, 4x, 6x, 8x, and 10x."
     },
     {
       question: "Can I use the generated images commercially?",
-      answer: "Yes, all images generated using our platform are free for commercial use. However, please check our terms of service for any specific limitations or requirements."
+      answer: "Yes, all images generated using our platform are free for commercial use."
     }
   ]
 
@@ -349,18 +349,17 @@ export default function LandingPage() {
             className="mb-16 p-8 rounded-lg max-w-4xl mx-auto"
           >
             <h3 className="text-3xl font-bold mb-8 text-center">Frequently Asked Questions</h3>
-            <Accordion type="single" collapsible className="w-full">
+            <Accordion type="single" collapsible className="w-full space-y-4">
               {faqs.map((faq, index) => (
-                <AccordionItem key={index} value={`item-${index}`}>
-                  <AccordionTrigger className="text-left">
+                <AccordionItem key={index} value={`item-${index}`} className="border-b border-purple-700">
+                  <AccordionTrigger className="text-left hover:no-underline">
                     <motion.div
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className="flex items-center"
+                      className="w-full text-lg font-semibold text-white"
                     >
-                      <ChevronDown className="w-5 h-5 mr-2 text-purple-400" />
-                      <span>{faq.question}</span>
+                      {faq.question}
                     </motion.div>
                   </AccordionTrigger>
                   <AccordionContent>
@@ -368,7 +367,7 @@ export default function LandingPage() {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 }}
-                      className="text-gray-300"
+                      className="text-gray-300 pt-2"
                     >
                       {faq.answer}
                     </motion.div>
