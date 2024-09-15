@@ -51,7 +51,7 @@ export default function AdminLoginForm() {
       <Input
         type="password"
         value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
         placeholder="Enter admin password"
         className="w-full bg-gray-700 text-white border-purple-500"
         required

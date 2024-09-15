@@ -219,10 +219,6 @@ export default function LandingPage() {
     }
   }
 
-  const handleSignIn = () => {
-    router.push('/admin/login')
-  }
-
   return (
     <AnimatePresence>
       <motion.div
@@ -237,9 +233,6 @@ export default function LandingPage() {
           variants={itemVariants}
         >
           <h1 className="text-2xl font-bold text-purple-500">FluxScale AI</h1>
-          <Button variant="ghost" className="text-purple-400 hover:text-purple-300" onClick={handleSignIn}>
-            Sign In <ArrowRight className="ml-2 w-4 h-4" />
-          </Button>
         </motion.nav>
         
         <main className="container mx-auto px-4 py-16">
