@@ -49,6 +49,8 @@ export default function AdminLoginForm() {
         body: JSON.stringify({ password }),
       })
 
+      const data = await response.json()
+
       if (response.ok) {
         sessionStorage.setItem('admin_session', 'true');
         const redirectUrl = searchParams?.get('redirect') || '/upscaler'
@@ -59,10 +61,10 @@ export default function AdminLoginForm() {
           variant: "default",
         })
       } else {
-        setError("Incorrect admin password")
+        setError(data.message || "Incorrect admin password")
         toast({
           title: "Login Failed",
-          description: "Incorrect admin password",
+          description: data.message || "Incorrect admin password",
           variant: "destructive",
         })
       }
