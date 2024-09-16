@@ -1,10 +1,45 @@
+"use client";
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { kv } from "@vercel/kv";
 
-export const revalidate = 0; // Disable caching for this page
+function AdminProtectedWaitlist() {
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [emails, setEmails] = useState<string[]>([]);
+  const router = useRouter();
 
-export default async function WaitlistPage() {
-  const waitlistKey = "waitlist";
-  const emails = await kv.smembers(waitlistKey);
+  useEffect(() => {
+    const checkAdminAuth = async () => {
+      const adminSession = sessionStorage.getItem('admin_session');
+      if (adminSession !== 'true') {
+        router.push('/admin/login?redirect=/admin/waitlist');
+      } else {
+        setIsAdminAuthenticated(true);
+        fetchWaitlistEmails();
+      }
+    };
+
+    checkAdminAuth();
+  }, [router]);
+
+  const fetchWaitlistEmails = async () => {
+    try {
+      const response = await fetch('/api/admin/waitlist');
+      if (response.ok) {
+        const data = await response.json();
+        setEmails(data.emails);
+      } else {
+        console.error('Failed to fetch waitlist emails');
+      }
+    } catch (error) {
+      console.error('Error fetching waitlist emails:', error);
+    }
+  };
+
+  if (!isAdminAuthenticated) {
+    return <div>Checking authentication...</div>;
+  }
 
   return (
     <div className="container mx-auto p-4">
@@ -15,5 +50,13 @@ export default async function WaitlistPage() {
         ))}
       </ul>
     </div>
+  );
+}
+
+export default function WaitlistPage() {
+  return (
+    <main className="min-h-screen bg-gray-900 text-white">
+      <AdminProtectedWaitlist />
+    </main>
   );
 }

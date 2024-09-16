@@ -13,6 +13,8 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 24, // 1 day
       path: '/',
     })
+    // Set a session storage item to indicate admin session
+    response.headers.append('Set-Cookie', 'admin_session=true; path=/; samesite=strict; max-age=86400');
     return response
   } else {
     return NextResponse.json({ success: false }, { status: 401 })

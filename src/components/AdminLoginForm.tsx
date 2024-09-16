@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
@@ -10,7 +10,17 @@ export default function AdminLoginForm() {
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
+
+  useEffect(() => {
+    // Check if admin session exists
+    const adminSession = sessionStorage.getItem('admin_session');
+    if (adminSession === 'true') {
+      const redirectUrl = searchParams?.get('redirect') || '/upscaler';
+      router.push(redirectUrl);
+    }
+  }, [router, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,8 +34,10 @@ export default function AdminLoginForm() {
       })
 
       if (response.ok) {
-        // Redirect to the upscaler page after successful admin login
-        router.push('/upscaler')
+        // Set admin session in sessionStorage
+        sessionStorage.setItem('admin_session', 'true');
+        const redirectUrl = searchParams?.get('redirect') || '/upscaler'
+        router.push(redirectUrl)
       } else {
         toast({
           title: "Login Failed",

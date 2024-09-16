@@ -13,29 +13,19 @@ export default function middleware(req: NextRequest) {
 
   const { userId } = auth();
 
-  // New redirection layer for /upscaler and /generator routes
+  // Redirection logic for admin-protected routes
   if (
     req.nextUrl.pathname.startsWith('/upscaler') ||
-    req.nextUrl.pathname.startsWith('/generator')
-  ) {
-    return NextResponse.redirect(new URL('/admin/login', req.url));
-  }
-
-  // Existing custom middleware logic (unchanged)
-  if (
-    req.nextUrl.pathname.startsWith('/upscaler') ||
-    req.nextUrl.pathname.startsWith('/generator')
+    req.nextUrl.pathname.startsWith('/generator') ||
+    req.nextUrl.pathname.startsWith('/admin/waitlist')
   ) {
     const adminAuthenticated = req.cookies.get('admin_authenticated')?.value;
 
-    // If not admin authenticated, redirect to admin login
-    if (adminAuthenticated !== 'true') {
-      return NextResponse.redirect(new URL('/admin/login', req.url));
-    }
-
-    // If user is not authenticated, redirect to admin login
-    if (!userId) {
-      return NextResponse.redirect(new URL('/admin/login', req.url));
+    // If not admin authenticated or user is not authenticated, redirect to admin login
+    if (adminAuthenticated !== 'true' || !userId) {
+      const loginUrl = new URL('/admin/login', req.url);
+      loginUrl.searchParams.set('redirect', req.nextUrl.pathname);
+      return NextResponse.redirect(loginUrl);
     }
   }
 
