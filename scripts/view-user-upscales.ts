@@ -1,5 +1,6 @@
 import { config } from 'dotenv';
 import { kv } from "@vercel/kv";
+import { clerkClient } from "@clerk/clerk-sdk-node";
 
 // Load environment variables from .env.local
 config({ path: '.env.local' });
@@ -19,13 +20,29 @@ async function viewUserUpscales() {
       const userId = key.replace(STORAGE_KEY_PREFIX, '');
       const usageCount = await kv.get(key) as number;
       const remainingUpscales = DAILY_LIMIT - (usageCount || 0);
-      return { userId, remainingUpscales };
+
+      // Fetch user information from Clerk
+      let username = 'Unknown';
+      let email = 'Unknown';
+      try {
+        const user = await clerkClient.users.getUser(userId);
+        username = user.username || `${user.firstName} ${user.lastName}`.trim() || 'Unknown';
+        email = user.emailAddresses[0]?.emailAddress || 'Unknown';
+      } catch (error) {
+        console.error(`Error fetching user info for ${userId}:`, error);
+      }
+
+      return { userId, username, email, remainingUpscales };
     }));
 
     console.log("User Upscales Remaining:");
-    userUpscales.forEach(({ userId, remainingUpscales }) => {
-      console.log(`User ${userId}: ${remainingUpscales} upscales remaining`);
+    console.log("-------------------------------------------------------------------------------------------");
+    console.log("User ID                          | Username       | Email                  | Remaining");
+    console.log("-------------------------------------------------------------------------------------------");
+    userUpscales.forEach(({ userId, username, email, remainingUpscales }) => {
+      console.log(`${userId.padEnd(22)} | ${username.padEnd(14)} | ${email.padEnd(22)} | ${remainingUpscales}`);
     });
+    console.log("-------------------------------------------------------------------------------------------");
 
     console.log(`\nTotal users: ${userUpscales.length}`);
   } catch (error) {
