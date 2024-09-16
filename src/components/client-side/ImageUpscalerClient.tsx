@@ -416,18 +416,6 @@ function ImageUpscalerComponent() {
             )}
           </AnimatePresence>
 
-          {/* Daily Usage Display */}
-          <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Daily Usage (Free Plan)</span>
-              <span className="text-sm font-medium">{dailyUsage} / {UPSCALER_DAILY_LIMIT}</span>
-            </div>
-            <Progress value={(dailyUsage / UPSCALER_DAILY_LIMIT) * 100} className="h-2" />
-            <p className="text-xs text-purple-300">
-              {UPSCALER_DAILY_LIMIT - dailyUsage} upscales remaining today. Resets at midnight.
-            </p>
-          </div>
-
           {/* Main Content */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
             {/* Image Upload Area */}
@@ -619,6 +607,18 @@ function ImageUpscalerComponent() {
               </AlertDescription>
             </Alert>
           )}
+
+          {/* Daily Usage Display */}
+          <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Daily Usage (Free Plan)</span>
+              <span className="text-sm font-medium">{dailyUsage} / {UPSCALER_DAILY_LIMIT}</span>
+            </div>
+            <Progress value={(dailyUsage / UPSCALER_DAILY_LIMIT) * 100} className="h-2" />
+            <p className="text-xs text-purple-300">
+              {UPSCALER_DAILY_LIMIT - dailyUsage} upscales remaining today. Resets at midnight.
+            </p>
+          </div>
         </div>
       </div>
       
