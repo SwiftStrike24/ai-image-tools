@@ -566,7 +566,7 @@ function ImageUpscalerComponent() {
                 </ShinyButton>
                 {dailyUsage >= DAILY_LIMIT && (
                   <p className="text-xs text-red-400 mt-2">
-                    You've reached your daily limit. Please try again tomorrow or upgrade your plan.
+                    You&apos;ve reached your daily limit. Please try again tomorrow or upgrade your plan.
                   </p>
                 )}
               </div>
