@@ -633,10 +633,14 @@ function ImageUpscalerComponent() {
           <div className="relative flex items-center justify-center w-screen h-screen" onClick={closeModal}>
             {selectedImage && (
               <div className="relative max-w-full max-h-full" onClick={(e) => e.stopPropagation()}>
-                <img 
+                <Image 
                   src={selectedImage}
                   alt="Upscaled image"
-                  className="max-w-full max-h-[95vh] object-contain"
+                  layout="responsive"
+                  width={1920}
+                  height={1080}
+                  objectFit="contain"
+                  className="max-w-[95vw] max-h-[95vh]"
                 />
                 <DialogClose className="absolute top-6 right-6 rounded-full bg-black bg-opacity-50 p-2 text-white hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 transition-all duration-200">
                   <X className="h-6 w-6" />
