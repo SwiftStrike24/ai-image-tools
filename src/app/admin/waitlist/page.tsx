@@ -30,7 +30,7 @@ function AdminProtectedWaitlist() {
     setError(null);
     try {
       const result = await getWaitlistEmails();
-      if (result.success) {
+      if (result.success && result.emails) {
         setEmails(result.emails);
       } else {
         setError(result.error || 'Failed to fetch waitlist emails');
