@@ -177,6 +177,13 @@ export default function LandingPage() {
     setFormError(null)
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault() // Prevent default form submission
+      handleSubmit(e as unknown as React.FormEvent)
+    }
+  }
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -272,6 +279,7 @@ export default function LandingPage() {
                     placeholder="Enter your email for early access" 
                     value={email} 
                     onChange={handleEmailChange}
+                    onKeyDown={handleKeyDown}
                     maxLength={MAX_EMAIL_LENGTH}
                     className={`w-full bg-gray-800 text-white border-purple-500 ${formError ? 'border-red-500' : ''}`}
                     required
