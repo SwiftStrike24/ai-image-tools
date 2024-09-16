@@ -29,8 +29,7 @@ import {
 } from '@/utils/imageUtils'
 import { checkAndUpdateGeneratorLimit, getGeneratorUsage } from "@/actions/rateLimit"
 import { Progress } from "@/components/ui/progress"
-
-const DAILY_LIMIT = 20;
+import { GENERATOR_DAILY_LIMIT } from "@/constants/rateLimits"
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -99,7 +98,7 @@ export default function FluxAIImageGenerator() {
       setDailyUsage(usageCount);
 
       if (!canProceed) {
-        const remainingGenerations = DAILY_LIMIT - (dailyUsage);
+        const remainingGenerations = GENERATOR_DAILY_LIMIT - usageCount;
         setError(`You've reached your daily limit. You can generate ${remainingGenerations} more image${remainingGenerations !== 1 ? 's' : ''} today.`);
         toast({
           title: "Daily Limit Reached",
@@ -556,14 +555,14 @@ export default function FluxAIImageGenerator() {
                 </div>
                 <ShinyButton
                   onClick={handleSubmit}
-                  disabled={isLoading || !prompt.trim() || dailyUsage >= DAILY_LIMIT}
+                  disabled={isLoading || !prompt.trim() || dailyUsage >= GENERATOR_DAILY_LIMIT}
                   className={cn(
                     "w-full py-2 md:py-3 text-base md:text-lg font-semibold",
-                    (isLoading || !prompt.trim() || dailyUsage >= DAILY_LIMIT) && "opacity-50 cursor-not-allowed"
+                    (isLoading || !prompt.trim() || dailyUsage >= GENERATOR_DAILY_LIMIT) && "opacity-50 cursor-not-allowed"
                   )}
-                  text={isLoading ? "Generating..." : dailyUsage >= DAILY_LIMIT ? "Daily Limit Reached" : 'Generate Image(s)'}
+                  text={isLoading ? "Generating..." : dailyUsage >= GENERATOR_DAILY_LIMIT ? "Daily Limit Reached" : 'Generate Image(s)'}
                 />
-                {dailyUsage >= DAILY_LIMIT && (
+                {dailyUsage >= GENERATOR_DAILY_LIMIT && (
                   <p className="text-xs text-red-400 mt-2">
                     You&apos;ve reached your daily limit. Please try again tomorrow or upgrade your plan.
                   </p>
@@ -625,11 +624,11 @@ export default function FluxAIImageGenerator() {
           <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Daily Usage (Free Plan)</span>
-              <span className="text-sm font-medium">{dailyUsage} / {DAILY_LIMIT}</span>
+              <span className="text-sm font-medium">{dailyUsage} / {GENERATOR_DAILY_LIMIT}</span>
             </div>
-            <Progress value={(dailyUsage / DAILY_LIMIT) * 100} className="h-2" />
+            <Progress value={(dailyUsage / GENERATOR_DAILY_LIMIT) * 100} className="h-2" />
             <p className="text-xs text-purple-300">
-              {DAILY_LIMIT - dailyUsage} generations remaining today. Resets at midnight.
+              {GENERATOR_DAILY_LIMIT - dailyUsage} generations remaining today. Resets at midnight.
             </p>
           </div>
         </div>
