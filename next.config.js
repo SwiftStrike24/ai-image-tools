@@ -9,6 +9,7 @@ const nextConfig = {
       bodySizeLimit: '10mb'
     },
   },
+  transpilePackages: ['@clerk/clerk-sdk-node'],
 };
 
 module.exports = nextConfig;

@@ -26,7 +26,10 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "types": [
+      "@clerk/clerk-sdk-node"
+    ]
   },
   "include": [
     "next-env.d.ts",

@@ -6,6 +6,8 @@ import { GENERATOR_DAILY_LIMIT, GENERATOR_KEY_PREFIX } from "../src/constants/ra
 // Load environment variables from .env.local
 config({ path: '.env.local' });
 
+// No need to initialize Clerk, we'll use clerkClient directly
+
 function getTimeRemaining(): string {
   const now = new Date();
   const midnight = new Date(now);

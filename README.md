@@ -19,6 +19,11 @@
 - **🔍 Image Focus**: Zoom in on specific images for detailed viewing
 - **⏪ History Navigation**: Go back to previous follow-up levels
 - **🎨 Customizable Outputs**: Adjust number of outputs, format, and quality
+- **📊 Usage Tracking**: Monitor daily usage within free plan limits
+- **🔒 Authentication**: Secure user authentication and authorization
+- **📱 Responsive Design**: Optimized for both desktop and mobile devices
+- **⏱️ Rate Limiting**: Implemented daily usage limits for both upscaling and generation
+- **👀 Admin View**: Scripts to view user upscales and generations with detailed statistics
 
 ## 🛠️ Tech Stack
 
@@ -28,22 +33,33 @@
 - **API Integration**: Replicate API
 - **Authentication**: Clerk
 - **Deployment**: Vercel
+- **Image Optimization**: Next.js Image component
+- **Database**: Vercel KV (Redis)
 
 ## 🧩 Key Components
 
-- `FluxAIImageGeneratorClient`: Manages AI image generation from text prompts
+- `FluxAI-ImageGeneratorClient`: Manages AI image generation from text prompts
 - `ImageUpscalerClient`: Handles image uploading and upscaling functionality
 - `ImageGrid`: Displays generated images with focus and download options
 - `ImageModal`: Provides a detailed view of selected images
 - `Header`: Navigation component with animated tab switching
 - `RetroGrid`: Background component for visual appeal
 - `ShinyButton`: Custom button component with animated effects
+- `LandingPageClient`: Introduces users to the app's features
 
 ## 🔌 APIs and Server Actions
 
 - `generateFluxImage`: Generates images from text prompts using FLUX.1 model
 - `upscaleImage`: Upscales images using Real-ESRGAN model
 - `enhancePrompt`: Improves user prompts for better image generation results
+- `checkAndUpdateRateLimit`: Manages user rate limiting for API calls
+- `getUserUsage`: Retrieves current user's daily usage statistics
+- `checkAndUpdateGeneratorLimit`: Manages rate limiting for image generation
+
+## 📊 Admin Scripts
+
+- `view-user-upscales.ts`: Displays detailed statistics on user upscale usage
+- `view-user-generators.ts`: Shows comprehensive data on user image generation activity
 
 ## 🏁 Getting Started
 
@@ -64,6 +80,10 @@
    REPLICATE_API_TOKEN=your_replicate_api_token
    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
    CLERK_SECRET_KEY=your_clerk_secret_key
+   KV_URL=your_vercel_kv_url
+   KV_REST_API_URL=your_vercel_kv_rest_api_url
+   KV_REST_API_TOKEN=your_vercel_kv_rest_api_token
+   KV_REST_API_READ_ONLY_TOKEN=your_vercel_kv_rest_api_read_only_token
    ```
 
 4. Run the development server:
@@ -82,7 +102,7 @@
 
 ## 🔮 Future Plans
 
-- [ ] Implement user authentication and profile management
+- [ ] Implement user profiles and saved image galleries
 - [ ] Add a subscription model using Stripe for premium features
 - [ ] Expand AI model options for diverse image generation styles
 - [ ] Introduce batch processing for multiple images
@@ -90,7 +110,7 @@
 - [ ] Implement image history and favorites functionality
 - [ ] Add social sharing features for generated images
 - [ ] Integrate more advanced editing tools (e.g., inpainting, outpainting)
-- [ ] Implement a gallery showcase for user-generated images
+- [ ] Implement a community showcase for user-generated images
 - [ ] Add language support for internationalization
 
 ## 🤝 Contributing
@@ -111,7 +131,7 @@ This project is [MIT](https://choosealicense.com/licenses/mit/) licensed.
 ## 🙏 Acknowledgments
 
 - [Replicate](https://replicate.com/) for their amazing AI models (Real-ESRGAN and FLUX.1)
-- [Vercel](https://vercel.com/) for hosting and deployment
+- [Vercel](https://vercel.com/) for hosting, deployment, and Vercel KV
 - [Shadcn UI](https://ui.shadcn.com/) for beautiful UI components
 - [Magic UI](https://magicui.design/) for additional UI enhancements
 - [Tailwind CSS](https://tailwindcss.com/) for utility-first CSS framework
