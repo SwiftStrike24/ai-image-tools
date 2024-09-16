@@ -1,6 +1,7 @@
 "use server";
 
 import Replicate from "replicate";
+import { auth } from "@clerk/nextjs/server";
 
 // Model configuration
 const UPSCALE_MODEL = {
@@ -54,6 +55,12 @@ const pollForResult = async (predictionId: string): Promise<ReplicateOutput> => 
 
 // Main function
 export async function upscaleImage({ image, scale, faceEnhance }: UpscaleParams): Promise<string> {
+  const { userId } = auth();
+  
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
   console.log(`Upscale request received for ${UPSCALE_MODEL.name}:`, { scale, faceEnhance });
 
   try {
