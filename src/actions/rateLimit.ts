@@ -2,11 +2,12 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { kv } from "@vercel/kv";
-
-const DAILY_LIMIT = 20;
-const STORAGE_KEY_PREFIX = 'upscaler_daily_usage:';
-const UPSCALER_KEY_PREFIX = 'upscaler_daily_usage:';
-const GENERATOR_KEY_PREFIX = 'generator_daily_usage:';
+import {
+  UPSCALER_DAILY_LIMIT,
+  GENERATOR_DAILY_LIMIT,
+  UPSCALER_KEY_PREFIX,
+  GENERATOR_KEY_PREFIX
+} from "@/constants/rateLimits";
 
 export async function checkAndUpdateRateLimit(): Promise<{ canProceed: boolean; usageCount: number }> {
   const { userId } = auth();
@@ -15,7 +16,7 @@ export async function checkAndUpdateRateLimit(): Promise<{ canProceed: boolean; 
     throw new Error("User not authenticated");
   }
 
-  const key = `${STORAGE_KEY_PREFIX}${userId}`;
+  const key = `${UPSCALER_KEY_PREFIX}${userId}`;
   const today = new Date().toDateString();
 
   const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
@@ -26,7 +27,7 @@ export async function checkAndUpdateRateLimit(): Promise<{ canProceed: boolean; 
     currentUsage = 0;
   }
 
-  if (currentUsage >= DAILY_LIMIT) {
+  if (currentUsage >= UPSCALER_DAILY_LIMIT) {
     return { canProceed: false, usageCount: currentUsage };
   }
 
@@ -47,7 +48,7 @@ export async function getUserUsage(): Promise<number> {
     throw new Error("User not authenticated");
   }
 
-  const key = `${STORAGE_KEY_PREFIX}${userId}`;
+  const key = `${UPSCALER_KEY_PREFIX}${userId}`;
   const usageCount = await kv.get(key);
 
   return typeof usageCount === 'number' ? usageCount : 0;
@@ -71,7 +72,7 @@ export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Pr
     currentUsage = 0;
   }
 
-  if (currentUsage + imagesToGenerate > DAILY_LIMIT) {
+  if (currentUsage + imagesToGenerate > GENERATOR_DAILY_LIMIT) {
     return { canProceed: false, usageCount: currentUsage };
   }
 

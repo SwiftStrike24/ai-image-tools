@@ -21,6 +21,7 @@ import ShinyButton from "@/components/magicui/shiny-button"
 import { resizeImage } from '@/utils/imageUtils'
 import { Progress } from "@/components/ui/progress"
 import { checkAndUpdateRateLimit, getUserUsage } from "@/actions/rateLimit"
+import { UPSCALER_DAILY_LIMIT } from "@/constants/rateLimits"
 
 // Constants
 const MAX_FILE_SIZE_MB = 50; // 50MB
@@ -31,8 +32,6 @@ const ZOOM_STEP = 0.1;
 const RATE_LIMIT_INTERVAL = 60000; // 1 minute in milliseconds
 const MAX_REQUESTS_PER_INTERVAL = 5;
 const MAX_IMAGE_DIMENSION = 1024;
-const DAILY_LIMIT = 20;
-const STORAGE_KEY = 'upscaler_daily_usage';
 
 // Function to handle image upload
 function ImageUpscalerComponent() {
@@ -421,11 +420,11 @@ function ImageUpscalerComponent() {
           <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Daily Usage (Free Plan)</span>
-              <span className="text-sm font-medium">{dailyUsage} / {DAILY_LIMIT}</span>
+              <span className="text-sm font-medium">{dailyUsage} / {UPSCALER_DAILY_LIMIT}</span>
             </div>
-            <Progress value={(dailyUsage / DAILY_LIMIT) * 100} className="h-2" />
+            <Progress value={(dailyUsage / UPSCALER_DAILY_LIMIT) * 100} className="h-2" />
             <p className="text-xs text-purple-300">
-              {DAILY_LIMIT - dailyUsage} upscales remaining today. Resets at midnight.
+              {UPSCALER_DAILY_LIMIT - dailyUsage} upscales remaining today. Resets at midnight.
             </p>
           </div>
 
@@ -555,16 +554,16 @@ function ImageUpscalerComponent() {
               <div className="relative">
                 <ShinyButton
                   onClick={handleUpscale}
-                  disabled={!uploadedImage || isLoading || dailyUsage >= DAILY_LIMIT}
+                  disabled={!uploadedImage || isLoading || dailyUsage >= UPSCALER_DAILY_LIMIT}
                   className={cn(
                     "w-full py-2 md:py-3 text-base md:text-lg font-semibold",
-                    (!uploadedImage || isLoading || dailyUsage >= DAILY_LIMIT) && "opacity-50 cursor-not-allowed"
+                    (!uploadedImage || isLoading || dailyUsage >= UPSCALER_DAILY_LIMIT) && "opacity-50 cursor-not-allowed"
                   )}
-                  text={isLoading ? "Processing..." : dailyUsage >= DAILY_LIMIT ? "Daily Limit Reached" : 'Upscale'}
+                  text={isLoading ? "Processing..." : dailyUsage >= UPSCALER_DAILY_LIMIT ? "Daily Limit Reached" : 'Upscale'}
                 >
                   {isLoading && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
                 </ShinyButton>
-                {dailyUsage >= DAILY_LIMIT && (
+                {dailyUsage >= UPSCALER_DAILY_LIMIT && (
                   <p className="text-xs text-red-400 mt-2">
                     You&apos;ve reached your daily limit. Please try again tomorrow or upgrade your plan.
                   </p>
