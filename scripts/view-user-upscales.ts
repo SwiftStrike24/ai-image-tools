@@ -36,13 +36,13 @@ async function viewUserUpscales() {
     }));
 
     console.log("User Upscales Remaining:");
-    console.log("-------------------------------------------------------------------------------------------");
+    console.log("--------------------------------------------------------------------------------------");
     console.log("User ID                          | Username       | Email                  | Remaining");
-    console.log("-------------------------------------------------------------------------------------------");
+    console.log("--------------------------------------------------------------------------------------");
     userUpscales.forEach(({ userId, username, email, remainingUpscales }) => {
       console.log(`${userId.padEnd(22)} | ${username.padEnd(14)} | ${email.padEnd(22)} | ${remainingUpscales}`);
     });
-    console.log("-------------------------------------------------------------------------------------------");
+    console.log("--------------------------------------------------------------------------------------");
 
     console.log(`\nTotal users: ${userUpscales.length}`);
   } catch (error) {
