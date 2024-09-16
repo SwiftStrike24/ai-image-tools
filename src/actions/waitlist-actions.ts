@@ -27,3 +27,14 @@ export async function addToWaitlist(email: string) {
     return { success: false, message: "Oops! Something went wrong on our end. Please try again later." };
   }
 }
+
+export async function getWaitlistEmails() {
+  try {
+    const waitlistKey = "waitlist";
+    const emails = await kv.smembers(waitlistKey);
+    return { success: true, emails };
+  } catch (error) {
+    console.error("Error fetching waitlist emails:", error);
+    return { success: false, error: "Failed to fetch waitlist emails" };
+  }
+}

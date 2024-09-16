@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { kv } from "@vercel/kv";
+import { getWaitlistEmails } from '@/actions/waitlist-actions';
 
 function AdminProtectedWaitlist() {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [emails, setEmails] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -16,7 +18,7 @@ function AdminProtectedWaitlist() {
         router.push('/admin/login?redirect=/admin/waitlist');
       } else {
         setIsAdminAuthenticated(true);
-        fetchWaitlistEmails();
+        await fetchWaitlistEmails();
       }
     };
 
@@ -24,16 +26,20 @@ function AdminProtectedWaitlist() {
   }, [router]);
 
   const fetchWaitlistEmails = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      const response = await fetch('/api/admin/waitlist');
-      if (response.ok) {
-        const data = await response.json();
-        setEmails(data.emails);
+      const result = await getWaitlistEmails();
+      if (result.success) {
+        setEmails(result.emails);
       } else {
-        console.error('Failed to fetch waitlist emails');
+        setError(result.error || 'Failed to fetch waitlist emails');
       }
     } catch (error) {
+      setError('Error fetching waitlist emails');
       console.error('Error fetching waitlist emails:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -44,11 +50,19 @@ function AdminProtectedWaitlist() {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Waitlist Emails</h1>
-      <ul className="list-disc pl-5">
-        {emails.map((email, index) => (
-          <li key={index} className="mb-2">{email}</li>
-        ))}
-      </ul>
+      {isLoading ? (
+        <p>Loading emails...</p>
+      ) : error ? (
+        <p className="text-red-500">{error}</p>
+      ) : emails.length > 0 ? (
+        <ul className="list-disc pl-5">
+          {emails.map((email, index) => (
+            <li key={index} className="mb-2">{email}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>No emails in the waitlist.</p>
+      )}
     </div>
   );
 }
