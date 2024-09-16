@@ -15,6 +15,7 @@ import AnimatedCheckmark from '@/components/AnimatedCheckmark'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import Head from 'next/head'
 
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
@@ -233,6 +234,25 @@ export default function LandingPage() {
     waitlistRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "FluxScale AI",
+    "description": "Advanced AI-powered image upscaling and generation tools",
+    "operatingSystem": "Web",
+    "applicationCategory": "Multimedia",
+    "offers": {
+      "@type": "Offer",
+      "price": "0.00",
+      "priceCurrency": "USD"
+    },
+    "author": {
+      "@type": "Person",
+      "name": "SwiftStrike24"
+    },
+    "url": "https://fluxscaleai.com"
+  }
+
   return (
     <AnimatePresence>
       <motion.div
@@ -242,6 +262,11 @@ export default function LandingPage() {
         animate="visible"
         variants={containerVariants}
       >
+        <Head>
+          <script type="application/ld+json">
+            {JSON.stringify(structuredData)}
+          </script>
+        </Head>
         <motion.nav
           className="p-4 flex justify-between items-center"
           variants={itemVariants}
