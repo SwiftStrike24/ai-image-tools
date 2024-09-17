@@ -8,6 +8,7 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '10mb'
     },
+    appDir: true,
   },
   transpilePackages: ['@clerk/clerk-sdk-node'],
   async headers() {

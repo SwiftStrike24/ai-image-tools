@@ -25,7 +25,7 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
     "types": [
       "@clerk/clerk-sdk-node"
