@@ -60,6 +60,11 @@ module.exports = {
         slide: "slide var(--speed) ease-in-out infinite alternate",
         shimmer: "shimmer 8s infinite",
         gradient: "gradient 8s linear infinite",
+        "fade-in": "fade-in 1.5s ease-in-out forwards",
+        "fade-out": "fade-out 1.5s ease-in-out forwards",
+        "pulse-slow": "pulse 6s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "float": "float 6s ease-in-out infinite",
+        "grid-flow": "grid-flow 20s linear infinite",
       },
       keyframes: {
         grid: {
@@ -97,6 +102,23 @@ module.exports = {
           to: {
             backgroundPosition: "var(--bg-size) 0",
           },
+        },
+        "fade-in": {
+          "0%": { opacity: 0 },
+          "100%": { opacity: 1 },
+        },
+        "fade-out": {
+          "0%": { opacity: 1 },
+          "100%": { opacity: 0 },
+        },
+        "float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-5%)" },
+        },
+        "grid-flow": {
+          "0%": { transform: "translateY(0) scale(1)" },
+          "50%": { transform: "translateY(-2%) scale(1.02)" },
+          "100%": { transform: "translateY(0) scale(1)" },
         },
       },
     },

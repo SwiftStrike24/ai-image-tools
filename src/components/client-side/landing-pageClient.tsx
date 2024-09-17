@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import Head from 'next/head'
-import RetroGrid from "@/components/magicui/retro-grid"
+import GridPattern from "@/components/magicui/animated-grid-pattern"
 import HyperText from "@/components/magicui/hyper-text"
 import BlurFade from "@/components/magicui/blur-fade"
 import AnimatedGradientText from "@/components/magicui/animated-gradient-text"
@@ -260,21 +260,28 @@ export default function LandingPage() {
   return (
     <AnimatePresence>
       <motion.div
-        className="min-h-screen bg-gray-900 text-white relative"
+        className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white relative overflow-hidden"
         ref={containerRef}
         initial="hidden"
         animate="visible"
         variants={containerVariants}
       >
-        {/* Add RetroGrid component */}
-        <RetroGrid className="absolute inset-0 z-0" />
+        <GridPattern
+          width={40}
+          height={40}
+          x={-1}
+          y={-1}
+          strokeDasharray={0}
+          numSquares={200}
+          className="absolute inset-0 z-0 opacity-20 animate-grid-flow"
+          maxOpacity={0.3}
+          duration={8}
+          repeatDelay={0}
+        />
         
-        {/* Add a semi-transparent overlay */}
-        <div className="absolute inset-0 bg-gray-900/70 z-10"></div>
+        <div className="absolute inset-0 bg-gray-900/60 z-10"></div>
 
-        {/* Wrap the existing content in a relative div to place it above the grid */}
         <div className="relative z-20">
-          {/* Existing content goes here */}
           <Head>
             <script type="application/ld+json">
               {JSON.stringify(structuredData)}
@@ -295,7 +302,9 @@ export default function LandingPage() {
             <BlurFade>
               <div className="flex justify-center items-center">
                 <AnimatedGradientText className="text-4xl md:text-6xl font-bold mb-4 text-center">
-                  Supercharge Your Visuals with AI
+                  <div className="flex items-center justify-center">
+                    <span className="text-white">Supercharge Your Visuals with AI</span>
+                  </div>
                 </AnimatedGradientText>
               </div>
             </BlurFade>
