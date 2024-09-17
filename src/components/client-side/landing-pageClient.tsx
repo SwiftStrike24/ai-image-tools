@@ -111,7 +111,7 @@ export default function LandingPage() {
   const features = [
     { icon: <Wand2 className="w-6 h-6" />, title: "AI Image Generation", description: "Create stunning visuals from text prompts using FLUX.1 model", badge: "FLUX.1" },
     { icon: <Maximize className="w-6 h-6" />, title: "Image Upscaling", description: "Enhance image quality up to 10x", badge: "2x-10x" },
-    { icon: <Layout className="w-6 h-6" />, title: "Multiple Aspect Ratios", description: "Support for various dimensions", badge: "Flexible" },
+    { icon: <Layout className="w-6 h-6" />, title: "Multiple Aspect Ratios", description: "Support for various dimensions", badge: "16:9 • 1:1 • 9:16 • more" },
     { icon: <Download className="w-6 h-6" />, title: "High-Quality Outputs", description: "Generate WebP, JPG, or PNG formats", badge: "HD" },
   ]
 
@@ -375,7 +375,7 @@ export default function LandingPage() {
                     <p className="text-sm text-gray-400">{feature.description}</p>
                     <Badge 
                       variant="secondary" 
-                      className="mt-4 bg-purple-700 text-white hover:bg-purple-600 transition-colors duration-300"
+                      className="mt-4 bg-gradient-to-r from-purple-700 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-500 transition-all duration-300 shadow-md hover:shadow-lg"
                     >
                       {feature.badge}
                     </Badge>
