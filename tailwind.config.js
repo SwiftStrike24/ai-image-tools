@@ -65,6 +65,7 @@ module.exports = {
         "pulse-slow": "pulse 6s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "float": "float 6s ease-in-out infinite",
         "grid-flow": "grid-flow 20s linear infinite",
+        "move-up": "moveUp 200s linear infinite",
       },
       keyframes: {
         grid: {
@@ -119,6 +120,10 @@ module.exports = {
           "0%": { transform: "translateY(0) scale(1)" },
           "50%": { transform: "translateY(-2%) scale(1.02)" },
           "100%": { transform: "translateY(0) scale(1)" },
+        },
+        moveUp: {
+          "0%": { transform: "translateY(0)" },
+          "100%": { transform: "translateY(-50%)" },
         },
       },
     },

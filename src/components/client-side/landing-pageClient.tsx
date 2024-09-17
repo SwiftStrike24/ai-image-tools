@@ -267,20 +267,18 @@ export default function LandingPage() {
         variants={containerVariants}
       >
         <GridPattern
-          width={40}
-          height={40}
+          width={60}
+          height={60}
           x={-1}
           y={-1}
           strokeDasharray={0}
-          numSquares={200}
-          className="absolute inset-0 z-0 opacity-20 animate-grid-flow"
+          numSquares={75}
+          className="absolute inset-0 z-0"
           maxOpacity={0.3}
           duration={8}
           repeatDelay={0}
         />
         
-        <div className="absolute inset-0 bg-gray-900/60 z-10"></div>
-
         <div className="relative z-20">
           <Head>
             <script type="application/ld+json">
