@@ -66,13 +66,15 @@ export default function FluxAIImageGenerator() {
   const [isAuthenticated, setIsAuthenticated] = useState(true)
 
   useEffect(() => {
-    getGeneratorUsage().then(setDailyUsage).catch((error) => {
-      console.error(error);
-      if (error.message === "User not authenticated") {
-        setIsAuthenticated(false);
-      }
-    });
-  }, []);
+    if (!isSimulationMode) {
+      getGeneratorUsage().then(setDailyUsage).catch((error) => {
+        console.error(error);
+        if (error.message === "User not authenticated") {
+          setIsAuthenticated(false);
+        }
+      });
+    }
+  }, [isSimulationMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,20 +95,22 @@ export default function FluxAIImageGenerator() {
     setError(null);
 
     try {
-      // Check rate limit
-      const { canProceed, usageCount } = await checkAndUpdateGeneratorLimit(numOutputs);
-      setDailyUsage(usageCount);
+      // Check rate limit only if not in simulation mode
+      if (!isSimulationMode) {
+        const { canProceed, usageCount } = await checkAndUpdateGeneratorLimit(numOutputs);
+        setDailyUsage(usageCount);
 
-      if (!canProceed) {
-        const remainingGenerations = GENERATOR_DAILY_LIMIT - usageCount;
-        setError(`You've reached your daily limit. You can generate ${remainingGenerations} more image${remainingGenerations !== 1 ? 's' : ''} today.`);
-        toast({
-          title: "Daily Limit Reached",
-          description: `You can generate ${remainingGenerations} more image${remainingGenerations !== 1 ? 's' : ''} today. Please try again tomorrow or upgrade your plan.`,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
+        if (!canProceed) {
+          const remainingGenerations = GENERATOR_DAILY_LIMIT - usageCount;
+          setError(`You've reached your daily limit. You can generate ${remainingGenerations} more image${remainingGenerations !== 1 ? 's' : ''} today.`);
+          toast({
+            title: "Daily Limit Reached",
+            description: `You can generate ${remainingGenerations} more image${remainingGenerations !== 1 ? 's' : ''} today. Please try again tomorrow or upgrade your plan.`,
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
       }
 
       let finalPrompt = currentPrompt;
@@ -624,12 +628,25 @@ export default function FluxAIImageGenerator() {
           <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Daily Usage (Free Plan)</span>
-              <span className="text-sm font-medium">{dailyUsage} / {GENERATOR_DAILY_LIMIT}</span>
+              {isSimulationMode ? (
+                <span className="text-sm font-medium">Simulation Mode</span>
+              ) : (
+                <span className="text-sm font-medium">{dailyUsage} / {GENERATOR_DAILY_LIMIT}</span>
+              )}
             </div>
-            <Progress value={(dailyUsage / GENERATOR_DAILY_LIMIT) * 100} className="h-2" />
-            <p className="text-xs text-purple-300">
-              {GENERATOR_DAILY_LIMIT - dailyUsage} generations remaining today. Resets at midnight.
-            </p>
+            {!isSimulationMode && (
+              <>
+                <Progress value={(dailyUsage / GENERATOR_DAILY_LIMIT) * 100} className="h-2" />
+                <p className="text-xs text-purple-300">
+                  {GENERATOR_DAILY_LIMIT - dailyUsage} generations remaining today. Resets at midnight.
+                </p>
+              </>
+            )}
+            {isSimulationMode && (
+              <p className="text-xs text-purple-300">
+                Simulation mode active. No API calls are being made.
+              </p>
+            )}
           </div>
         </div>
       </div>

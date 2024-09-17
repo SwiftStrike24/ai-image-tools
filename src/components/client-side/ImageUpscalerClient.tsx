@@ -68,13 +68,15 @@ function ImageUpscalerComponent() {
   }, []);
 
   useEffect(() => {
-    getUserUsage().then(setDailyUsage).catch((error) => {
-      console.error(error);
-      if (error.message === "User not authenticated") {
-        setIsAuthenticated(false);
-      }
-    });
-  }, []);
+    if (!isSimulationMode) {
+      getUserUsage().then(setDailyUsage).catch((error) => {
+        console.error(error);
+        if (error.message === "User not authenticated") {
+          setIsAuthenticated(false);
+        }
+      });
+    }
+  }, [isSimulationMode]);
 
   const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -612,12 +614,25 @@ function ImageUpscalerComponent() {
           <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Daily Usage (Free Plan)</span>
-              <span className="text-sm font-medium">{dailyUsage} / {UPSCALER_DAILY_LIMIT}</span>
+              {isSimulationMode ? (
+                <span className="text-sm font-medium">Simulation Mode</span>
+              ) : (
+                <span className="text-sm font-medium">{dailyUsage} / {UPSCALER_DAILY_LIMIT}</span>
+              )}
             </div>
-            <Progress value={(dailyUsage / UPSCALER_DAILY_LIMIT) * 100} className="h-2" />
-            <p className="text-xs text-purple-300">
-              {UPSCALER_DAILY_LIMIT - dailyUsage} upscales remaining today. Resets at midnight.
-            </p>
+            {!isSimulationMode && (
+              <>
+                <Progress value={(dailyUsage / UPSCALER_DAILY_LIMIT) * 100} className="h-2" />
+                <p className="text-xs text-purple-300">
+                  {UPSCALER_DAILY_LIMIT - dailyUsage} upscales remaining today. Resets at midnight.
+                </p>
+              </>
+            )}
+            {isSimulationMode && (
+              <p className="text-xs text-purple-300">
+                Simulation mode active. No API calls are being made.
+              </p>
+            )}
           </div>
         </div>
       </div>
