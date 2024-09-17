@@ -1,10 +1,9 @@
 "use client"
 
 import { useState, useRef, useEffect } from 'react'
-import { motion, useAnimation, AnimatePresence, useInView, useScroll } from 'framer-motion'
-import { Button } from "@/components/ui/button"
+import { motion, useAnimation, AnimatePresence, useInView } from 'framer-motion'
 import { Input } from "@/components/ui/input"
-import { ArrowRight, Wand2, Maximize, Layout, Download, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
+import { ArrowRight, Wand2, Maximize, Layout, Download, Sparkles } from 'lucide-react'
 import Image from 'next/image'
 import BeforeAfterSlider from '@/components/BeforeAfterSlider'
 import { addToWaitlist } from '@/actions/waitlist-actions'
@@ -14,7 +13,6 @@ import ShimmerButton from "@/components/magicui/shimmer-button"
 import AnimatedCheckmark from '@/components/AnimatedCheckmark'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import Head from 'next/head'
 import GridPattern from "@/components/magicui/animated-grid-pattern"
 import HyperText from "@/components/magicui/hyper-text"
@@ -289,11 +287,16 @@ export default function LandingPage() {
             className="p-4 flex justify-between items-center"
             variants={itemVariants}
           >
-            <HyperText
-              text="FluxScale AI"
-              className="text-2xl font-bold text-purple-500"
-              duration={1000}
-            />
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 2, ease: "easeOut" }}
+            >
+              <HyperText
+                text="FluxScale AI"
+                className="text-2xl font-bold text-purple-500"
+              />
+            </motion.div>
           </motion.nav>
           
           <main className="container mx-auto px-4 py-16">
