@@ -3,6 +3,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest, NextFetchEvent } from 'next/server';
 
 export default function middleware(req: NextRequest) {
+  console.log('Middleware called for path:', req.nextUrl.pathname);
+
+  // Redirect /api/admin/waitlist to /admin/waitlist
+  if (req.nextUrl.pathname === '/api/admin/waitlist') {
+    console.log('Redirecting from /api/admin/waitlist to /admin/waitlist');
+    return NextResponse.redirect(new URL('/admin/waitlist', req.url));
+  }
+
   // Run Clerk middleware
   const clerkResponse = clerkMiddleware()(req, { sourcePage: req.url } as NextFetchEvent);
 
