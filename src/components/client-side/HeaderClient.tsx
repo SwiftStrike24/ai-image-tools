@@ -48,11 +48,11 @@ export default function HeaderClient() {
   }
 
   return (
-    <header className="bg-gradient-to-br from-gray-900 to-purple-900 text-white p-4 md:p-6 relative overflow-hidden">
+    <header className="bg-gradient-to-br from-gray-900 to-purple-900 text-white p-3 md:p-4 relative overflow-hidden">
       <RetroGrid className="absolute inset-0 z-0 opacity-30" />
       <div className="absolute inset-0 bg-purple-900/50 backdrop-blur-xl"></div>
       <div className="relative z-20 max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-4 md:mb-8">
+        <div className="flex justify-between items-center">
           <motion.h1 
             className="text-2xl md:text-3xl lg:text-4xl font-bold mb-4 md:mb-0"
             initial={{ opacity: 0, y: -10 }}
