@@ -58,12 +58,24 @@ async function viewUserUpscales() {
     const totalUsers = userUpscales.length;
     const totalUpscaled = userUpscales.reduce((sum, user) => sum + user.totalUpscaled, 0);
     const totalRemaining = userUpscales.reduce((sum, user) => sum + user.remainingUpscales, 0);
+    const totalCost = (totalUpscaled * 0.0017).toFixed(4).toString(); // Calculate total cost
 
     console.log(`\nSummary:`);
     console.log(`Total users: ${totalUsers}`);
     console.log(`Total upscales used: ${totalUpscaled}`);
     console.log(`Total remaining upscales: ${totalRemaining}`);
+    console.log(`Total cost of upscales: $${totalCost}`);
     console.log(`Time until reset: ${timeRemaining}`);
+
+    // Find users close to their limit
+    const usersNearLimit = userUpscales.filter(user => user.remainingUpscales <= 5);
+    if (usersNearLimit.length > 0) {
+      console.log("\nUsers with 5 or fewer upscales remaining:");
+      usersNearLimit.forEach(user => {
+        console.log(`- ${user.username} (${user.email}): ${user.remainingUpscales} remaining`);
+      });
+    }
+
   } catch (error) {
     console.error("Error fetching user upscales:", error);
   }

@@ -61,11 +61,13 @@ async function viewUserGenerators() {
     const totalUsers = userGenerators.length;
     const totalGenerated = userGenerators.reduce((sum, user) => sum + user.totalGenerated, 0);
     const totalRemaining = userGenerators.reduce((sum, user) => sum + user.remainingGenerations, 0);
+    const totalCost = Number((totalGenerated * 0.003).toFixed(4)).toString(); // Calculate total cost
 
     console.log(`\nSummary:`);
     console.log(`Total users: ${totalUsers}`);
     console.log(`Total images generated: ${totalGenerated}`);
     console.log(`Total remaining generations: ${totalRemaining}`);
+    console.log(`Total cost of generated images: $${totalCost}`);
     console.log(`Time until reset: ${timeRemaining}`);
 
     // Find users close to their limit
