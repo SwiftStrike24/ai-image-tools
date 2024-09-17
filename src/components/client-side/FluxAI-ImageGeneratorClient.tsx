@@ -99,7 +99,6 @@ export default function FluxAIImageGenerator() {
     setError(null);
 
     try {
-      // Check rate limit only if not in simulation mode
       if (!isSimulationMode) {
         const { canProceed, usageCount } = await checkAndUpdateGeneratorLimit(numOutputs);
         setDailyUsage(usageCount);
@@ -184,7 +183,7 @@ export default function FluxAIImageGenerator() {
         setFocusedImageIndex(null);
         setIsFocused(false);
         setFollowUpLevel(followUpLevel + 1);
-        setShowSeedInput(true);
+        setShowSeedInput(followUpLevel >= 1);
         setFollowUpPrompt('');
 
         toast({
@@ -217,7 +216,6 @@ export default function FluxAIImageGenerator() {
 
     try {
       if (focusedImageIndex === index) {
-        // Unfocus if clicking on the already focused image
         setFocusedImageIndex(null);
         setIsFocused(false);
         
@@ -226,12 +224,10 @@ export default function FluxAIImageGenerator() {
           description: "You can now select a different image or continue with your current prompt.",
         });
       } else {
-        // Focus on the new image
         setCurrentSeed(seed);
         setShowSeedInput(true);
         setFocusedImageIndex(index);
         setIsFocused(true);
-        setFollowUpLevel(Math.max(2, followUpLevel)); // Ensure we're at least at follow-up level 2
         
         toast({
           title: "Image Focused",
@@ -348,44 +344,44 @@ export default function FluxAIImageGenerator() {
   };
 
   const goToPreviousFollowUp = useCallback(() => {
-    if (followUpLevel > 1) {
-      const newFollowUpLevel = followUpLevel - 1;
-      setFollowUpLevel(newFollowUpLevel);
-      
-      const previousEntry = promptHistory[newFollowUpLevel - 1]; // Adjust index to get the correct previous entry
-      if (previousEntry) {
-        setImageResults(previousEntry.images);
-        setImageUrls(previousEntry.images.map(result => result.imageUrls[0]));
-        setCurrentSeed(previousEntry.seed);
+    if (followUpLevel <= 1) return; // Don't go back if we're at the initial level
 
-        if (newFollowUpLevel === 1) {
-          // If going back to the initial generation
-          setShowSeedInput(false);
-          setFollowUpPrompt('');
-          setPrompt(previousEntry.prompt);
-          setOriginalPrompt(previousEntry.prompt);
-        } else {
-          // For follow-up levels 2 and above
-          setShowSeedInput(true);
-          const promptParts = previousEntry.prompt.split(',');
-          const newOriginalPrompt = promptParts.slice(0, -1).join(',').trim();
-          setOriginalPrompt(newOriginalPrompt);
-          setFollowUpPrompt(promptParts[promptParts.length - 1]?.trim() || '');
-        }
+    const newLevel = followUpLevel - 1;
+    const previousEntry = promptHistory[newLevel - 1];
 
-        // Update current prompt index
-        setCurrentPromptIndex(newFollowUpLevel - 1);
-
-        // Clear focus
-        setFocusedImageIndex(null);
-        setIsFocused(false);
-
-        toast({
-          title: "Previous Follow-up Loaded",
-          description: `Returned to Follow-up Level: ${newFollowUpLevel}`,
-        });
-      }
+    if (!previousEntry) {
+      console.error("Previous entry not found in prompt history");
+      return;
     }
+
+    setFollowUpLevel(newLevel);
+    setImageResults(previousEntry.images);
+    setImageUrls(previousEntry.images.map(result => result.imageUrls[0]));
+    setCurrentSeed(previousEntry.seed);
+
+    const promptParts = previousEntry.prompt.split(',');
+    if (newLevel === 1) {
+      // For the initial prompt
+      setShowSeedInput(false);
+      setFollowUpPrompt('');
+      setPrompt(previousEntry.prompt);
+      setOriginalPrompt(previousEntry.prompt);
+    } else {
+      // For follow-up prompts
+      setShowSeedInput(true);
+      const newOriginalPrompt = promptParts.slice(0, -1).join(',').trim();
+      setOriginalPrompt(newOriginalPrompt);
+      setFollowUpPrompt(promptParts[promptParts.length - 1]?.trim() || '');
+    }
+
+    setCurrentPromptIndex(newLevel - 1);
+    setFocusedImageIndex(null);
+    setIsFocused(false);
+
+    toast({
+      title: "Previous Follow-up Loaded",
+      description: `Returned to Follow-up Level: ${newLevel}`,
+    });
   }, [followUpLevel, promptHistory, toast]);
 
   return (
