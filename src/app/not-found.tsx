@@ -44,7 +44,7 @@ export default function NotFound() {
           transition={{ delay: 0.4, duration: 0.5 }}
           className="text-xl mb-8 text-center max-w-md"
         >
-          Oops! It seems like you've ventured into uncharted territory.
+          Oops! It seems like you&apos;ve ventured into uncharted territory.
         </motion.p>
         <motion.div
           initial={{ opacity: 0 }}
