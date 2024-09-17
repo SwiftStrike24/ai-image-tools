@@ -63,11 +63,15 @@ export default function FluxAIImageGenerator() {
   const [followUpPrompts, setFollowUpPrompts] = useState<string[]>([])
   const [currentSeed, setCurrentSeed] = useState<number | null>(null)
   const [dailyUsage, setDailyUsage] = useState(0)
+  const [resetsIn, setResetsIn] = useState("")
   const [isAuthenticated, setIsAuthenticated] = useState(true)
 
   useEffect(() => {
     if (!isSimulationMode) {
-      getGeneratorUsage().then(setDailyUsage).catch((error) => {
+      getGeneratorUsage().then(({ usageCount, resetsIn }) => {
+        setDailyUsage(usageCount);
+        setResetsIn(resetsIn);
+      }).catch((error) => {
         console.error(error);
         if (error.message === "User not authenticated") {
           setIsAuthenticated(false);
@@ -405,7 +409,7 @@ export default function FluxAIImageGenerator() {
               <>
                 <Progress value={(dailyUsage / GENERATOR_DAILY_LIMIT) * 100} className="h-2" />
                 <p className="text-xs text-purple-300">
-                  {GENERATOR_DAILY_LIMIT - dailyUsage} generations remaining today. Resets at midnight.
+                  {GENERATOR_DAILY_LIMIT - dailyUsage} generations remaining today. Resets in {resetsIn}.
                 </p>
               </>
             )}

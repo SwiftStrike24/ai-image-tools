@@ -54,6 +54,7 @@ function ImageUpscalerComponent() {
   const [imageUtils, setImageUtils] = useState<ImageUtilsType>(dummyImageUtils)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [dailyUsage, setDailyUsage] = useState(0)
+  const [resetsIn, setResetsIn] = useState("")
   const [isAuthenticated, setIsAuthenticated] = useState(true)
 
   useEffect(() => {
@@ -69,7 +70,10 @@ function ImageUpscalerComponent() {
 
   useEffect(() => {
     if (!isSimulationMode) {
-      getUserUsage().then(setDailyUsage).catch((error) => {
+      getUserUsage().then(({ usageCount, resetsIn }) => {
+        setDailyUsage(usageCount);
+        setResetsIn(resetsIn);
+      }).catch((error) => {
         console.error(error);
         if (error.message === "User not authenticated") {
           setIsAuthenticated(false);
@@ -385,7 +389,7 @@ function ImageUpscalerComponent() {
               <>
                 <Progress value={(dailyUsage / UPSCALER_DAILY_LIMIT) * 100} className="h-2" />
                 <p className="text-xs text-purple-300">
-                  {UPSCALER_DAILY_LIMIT - dailyUsage} upscales remaining today. Resets at midnight.
+                  {UPSCALER_DAILY_LIMIT - dailyUsage} upscales remaining today. Resets in {resetsIn}.
                 </p>
               </>
             )}

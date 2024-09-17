@@ -9,7 +9,14 @@ import {
   GENERATOR_KEY_PREFIX
 } from "@/constants/rateLimits";
 
-export async function checkAndUpdateRateLimit(): Promise<{ canProceed: boolean; usageCount: number }> {
+function isNewDay(lastUsageDate: string | null): boolean {
+  if (!lastUsageDate) return true;
+  const now = new Date();
+  const last = new Date(lastUsageDate);
+  return now.getUTCDate() !== last.getUTCDate() || now.getUTCMonth() !== last.getUTCMonth() || now.getUTCFullYear() !== last.getUTCFullYear();
+}
+
+export async function checkAndUpdateRateLimit(): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
   const { userId } = auth();
   
   if (!userId) {
@@ -17,18 +24,20 @@ export async function checkAndUpdateRateLimit(): Promise<{ canProceed: boolean; 
   }
 
   const key = `${UPSCALER_KEY_PREFIX}${userId}`;
-  const today = new Date().toDateString();
+  const now = new Date();
+  const today = now.toUTCString();
 
   const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
 
-  if (lastUsageDate !== today) {
+  if (isNewDay(lastUsageDate as string | null)) {
     currentUsage = 0;
   }
 
   if (currentUsage >= UPSCALER_DAILY_LIMIT) {
-    return { canProceed: false, usageCount: currentUsage };
+    const resetsIn = getTimeUntilMidnight();
+    return { canProceed: false, usageCount: currentUsage, resetsIn };
   }
 
   currentUsage += 1;
@@ -38,10 +47,11 @@ export async function checkAndUpdateRateLimit(): Promise<{ canProceed: boolean; 
     [`${key}:date`]: today
   });
 
-  return { canProceed: true, usageCount: currentUsage };
+  const resetsIn = getTimeUntilMidnight();
+  return { canProceed: true, usageCount: currentUsage, resetsIn };
 }
 
-export async function getUserUsage(): Promise<number> {
+export async function getUserUsage(): Promise<{ usageCount: number; resetsIn: string }> {
   const { userId } = auth();
   
   if (!userId) {
@@ -49,12 +59,20 @@ export async function getUserUsage(): Promise<number> {
   }
 
   const key = `${UPSCALER_KEY_PREFIX}${userId}`;
-  const usageCount = await kv.get(key);
+  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
 
-  return typeof usageCount === 'number' ? usageCount : 0;
+  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+
+  if (isNewDay(lastUsageDate as string | null)) {
+    currentUsage = 0;
+    await kv.set(key, 0);
+  }
+
+  const resetsIn = getTimeUntilMidnight();
+  return { usageCount: currentUsage, resetsIn };
 }
 
-export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Promise<{ canProceed: boolean; usageCount: number }> {
+export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
   const { userId } = auth();
   
   if (!userId) {
@@ -62,7 +80,7 @@ export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Pr
   }
 
   const key = `${GENERATOR_KEY_PREFIX}${userId}`;
-  const today = new Date().toDateString();
+  const today = new Date().toUTCString();
 
   const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
 
@@ -73,7 +91,8 @@ export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Pr
   }
 
   if (currentUsage + imagesToGenerate > GENERATOR_DAILY_LIMIT) {
-    return { canProceed: false, usageCount: currentUsage };
+    const resetsIn = getTimeUntilMidnight();
+    return { canProceed: false, usageCount: currentUsage, resetsIn };
   }
 
   currentUsage += imagesToGenerate;
@@ -83,10 +102,11 @@ export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Pr
     [`${key}:date`]: today
   });
 
-  return { canProceed: true, usageCount: currentUsage };
+  const resetsIn = getTimeUntilMidnight();
+  return { canProceed: true, usageCount: currentUsage, resetsIn };
 }
 
-export async function getGeneratorUsage(): Promise<number> {
+export async function getGeneratorUsage(): Promise<{ usageCount: number; resetsIn: string }> {
   const { userId } = auth();
   
   if (!userId) {
@@ -94,7 +114,26 @@ export async function getGeneratorUsage(): Promise<number> {
   }
 
   const key = `${GENERATOR_KEY_PREFIX}${userId}`;
-  const usageCount = await kv.get(key);
+  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
 
-  return typeof usageCount === 'number' ? usageCount : 0;
+  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+
+  if (isNewDay(lastUsageDate as string | null)) {
+    currentUsage = 0;
+    await kv.set(key, 0);
+  }
+
+  const resetsIn = getTimeUntilMidnight();
+  return { usageCount: currentUsage, resetsIn };
+}
+
+function getTimeUntilMidnight(): string {
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+  tomorrow.setUTCHours(0, 0, 0, 0);
+  const msUntilMidnight = tomorrow.getTime() - now.getTime();
+  const hoursUntilMidnight = Math.floor(msUntilMidnight / (1000 * 60 * 60));
+  const minutesUntilMidnight = Math.floor((msUntilMidnight % (1000 * 60 * 60)) / (1000 * 60));
+  return `${hoursUntilMidnight}h ${minutesUntilMidnight}m`;
 }
