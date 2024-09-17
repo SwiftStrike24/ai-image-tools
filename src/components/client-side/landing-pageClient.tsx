@@ -292,10 +292,17 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 2, ease: "easeOut" }}
             >
-              <HyperText
-                text="FluxScale AI"
-                className="text-2xl font-bold text-purple-500"
-              />
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 2, ease: "easeOut" }}
+              >
+                <HyperText
+                  text="FluxScale AI"
+                  className="text-2xl font-bold text-purple-500"
+                  duration={2000} // Adjust the duration (in milliseconds) here
+                />
+              </motion.div>
             </motion.div>
           </motion.nav>
           

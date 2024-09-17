@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 interface HyperTextProps {
   text: string;
-  duration?: number;
+  duration?: number; // Duration for the entire animation cycle
   framerProps?: Variants;
   className?: string;
   animateOnLoad?: boolean;
@@ -19,7 +19,7 @@ const getRandomInt = (max: number) => Math.floor(Math.random() * max);
 
 export default function HyperText({
   text,
-  duration = 800,
+  duration = 2000, // Increased default duration
   framerProps = {
     initial: { opacity: 0, y: -10 },
     animate: { opacity: 1, y: 0 },
@@ -62,7 +62,7 @@ export default function HyperText({
           clearInterval(interval);
         }
       },
-      duration / (text.length * 10),
+      duration / (text.length * 10), // Duration affects the speed of cycling
     );
     // Clean up interval on unmount
     return () => clearInterval(interval);
