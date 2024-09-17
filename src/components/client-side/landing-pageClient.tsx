@@ -10,12 +10,16 @@ import BeforeAfterSlider from '@/components/BeforeAfterSlider'
 import { addToWaitlist } from '@/actions/waitlist-actions'
 import { useToast } from "@/hooks/use-toast"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import ShinyButton from "@/components/magicui/shiny-button"
+import ShimmerButton from "@/components/magicui/shimmer-button"
 import AnimatedCheckmark from '@/components/AnimatedCheckmark'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import Head from 'next/head'
+import RetroGrid from "@/components/magicui/retro-grid"
+import HyperText from "@/components/magicui/hyper-text"
+import BlurFade from "@/components/magicui/blur-fade"
+import AnimatedGradientText from "@/components/magicui/animated-gradient-text"
 
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
@@ -256,226 +260,253 @@ export default function LandingPage() {
   return (
     <AnimatePresence>
       <motion.div
-        className="min-h-screen bg-gray-900 text-white"
+        className="min-h-screen bg-gray-900 text-white relative"
         ref={containerRef}
         initial="hidden"
         animate="visible"
         variants={containerVariants}
       >
-        <Head>
-          <script type="application/ld+json">
-            {JSON.stringify(structuredData)}
-          </script>
-        </Head>
-        <motion.nav
-          className="p-4 flex justify-between items-center"
-          variants={itemVariants}
-        >
-          <h1 className="text-2xl font-bold text-purple-500">FluxScale AI</h1>
-        </motion.nav>
+        {/* Add RetroGrid component */}
+        <RetroGrid className="absolute inset-0 z-0" />
         
-        <main className="container mx-auto px-4 py-16">
-          <motion.div 
-            className="text-center"
+        {/* Add a semi-transparent overlay */}
+        <div className="absolute inset-0 bg-gray-900/70 z-10"></div>
+
+        {/* Wrap the existing content in a relative div to place it above the grid */}
+        <div className="relative z-20">
+          {/* Existing content goes here */}
+          <Head>
+            <script type="application/ld+json">
+              {JSON.stringify(structuredData)}
+            </script>
+          </Head>
+          <motion.nav
+            className="p-4 flex justify-between items-center"
             variants={itemVariants}
           >
-            <h2 className="text-4xl md:text-6xl font-bold mb-4">Supercharge Your Visuals with AI</h2>
-            <p className="text-xl md:text-2xl mb-8 text-gray-300">Transform ideas into stunning images in seconds</p>
-          </motion.div>
-
-          <motion.div variants={itemVariants}>
-            <ImageCarousel />
-          </motion.div>
-
-          <motion.div 
-            ref={ref}
-            animate={controls}
-            initial="hidden"
-            variants={emailInputVariants}
-            className="flex justify-center my-16 px-4"
-          >
-            <div ref={waitlistRef} className="w-full max-w-md">
-              <h3 className="text-2xl font-bold mb-4 text-center">Join the Waitlist</h3>
-              <p className="text-gray-300 text-center mb-6">Be the first to experience the future of AI-powered image enhancement</p>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="relative">
-                  <Input 
-                    ref={emailInputRef}
-                    placeholder="Enter your email for early access" 
-                    value={email} 
-                    onChange={handleEmailChange}
-                    onKeyDown={handleKeyDown}
-                    maxLength={MAX_EMAIL_LENGTH}
-                    className={`w-full bg-gray-800 text-white border-purple-500 ${formError ? 'border-red-500' : ''}`}
-                    required
-                  />
-                  {formError && (
-                    <p className="text-red-400 text-sm mt-1">{formError}</p>
-                  )}
-                  <p className="text-gray-400 text-xs mt-1">
-                    {email.length}/{MAX_EMAIL_LENGTH}
-                  </p>
-                </div>
-                <ShinyButton 
-                  type="submit" 
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded"
-                  disabled={isSubmitting || isSuccess}
-                >
-                  {isSubmitting ? (
-                    'Joining...'
-                  ) : isSuccess ? (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: "spring", stiffness: 200, damping: 10 }}
-                      className="flex justify-center items-center"
-                    >
-                      <AnimatedCheckmark />
-                    </motion.div>
-                  ) : (
-                    <div className="flex items-center justify-center">
-                      <span>Join Waitlist</span>
-                      <ArrowRight className="ml-2 w-4 h-4" />
-                    </div>
-                  )}
-                </ShinyButton>
-              </form>
-            </div>
-          </motion.div>
-
-          <motion.div 
-            className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16 mt-24"
-            variants={itemVariants}
-          >
-            {features.map((feature, index) => (
-              <motion.div 
-                key={index}
-                whileHover={{ scale: 1.05, zIndex: 1 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <Card className="bg-gradient-to-br from-gray-800 to-gray-900 border-purple-500 shadow-lg hover:shadow-purple-500/20 transition-all duration-300 group">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-xl font-semibold text-white">{feature.title}</CardTitle>
-                    <motion.div
-                      className="text-purple-400 relative w-8 h-8"
-                      whileHover={{ rotate: 360 }}
-                      transition={{ duration: 0.5 }}
-                    >
-                      <motion.div
-                        className="absolute inset-0 flex items-center justify-center"
-                        initial={{ scale: 1 }}
-                        whileHover={{ scale: 2 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        {feature.icon}
-                      </motion.div>
-                    </motion.div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-gray-400">{feature.description}</p>
-                    <Badge 
-                      variant="secondary" 
-                      className="mt-4 bg-gradient-to-r from-purple-700 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-500 transition-all duration-300 shadow-md hover:shadow-lg"
-                    >
-                      {feature.badge}
-                    </Badge>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </motion.div>
-
-          <motion.div
-            variants={itemVariants}
-            className="mb-16 p-8 rounded-lg max-w-5xl mx-auto"
-          >
-            <h3 className="text-2xl font-bold mb-4 text-center">See the Difference</h3>
-            <p className="text-gray-300 text-center mb-6">Experience the power of AI-enhanced images</p>
-            <div className="w-full">
-              <BeforeAfterSlider
-                beforeImage="/images/landing-page/before-after-images/before-image.jpg"
-                afterImage="/images/landing-page/before-after-images/after-image.jpg"
-                beforeAlt="Image before AI enhancement"
-                afterAlt="Image after AI enhancement"
-              />
-            </div>
-          </motion.div>
-
-          <motion.div
-            variants={itemVariants}
-            className="mb-16 p-8 rounded-lg max-w-4xl mx-auto"
-          >
-            <h3 className="text-3xl font-bold mb-8 text-center">Frequently Asked Questions</h3>
-            <Accordion type="single" collapsible className="w-full space-y-4">
-              {faqs.map((faq, index) => (
-                <AccordionItem key={index} value={`item-${index}`} className="border-b border-purple-700">
-                  <AccordionTrigger className="text-left hover:no-underline">
-                    <motion.div
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="w-full text-lg font-semibold text-white"
-                    >
-                      {faq.question}
-                    </motion.div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                      className="text-gray-300 pt-2"
-                    >
-                      {faq.answer}
-                    </motion.div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          </motion.div>
-
-          <motion.div
-            variants={itemVariants}
-            className="flex justify-center mb-16"
-          >
-            <ShinyButton
-              onClick={scrollToWaitlist}
-              className="px-8 py-4 text-lg font-semibold"
-              text="Join the AI Revolution"
+            <HyperText
+              text="FluxScale AI"
+              className="text-2xl font-bold text-purple-500"
+              duration={1000}
             />
-          </motion.div>
+          </motion.nav>
+          
+          <main className="container mx-auto px-4 py-16">
+            <BlurFade>
+              <div className="flex justify-center items-center">
+                <AnimatedGradientText className="text-4xl md:text-6xl font-bold mb-4 text-center">
+                  Supercharge Your Visuals with AI
+                </AnimatedGradientText>
+              </div>
+            </BlurFade>
+            <motion.div 
+              className="text-center"
+              variants={itemVariants}
+            >
+              <p className="text-xl md:text-2xl mb-8 text-gray-300">Transform ideas into stunning images in seconds</p>
+            </motion.div>
 
-          {/* New Pricing Coming Soon component */}
-          <motion.div
-            variants={itemVariants}
-            className="mb-16"
-          >
-            <Card className="bg-gradient-to-br from-purple-900 to-indigo-900 border-2 border-purple-500 shadow-lg hover:shadow-purple-500/20 transition-shadow duration-300">
-              <CardContent className="p-6 text-center">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5 }}
-                  className="flex items-center justify-center mb-4"
+            <motion.div variants={itemVariants}>
+              <ImageCarousel />
+            </motion.div>
+
+            <motion.div 
+              ref={ref}
+              animate={controls}
+              initial="hidden"
+              variants={emailInputVariants}
+              className="flex justify-center my-16 px-4"
+            >
+              <div ref={waitlistRef} className="w-full max-w-md">
+                <h3 className="text-2xl font-bold mb-4 text-center">Join the Waitlist</h3>
+                <p className="text-gray-300 text-center mb-6">Be the first to experience the future of AI-powered image enhancement</p>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="relative">
+                    <Input 
+                      ref={emailInputRef}
+                      placeholder="Enter your email for early access" 
+                      value={email} 
+                      onChange={handleEmailChange}
+                      onKeyDown={handleKeyDown}
+                      maxLength={MAX_EMAIL_LENGTH}
+                      className={`w-full bg-gray-800 text-white border-purple-500 ${formError ? 'border-red-500' : ''}`}
+                      required
+                    />
+                    {formError && (
+                      <p className="text-red-400 text-sm mt-1">{formError}</p>
+                    )}
+                    <p className="text-gray-400 text-xs mt-1">
+                      {email.length}/{MAX_EMAIL_LENGTH}
+                    </p>
+                  </div>
+                  <ShimmerButton 
+                    type="submit" 
+                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded"
+                    disabled={isSubmitting || isSuccess}
+                    shimmerColor="#8B5CF6"
+                    shimmerSize="0.1em"
+                    shimmerDuration="2s"
+                  >
+                    {isSubmitting ? (
+                      <span className="text-white">Joining...</span>
+                    ) : isSuccess ? (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 200, damping: 10 }}
+                        className="flex justify-center items-center"
+                      >
+                        <AnimatedCheckmark />
+                      </motion.div>
+                    ) : (
+                      <div className="flex items-center justify-center text-white">
+                        <span>Join Waitlist</span>
+                        <ArrowRight className="ml-2 w-4 h-4" />
+                      </div>
+                    )}
+                  </ShimmerButton>
+                </form>
+              </div>
+            </motion.div>
+
+            <motion.div 
+              className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16 mt-24"
+              variants={itemVariants}
+            >
+              {features.map((feature, index) => (
+                <motion.div 
+                  key={index}
+                  whileHover={{ scale: 1.05, zIndex: 1 }}
+                  transition={{ type: "spring", stiffness: 300 }}
                 >
-                  <Sparkles className="w-8 h-8 text-purple-400 mr-2" />
-                  <h3 className="text-2xl font-bold text-white">Pricing Coming Soon</h3>
+                  <Card className="bg-gradient-to-br from-gray-800 to-gray-900 border-purple-500 shadow-lg hover:shadow-purple-500/20 transition-all duration-300 group">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-xl font-semibold text-white">{feature.title}</CardTitle>
+                      <motion.div
+                        className="text-purple-400 relative w-8 h-8"
+                        whileHover={{ rotate: 360 }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        <motion.div
+                          className="absolute inset-0 flex items-center justify-center"
+                          initial={{ scale: 1 }}
+                          whileHover={{ scale: 2 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          {feature.icon}
+                        </motion.div>
+                      </motion.div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-gray-400">{feature.description}</p>
+                      <Badge 
+                        variant="secondary" 
+                        className="mt-4 bg-gradient-to-r from-purple-700 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-500 transition-all duration-300 shadow-md hover:shadow-lg"
+                      >
+                        {feature.badge}
+                      </Badge>
+                    </CardContent>
+                  </Card>
                 </motion.div>
-                <p className="text-purple-200 mb-4">Get ready for flexible plans tailored to your needs</p>
-                <Badge variant="secondary" className="bg-purple-700 text-white hover:bg-purple-600 transition-colors duration-300">
-                  Stay Tuned
-                </Badge>
-              </CardContent>
-            </Card>
-          </motion.div>
+              ))}
+            </motion.div>
 
-          <motion.footer
-            variants={itemVariants}
-            className="text-center py-8 text-gray-400"
-          >
-            © 2024 FluxScale AI. All rights reserved.
-          </motion.footer>
-        </main>
+            <motion.div
+              variants={itemVariants}
+              className="mb-16 p-8 rounded-lg max-w-5xl mx-auto"
+            >
+              <h3 className="text-2xl font-bold mb-4 text-center">See the Difference</h3>
+              <p className="text-gray-300 text-center mb-6">Experience the power of AI-enhanced images</p>
+              <div className="w-full">
+                <BeforeAfterSlider
+                  beforeImage="/images/landing-page/before-after-images/before-image.jpg"
+                  afterImage="/images/landing-page/before-after-images/after-image.jpg"
+                  beforeAlt="Image before AI enhancement"
+                  afterAlt="Image after AI enhancement"
+                />
+              </div>
+            </motion.div>
+
+            <motion.div
+              variants={itemVariants}
+              className="mb-16 p-8 rounded-lg max-w-4xl mx-auto"
+            >
+              <h3 className="text-3xl font-bold mb-8 text-center">Frequently Asked Questions</h3>
+              <Accordion type="single" collapsible className="w-full space-y-4">
+                {faqs.map((faq, index) => (
+                  <AccordionItem key={index} value={`item-${index}`} className="border-b border-purple-700">
+                    <AccordionTrigger className="text-left hover:no-underline">
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="w-full text-lg font-semibold text-white"
+                      >
+                        {faq.question}
+                      </motion.div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="text-gray-300 pt-2"
+                      >
+                        {faq.answer}
+                      </motion.div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </motion.div>
+
+            <motion.div
+              variants={itemVariants}
+              className="flex justify-center mb-16"
+            >
+              <ShimmerButton
+                onClick={scrollToWaitlist}
+                className="px-8 py-4 text-lg font-semibold bg-purple-600 hover:bg-purple-700 text-white rounded"
+                shimmerColor="#8B5CF6"
+                shimmerSize="0.1em"
+                shimmerDuration="2s"
+              >
+                <span className="text-white">Join the AI Revolution</span>
+              </ShimmerButton>
+            </motion.div>
+
+            {/* New Pricing Coming Soon component */}
+            <motion.div
+              variants={itemVariants}
+              className="mb-16"
+            >
+              <Card className="bg-gradient-to-br from-purple-900 to-indigo-900 border-2 border-purple-500 shadow-lg hover:shadow-purple-500/20 transition-shadow duration-300">
+                <CardContent className="p-6 text-center">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5 }}
+                    className="flex items-center justify-center mb-4"
+                  >
+                    <Sparkles className="w-8 h-8 text-purple-400 mr-2" />
+                    <h3 className="text-2xl font-bold text-white">Pricing Coming Soon</h3>
+                  </motion.div>
+                  <p className="text-purple-200 mb-4">Get ready for flexible plans tailored to your needs</p>
+                  <Badge variant="secondary" className="bg-purple-700 text-white hover:bg-purple-600 transition-colors duration-300">
+                    Stay Tuned
+                  </Badge>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.footer
+              variants={itemVariants}
+              className="text-center py-8 text-gray-400"
+            >
+              © 2024 FluxScale AI. All rights reserved.
+            </motion.footer>
+          </main>
+        </div>
       </motion.div>
     </AnimatePresence>
   )
