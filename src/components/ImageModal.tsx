@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { X } from 'lucide-react';
 import { VisuallyHidden } from '@/components/ui/visually-hidden';
@@ -20,10 +21,14 @@ const ImageModal: React.FC<ImageModalProps> = ({ isOpen, onClose, imageUrl, aspe
         <div className="relative flex items-center justify-center w-screen h-screen" onClick={onClose}>
           {imageUrl && (
             <div className="relative max-w-full max-h-full" onClick={(e) => e.stopPropagation()}>
-              <img
+              <Image
                 src={imageUrl}
                 alt="Generated image"
-                className={`max-w-full max-h-[95vh] object-contain ${getModalSizeClass(aspectRatio)}`}
+                className={`max-w-[95vw] max-h-[95vh] object-contain ${getModalSizeClass(aspectRatio)}`}
+                layout="responsive"
+                width={1000}
+                height={1000}
+                priority
               />
               <DialogClose className="absolute top-6 right-6 rounded-full bg-black bg-opacity-50 p-2 text-white hover:bg-opacity-75 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 transition-all duration-200">
                 <X className="h-6 w-6" />

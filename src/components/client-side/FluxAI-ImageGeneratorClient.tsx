@@ -153,17 +153,17 @@ export default function FluxAIImageGenerator() {
 
       console.log("Params sent to generateFluxImage:", params);
 
-      const results = isSimulationMode 
+      const results: FluxImageResult[] = isSimulationMode 
         ? await simulateImageGeneration(params, followUpLevel, simulationId)
         : await generateFluxImage(params);
 
       console.log("Results received from generateFluxImage:", results);
 
-      if (Array.isArray(results) && results.length > 0) {
+      if (results.length > 0) {
         const newImageResults = results.map((result, index) => ({
           ...result,
           followUpLevel: followUpLevel + 1,
-          index, // Add the index property here
+          index,
         }));
 
         const newSeed = newImageResults[0].seed;

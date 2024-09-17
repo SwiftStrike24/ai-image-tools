@@ -4,8 +4,8 @@ export interface FluxImageParams {
   num_outputs: number;
   output_format: string;
   output_quality: number;
-  disable_safety_checker: boolean;
   enhance_prompt: boolean;
+  disable_safety_checker: boolean;
   seed?: number;
   followUpLevel: number;
 }

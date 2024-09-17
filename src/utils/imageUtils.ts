@@ -1,4 +1,5 @@
 // This file contains both browser-specific and non-browser-specific utilities
+import { FluxImageParams, FluxImageResult } from "@/types/imageTypes";
 
 // Type definition for ImageUtilsType
 export type ImageUtilsType = {
@@ -105,13 +106,13 @@ export const aspectRatioOptions = [
 ];
 
 export const simulateImageGeneration = async (
-  params: any, // Replace 'any' with the correct type for params
+  params: FluxImageParams,
   followUpLevel: number,
   simulationId: string
-) => {
+): Promise<FluxImageResult[]> => {
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
-  const baseUrl = '/images/simulated';
+  const baseUrl = '/images/landing-page/simulated';
   const aspectRatioMap: { [key: string]: string } = {
     '1:1': 'square',
     '16:9': 'widescreen',
@@ -125,16 +126,47 @@ export const simulateImageGeneration = async (
   };
 
   const aspectRatioKey = aspectRatioMap[params.aspect_ratio] || 'square';
-  const imageUrls = Array(params.num_outputs)
-    .fill(null)
-    .map(
-      (_, index) => `${baseUrl}/${aspectRatioKey}-${index + 1}.jpg?id=${simulationId}`
-    );
+  
+  // Get all image files for the selected aspect ratio
+  const imageFiles = getImageFilesForAspectRatio(aspectRatioKey);
 
-  return imageUrls.map((url) => ({
+  // Randomly select images based on num_outputs
+  const selectedImages = selectRandomImages(imageFiles, params.num_outputs);
+
+  const imageUrls = selectedImages.map(
+    (imageName) => `${baseUrl}/${aspectRatioKey}-${imageName}.jpg?id=${simulationId}`
+  );
+
+  return imageUrls.map((url, index) => ({
     imageUrls: [url],
     seed: Math.floor(Math.random() * 1000000),
     prompt: params.prompt,
     followUpLevel: followUpLevel + 1,
+    index,
   }));
 };
+
+// Helper function to get image files for a specific aspect ratio
+const getImageFilesForAspectRatio = (aspectRatio: string): string[] => {
+  const imageFiles: { [key: string]: string[] } = {
+    'square': ['1', '2', '3', '4'],
+    'widescreen': ['1', '2', '3', '4'],
+    'vertical': ['1', '2', '3', '4'],
+    'instagram-portrait': ['1', '2', '3', '4'],
+    'ultrawide': ['1', '2', '3', '4'],
+    'classic-portrait': ['1', '2', '3', '4'],
+    'classic-landscape': ['1', '2', '3', '4'],
+    'large-format': ['1', '2', '3', '4'],
+    'vertical-ultrawide': ['1', '2', '3', '4'],
+  };
+
+  return imageFiles[aspectRatio] || ['1', '2', '3', '4'];
+};
+
+// Helper function to randomly select images
+const selectRandomImages = (images: string[], count: number): string[] => {
+  const shuffled = [...images].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
+};
+
+// ... (rest of the code remains unchanged)
