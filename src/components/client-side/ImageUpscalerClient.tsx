@@ -371,6 +371,31 @@ function ImageUpscalerComponent() {
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 via-purple-900/50 to-gray-900/90 z-10" />
       <div className="relative z-20 container mx-auto px-4 py-6 md:py-8">
         <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
+          {/* Daily Usage Display - Moved to the top */}
+          <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium">Daily Usage (Free Plan)</span>
+              {isSimulationMode ? (
+                <span className="text-sm font-medium">Simulation Mode</span>
+              ) : (
+                <span className="text-sm font-medium">{dailyUsage} / {UPSCALER_DAILY_LIMIT}</span>
+              )}
+            </div>
+            {!isSimulationMode && (
+              <>
+                <Progress value={(dailyUsage / UPSCALER_DAILY_LIMIT) * 100} className="h-2" />
+                <p className="text-xs text-purple-300">
+                  {UPSCALER_DAILY_LIMIT - dailyUsage} upscales remaining today. Resets at midnight.
+                </p>
+              </>
+            )}
+            {isSimulationMode && (
+              <p className="text-xs text-purple-300">
+                Simulation mode active. No API calls are being made.
+              </p>
+            )}
+          </div>
+
           <div className="flex justify-between items-center">
             <motion.p 
               className="text-xl bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600"
@@ -609,31 +634,6 @@ function ImageUpscalerComponent() {
               </AlertDescription>
             </Alert>
           )}
-
-          {/* Daily Usage Display */}
-          <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Daily Usage (Free Plan)</span>
-              {isSimulationMode ? (
-                <span className="text-sm font-medium">Simulation Mode</span>
-              ) : (
-                <span className="text-sm font-medium">{dailyUsage} / {UPSCALER_DAILY_LIMIT}</span>
-              )}
-            </div>
-            {!isSimulationMode && (
-              <>
-                <Progress value={(dailyUsage / UPSCALER_DAILY_LIMIT) * 100} className="h-2" />
-                <p className="text-xs text-purple-300">
-                  {UPSCALER_DAILY_LIMIT - dailyUsage} upscales remaining today. Resets at midnight.
-                </p>
-              </>
-            )}
-            {isSimulationMode && (
-              <p className="text-xs text-purple-300">
-                Simulation mode active. No API calls are being made.
-              </p>
-            )}
-          </div>
         </div>
       </div>
       
