@@ -2,13 +2,24 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['replicate.com', 'replicate.delivery'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'replicate.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'replicate.delivery',
+      },
+      // Add any other remote patterns as needed
+    ],
+    // Removed 'domains' as it's deprecated
   },
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb'
     },
-    appDir: true,
+    // Removed 'appDir: true' as it's now stable
   },
   transpilePackages: ['@clerk/clerk-sdk-node'],
   async headers() {
