@@ -62,10 +62,11 @@ module.exports = {
         gradient: "gradient 8s linear infinite",
         "fade-in": "fade-in 1.5s ease-in-out forwards",
         "fade-out": "fade-out 1.5s ease-in-out forwards",
-        "pulse-slow": "pulse 6s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "pulse-slow": "pulse 8s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "float": "float 6s ease-in-out infinite",
         "grid-flow": "grid-flow 20s linear infinite",
-        "move-up": "moveUp 200s linear infinite",
+        "move-up": "moveUp 150s linear infinite",
+        "fade-in-out": "fadeInOut 8s ease-in-out infinite",
       },
       keyframes: {
         grid: {
@@ -124,6 +125,14 @@ module.exports = {
         moveUp: {
           "0%": { transform: "translateY(0)" },
           "100%": { transform: "translateY(-50%)" },
+        },
+        pulse: {
+          "0%, 100%": { opacity: 0.2 },
+          "50%": { opacity: 0.8 },
+        },
+        fadeInOut: {
+          "0%, 100%": { opacity: 0 },
+          "50%": { opacity: 1 },
         },
       },
     },

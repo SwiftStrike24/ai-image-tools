@@ -260,7 +260,7 @@ export default function LandingPage() {
   return (
     <AnimatePresence>
       <motion.div
-        className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 text-white relative overflow-hidden"
+        className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 text-white relative overflow-hidden"
         ref={containerRef}
         initial="hidden"
         animate="visible"
@@ -272,8 +272,8 @@ export default function LandingPage() {
           x={-1}
           y={-1}
           strokeDasharray={0}
-          numSquares={75}
-          className="absolute inset-0 z-0"
+          numSquares={100}
+          className="absolute inset-0 z-0 opacity-50"
           maxOpacity={0.3}
           duration={8}
           repeatDelay={0}

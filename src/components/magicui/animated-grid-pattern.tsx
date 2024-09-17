@@ -46,6 +46,8 @@ export function GridPattern({
     return Array.from({ length: count }, (_, i) => ({
       id: i,
       pos: getPos(),
+      delay: Math.random() * 4, // Random delay between 0 and 4 seconds
+      duration: 2 + Math.random() * 2, // Random duration between 2 and 4 seconds
     }));
   }
 
@@ -107,24 +109,24 @@ export function GridPattern({
         </defs>
         <rect width="100%" height="100%" fill={`url(#${id})`} />
         <svg x={x} y={y} className="overflow-visible">
-          {squares.map(({ pos: [x, y], id }, index) => (
+          {squares.map(({ pos: [x, y], id, delay, duration }) => (
             <motion.rect
               initial={{ opacity: 0 }}
-              animate={{ opacity: maxOpacity }}
+              animate={{ opacity: [0, maxOpacity, 0] }}
               transition={{
-                duration: duration * 2,
+                duration: duration,
                 repeat: Infinity,
-                repeatType: "reverse",
+                repeatDelay: delay,
                 ease: "easeInOut",
+                times: [0, 0.5, 1], // Ensures smooth fade in and out
               }}
-              key={`${x}-${y}-${index}`}
+              key={`${x}-${y}-${id}`}
               width={width - 1}
               height={height - 1}
               x={x * width + 1}
               y={y * height + 1}
-              fill="rgba(255, 255, 255, 0.05)"
+              fill="rgba(255, 255, 255, 0.1)"
               strokeWidth="0"
-              className="animate-pulse-slow"
             />
           ))}
         </svg>
