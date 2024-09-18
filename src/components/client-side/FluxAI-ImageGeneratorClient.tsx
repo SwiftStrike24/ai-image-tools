@@ -102,8 +102,9 @@ export default function FluxAIImageGenerator() {
 
     try {
       if (!isSimulationMode) {
-        const { canProceed, usageCount } = await checkAndUpdateGeneratorLimit(numOutputs);
+        const { canProceed, usageCount, resetsIn } = await checkAndUpdateGeneratorLimit(numOutputs);
         setDailyUsage(usageCount);
+        setResetsIn(resetsIn);
 
         if (!canProceed) {
           const remainingGenerations = GENERATOR_DAILY_LIMIT - usageCount;

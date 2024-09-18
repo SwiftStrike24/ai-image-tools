@@ -80,15 +80,15 @@ export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Pr
   }
 
   const key = `${GENERATOR_KEY_PREFIX}${userId}`;
-  const today = new Date().toUTCString();
-
   const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
 
-  if (lastUsageDate !== today) {
+  // {{ edit_1 }}
+  if (isNewDay(lastUsageDate as string | null)) {
     currentUsage = 0;
   }
+  // {{ edit_1 }}
 
   if (currentUsage + imagesToGenerate > GENERATOR_DAILY_LIMIT) {
     const resetsIn = getTimeUntilMidnight();
@@ -99,7 +99,7 @@ export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Pr
 
   await kv.mset({
     [key]: currentUsage,
-    [`${key}:date`]: today
+    [`${key}:date`]: new Date().toUTCString()
   });
 
   const resetsIn = getTimeUntilMidnight();
