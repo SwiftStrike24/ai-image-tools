@@ -42,7 +42,7 @@ export async function checkAndUpdateRateLimit(): Promise<{ canProceed: boolean; 
   await kv.mset({
     [key]: currentUsage,
     [`${key}:date`]: new Date().toUTCString(),
-    [`${key}:total`]: (await kv.get(`${key}:total`)) + 1 || 1 // {{ edit_a }}
+    [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + 1
   });
 
   const resetsIn = getTimeUntilMidnight();
@@ -96,7 +96,7 @@ export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Pr
   await kv.mset({
     [key]: currentUsage,
     [`${key}:date`]: new Date().toUTCString(),
-    [`${key}:total`]: (await kv.get(`${key}:total`)) + imagesToGenerate || imagesToGenerate // {{ edit_1 }}
+    [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + imagesToGenerate // Fix: Handle case when total is null and add type assertion
   });
 
   const resetsIn = getTimeUntilMidnight();
