@@ -121,28 +121,21 @@ export default function FluxAIImageGenerator() {
       let finalPrompt = currentPrompt;
 
       if (isFollowUp) {
-        // Check if this prompt is already in the history
-        const lastHistoryEntry = promptHistory[promptHistory.length - 1];
-        if (lastHistoryEntry && lastHistoryEntry.prompt === `${originalPrompt}, ${currentPrompt}`.trim()) {
-          // This prompt has already been generated, so we skip
-          toast({
-            title: "Duplicate Prompt",
-            description: "This follow-up prompt has already been generated.",
-            variant: "warning",
-          });
-          setIsLoading(false);
-          return;
+        // Ensure we're not duplicating the last part of the original prompt
+        const originalPromptParts = originalPrompt.split(',');
+        const lastOriginalPart = originalPromptParts[originalPromptParts.length - 1]?.trim();
+        if (lastOriginalPart !== currentPrompt.trim()) {
+          finalPrompt = `${originalPrompt}, ${currentPrompt}`.trim();
+        } else {
+          finalPrompt = originalPrompt;
         }
-        finalPrompt = `${originalPrompt}, ${currentPrompt}`.trim();
         setFollowUpPrompts([...followUpPrompts, currentPrompt]);
-        setOriginalPrompt(finalPrompt); // Update originalPrompt for follow-ups
       } else {
-        // For new prompts, reset followUpLevel
+        // For new prompts, reset followUpLevel and history
         setFollowUpLevel(1);
-        // Update originalPrompt with the new prompt when not a follow-up
-        setOriginalPrompt(currentPrompt);
-        setCurrentSeed(null); // Reset the seed for new prompts
+        setPromptHistory([]);
       }
+      setOriginalPrompt(finalPrompt);
 
       if (isEnhancePromptEnabled) {
         const enhancedPromptResult = await enhancePrompt(finalPrompt);
@@ -165,7 +158,7 @@ export default function FluxAIImageGenerator() {
         enhance_prompt: isEnhancePromptEnabled,
         disable_safety_checker: true,
         seed: currentSeed !== null ? currentSeed : undefined,
-        followUpLevel: isFollowUp ? followUpLevel + 1 : followUpLevel,
+        followUpLevel: isFollowUp ? followUpLevel : 1,
       };
 
       console.log("Params sent to generateFluxImage:", params);
@@ -179,7 +172,7 @@ export default function FluxAIImageGenerator() {
       if (results.length > 0) {
         const newImageResults = results.map((result, index) => ({
           ...result,
-          followUpLevel: isFollowUp ? followUpLevel + 1 : 1,
+          followUpLevel: isFollowUp ? followUpLevel : 1,
           index,
         }));
 
@@ -189,32 +182,25 @@ export default function FluxAIImageGenerator() {
         const newHistoryEntry: PromptHistoryEntry = { 
           prompt: finalPrompt, 
           images: newImageResults,
-          followUpLevel: isFollowUp ? followUpLevel + 1 : 1,
+          followUpLevel: isFollowUp ? followUpLevel : 1,
           seed: newSeed,
         };
         
         setPromptHistory(prevHistory => {
-          if (isFollowUp) {
-            // Remove any entries after the current level and add the new one
-            return [...prevHistory.slice(0, followUpLevel), newHistoryEntry];
-          } else {
-            // For new prompts, reset history and start with this entry
-            return [newHistoryEntry];
-          }
+          const newHistory = [...prevHistory, newHistoryEntry];
+          setCurrentPromptIndex(newHistory.length - 1);
+          return newHistory;
         });
-        setCurrentPromptIndex(isFollowUp ? followUpLevel : 0);
         setImageResults(newImageResults);
         setImageUrls(newImageResults.map(result => result.imageUrls[0]));
         setGeneratedAspectRatio(aspectRatio);
         setFocusedImageIndex(null);
         setIsFocused(false);
-        setFollowUpLevel(isFollowUp ? followUpLevel + 1 : 1);
+        setFollowUpLevel(prev => isFollowUp ? prev + 1 : 1);
         
         // Reset followUpPrompt but keep showSeedInput true for follow-ups
         setFollowUpPrompt('');
-        if (!isFollowUp) {
-          setShowSeedInput(false);
-        }
+        setShowSeedInput(isFollowUp);
 
         toast({
           title: isSimulationMode ? "Images Simulated" : "Images Generated",
@@ -406,10 +392,11 @@ export default function FluxAIImageGenerator() {
     if (followUpLevel <= 1) return; // Don't go back if we're at the initial level
 
     const newLevel = followUpLevel - 1;
-    const previousEntry = promptHistory[newLevel - 1];
+    const currentEntry = promptHistory[newLevel]; // Get the current entry
+    const previousEntry = promptHistory[newLevel - 1]; // Get the previous entry
 
-    if (!previousEntry) {
-      console.error("Previous entry not found in prompt history");
+    if (!currentEntry || !previousEntry) {
+      console.error("Entry not found in prompt history");
       return;
     }
 
@@ -428,13 +415,14 @@ export default function FluxAIImageGenerator() {
       // For follow-up prompts
       setShowSeedInput(true);
       // Set originalPrompt to the previous level's full prompt
-      const previousLevelEntry = promptHistory[newLevel - 2];
-      setOriginalPrompt(previousLevelEntry.prompt);
+      setOriginalPrompt(previousEntry.prompt);
       // Extract the last part of the current level's prompt as the follow-up
-      const promptParts = previousEntry.prompt.split(',');
+      const promptParts = currentEntry.prompt.split(',');
       setFollowUpPrompt(promptParts[promptParts.length - 1]?.trim() || '');
     }
 
+    // Trim the prompt history to the current level
+    setPromptHistory(prevHistory => prevHistory.slice(0, newLevel));
     setCurrentPromptIndex(newLevel - 1);
     setFocusedImageIndex(null);
     setIsFocused(false);
