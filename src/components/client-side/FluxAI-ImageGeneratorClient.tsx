@@ -246,22 +246,41 @@ export default function FluxAIImageGenerator() {
 
     try {
       if (focusedImageIndex === index) {
+        // This is the unfocus action
         setFocusedImageIndex(null);
         setIsFocused(false);
         
-        toast({
-          title: "Focus Cleared",
-          description: "You can now select a different image or continue with your current prompt.",
-        });
+        if (followUpLevel === 1) {
+          // Clear the seed and form only at level 1
+          setCurrentSeed(null);
+          setShowSeedInput(false);
+          setFollowUpPrompt('');
+          toast({
+            title: "Seed Cleared",
+            description: "The seed has been cleared. You can now generate new images or refocus.",
+          });
+        } else {
+          // For level 2 and beyond, just update UI
+          toast({
+            title: "Focus Cleared",
+            description: "Image unfocused. The seed and follow-up prompt remain unchanged.",
+          });
+        }
       } else {
-        setCurrentSeed(seed);
-        setShowSeedInput(true);
+        // Focus action
         setFocusedImageIndex(index);
         setIsFocused(true);
         
+        if (followUpLevel === 1) {
+          setCurrentSeed(seed);
+          setShowSeedInput(true);
+        }
+        
         toast({
           title: "Image Focused",
-          description: "You can now enter a follow-up prompt based on this image.",
+          description: followUpLevel === 1 
+            ? "You can now enter a follow-up prompt based on this image."
+            : "Image focused. The seed and follow-up prompt remain unchanged.",
         });
       }
     } catch (error) {
@@ -274,19 +293,27 @@ export default function FluxAIImageGenerator() {
     } finally {
       setTimeout(() => setIsProcessingSeed(false), 500);
     }
-  }, [isProcessingSeed, toast, focusedImageIndex]);
+  }, [isProcessingSeed, toast, focusedImageIndex, followUpLevel]);
 
   const clearFocusedImage = useCallback(() => {
     setFocusedImageIndex(null);
     setIsFocused(false);
-    setShowSeedInput(false);
-    setFollowUpPrompt('');
     
-    toast({
-      title: "Focus Cleared",
-      description: "You can now select a different image or continue with your current prompt.",
-    });
-  }, [toast]);
+    if (followUpLevel === 1) {
+      setCurrentSeed(null);
+      setShowSeedInput(false);
+      setFollowUpPrompt('');
+      toast({
+        title: "Seed Cleared",
+        description: "The seed has been cleared. You can now generate new images or refocus.",
+      });
+    } else {
+      toast({
+        title: "Focus Cleared",
+        description: "Image unfocused. The seed and follow-up prompt remain unchanged.",
+      });
+    }
+  }, [toast, followUpLevel]);
 
   const handleNewImage = useCallback(() => {
     setFollowUpPrompt(null);
