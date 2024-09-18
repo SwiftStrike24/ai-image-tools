@@ -6,13 +6,12 @@ import { GENERATOR_DAILY_LIMIT, GENERATOR_KEY_PREFIX } from "../src/constants/ra
 // Load environment variables from .env.local
 config({ path: '.env.local' });
 
-// No need to initialize Clerk, we'll use clerkClient directly
-
 function getTimeRemaining(): string {
   const now = new Date();
-  const midnight = new Date(now);
-  midnight.setHours(24, 0, 0, 0);
-  const timeRemaining = midnight.getTime() - now.getTime();
+  const utcNow = new Date(now.toUTCString()); // {{ edit_1 }}
+  const midnight = new Date(utcNow);
+  midnight.setUTCHours(24, 0, 0, 0); // {{ edit_2 }}
+  const timeRemaining = midnight.getTime() - utcNow.getTime(); // {{ edit_3 }}
   const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
   const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
@@ -21,13 +20,15 @@ function getTimeRemaining(): string {
 async function viewUserGenerators() {
   try {
     const keys = await kv.keys(`${GENERATOR_KEY_PREFIX}*`);
-    const userKeys = keys.filter(key => !key.endsWith(':date'));
+    const userKeys = keys.filter(key => !key.endsWith(':date') && !key.endsWith(':total')); // {{ edit_4 }}
 
     const userGenerators = await Promise.all(userKeys.map(async (key) => {
       const userId = key.replace(GENERATOR_KEY_PREFIX, '');
-      const usageCount = await kv.get(key) as number;
-      const remainingGenerations = GENERATOR_DAILY_LIMIT - (usageCount || 0);
-      const totalGenerated = usageCount || 0;
+      const [usageCount, lastUsageDate, totalGenerated] = await kv.mget([key, `${key}:date`, `${key}:total`]); // {{ edit_5 }}
+      const usage = typeof usageCount === 'number' ? usageCount : 0;
+      const total = typeof totalGenerated === 'number' ? totalGenerated : 0; // {{ edit_6 }}
+      const remainingGenerations = GENERATOR_DAILY_LIMIT - usage;
+      const totalGeneratedImages = total;
 
       let username = 'Unknown';
       let email = 'Unknown';
@@ -39,28 +40,28 @@ async function viewUserGenerators() {
         console.error(`Error fetching user info for ${userId}:`, error);
       }
 
-      return { userId, username, email, remainingGenerations, totalGenerated };
+      return { userId, username, email, remainingGenerations, usageCount, totalGeneratedImages }; // {{ edit_9 }}
     }));
 
     const timeRemaining = getTimeRemaining();
 
     console.log("User Generator Usage Summary:");
-    console.log("---------------------------------------------------------------------------------------------------------------------------");
-    console.log("User ID                          | Username       | Email                  | Remaining | Total Generated | Time Until Reset");
-    console.log("---------------------------------------------------------------------------------------------------------------------------");
+    console.log("---------------------------------------------------------------------------------------------------------------------------------------------");
+    console.log("User ID                          | Username       | Email                  | Remaining | Daily Generated | Total Generated | Time Until Reset"); // {{ edit_10 }}
+    console.log("---------------------------------------------------------------------------------------------------------------------------------------------");
 
-    userGenerators.forEach(({ userId, username, email, remainingGenerations, totalGenerated }) => {
+    userGenerators.forEach(({ userId, username, email, remainingGenerations, usageCount, totalGeneratedImages }) => { // {{ edit_11 }}
       console.log(
         `${userId.padEnd(22)} | ${username.padEnd(14)} | ${email.padEnd(22)} | ${
           String(remainingGenerations).padStart(9)
-        } | ${String(totalGenerated).padStart(16)} | ${timeRemaining}`
+        } | ${String(usageCount).padStart(15)} | ${String(totalGeneratedImages).padStart(16)} | ${timeRemaining}` // {{ edit_12 }}
       );
     });
-    console.log("---------------------------------------------------------------------------------------------------------------------------");
+    console.log("---------------------------------------------------------------------------------------------------------------------------------------------");
 
     const totalUsers = userGenerators.length;
-    const totalGenerated = userGenerators.reduce((sum, user) => sum + user.totalGenerated, 0);
-    const totalRemaining = userGenerators.reduce((sum, user) => sum + user.remainingGenerations, 0);
+    const totalGenerated = userGenerators.reduce((sum, user) => sum + user.totalGeneratedImages, 0); // {{ edit_7 }}
+    const totalRemaining = userGenerators.reduce((sum, user) => sum + user.remainingGenerations, 0); // {{ edit_8 }}
     const totalCost = Number((totalGenerated * 0.003).toFixed(4)).toString(); // Calculate total cost
 
     console.log(`\nSummary:`);
