@@ -200,7 +200,7 @@ export default function FluxAIImageGenerator() {
         
         // Reset followUpPrompt but keep showSeedInput true for follow-ups
         setFollowUpPrompt('');
-        setShowSeedInput(isFollowUp);
+        setShowSeedInput(isFollowUp ? true : false);
 
         toast({
           title: isSimulationMode ? "Images Simulated" : "Images Generated",
@@ -377,7 +377,11 @@ export default function FluxAIImageGenerator() {
   const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     if (newValue.length <= 1000) {
-      setPrompt(newValue);
+      if (showSeedInput) {
+        setFollowUpPrompt(newValue);
+      } else {
+        setPrompt(newValue);
+      }
       if (error) setError(null);
     } else {
       toast({
@@ -385,6 +389,13 @@ export default function FluxAIImageGenerator() {
         description: "The prompt cannot exceed 1000 characters.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); // Prevent default to avoid line break
+      handleSubmit(e as unknown as React.FormEvent);
     }
   };
 
@@ -537,7 +548,8 @@ export default function FluxAIImageGenerator() {
                   <Input
                     id="prompt"
                     value={showSeedInput ? followUpPrompt || '' : prompt}
-                    onChange={showSeedInput ? (e) => setFollowUpPrompt(e.target.value) : handlePromptChange}
+                    onChange={handlePromptChange}
+                    onKeyDown={handleKeyDown}
                     placeholder={showSeedInput ? 
                       "Enter additional details for your follow-up prompt..." :
                       "Enter your image prompt here..."
