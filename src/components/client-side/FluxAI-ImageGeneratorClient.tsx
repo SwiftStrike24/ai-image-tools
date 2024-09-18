@@ -85,6 +85,8 @@ export default function FluxAIImageGenerator() {
     if (isLoading) return;
 
     let currentPrompt = showSeedInput ? followUpPrompt : prompt;
+    const isFollowUp = showSeedInput && followUpPrompt?.trim();
+
     if (!currentPrompt?.trim()) {
       setError("Please enter a prompt before generating images.");
       toast({
@@ -118,12 +120,28 @@ export default function FluxAIImageGenerator() {
 
       let finalPrompt = currentPrompt;
 
-      if (showSeedInput) {
+      if (isFollowUp) {
+        // Check if this prompt is already in the history
+        const lastHistoryEntry = promptHistory[promptHistory.length - 1];
+        if (lastHistoryEntry && lastHistoryEntry.prompt === `${originalPrompt}, ${currentPrompt}`.trim()) {
+          // This prompt has already been generated, so we skip
+          toast({
+            title: "Duplicate Prompt",
+            description: "This follow-up prompt has already been generated.",
+            variant: "warning",
+          });
+          setIsLoading(false);
+          return;
+        }
         finalPrompt = `${originalPrompt}, ${currentPrompt}`.trim();
         setFollowUpPrompts([...followUpPrompts, currentPrompt]);
-        setOriginalPrompt(finalPrompt);
+        setOriginalPrompt(finalPrompt); // Update originalPrompt for follow-ups
       } else {
+        // For new prompts, reset followUpLevel
+        setFollowUpLevel(1);
+        // Update originalPrompt with the new prompt when not a follow-up
         setOriginalPrompt(currentPrompt);
+        setCurrentSeed(null); // Reset the seed for new prompts
       }
 
       if (isEnhancePromptEnabled) {
@@ -146,8 +164,8 @@ export default function FluxAIImageGenerator() {
         output_quality: outputQuality,
         enhance_prompt: isEnhancePromptEnabled,
         disable_safety_checker: true,
-        seed: followUpLevel >= 2 && currentSeed !== null ? currentSeed : undefined,
-        followUpLevel: followUpLevel + 1,
+        seed: currentSeed !== null ? currentSeed : undefined,
+        followUpLevel: isFollowUp ? followUpLevel + 1 : followUpLevel,
       };
 
       console.log("Params sent to generateFluxImage:", params);
@@ -161,7 +179,7 @@ export default function FluxAIImageGenerator() {
       if (results.length > 0) {
         const newImageResults = results.map((result, index) => ({
           ...result,
-          followUpLevel: followUpLevel + 1,
+          followUpLevel: isFollowUp ? followUpLevel + 1 : 1,
           index,
         }));
 
@@ -171,20 +189,32 @@ export default function FluxAIImageGenerator() {
         const newHistoryEntry: PromptHistoryEntry = { 
           prompt: finalPrompt, 
           images: newImageResults,
-          followUpLevel: followUpLevel + 1,
+          followUpLevel: isFollowUp ? followUpLevel + 1 : 1,
           seed: newSeed,
         };
         
-        setPromptHistory(prevHistory => [...prevHistory.slice(0, followUpLevel), newHistoryEntry]);
-        setCurrentPromptIndex(followUpLevel);
+        setPromptHistory(prevHistory => {
+          if (isFollowUp) {
+            // Remove any entries after the current level and add the new one
+            return [...prevHistory.slice(0, followUpLevel), newHistoryEntry];
+          } else {
+            // For new prompts, reset history and start with this entry
+            return [newHistoryEntry];
+          }
+        });
+        setCurrentPromptIndex(isFollowUp ? followUpLevel : 0);
         setImageResults(newImageResults);
         setImageUrls(newImageResults.map(result => result.imageUrls[0]));
         setGeneratedAspectRatio(aspectRatio);
         setFocusedImageIndex(null);
         setIsFocused(false);
-        setFollowUpLevel(followUpLevel + 1);
-        setShowSeedInput(followUpLevel >= 1);
+        setFollowUpLevel(isFollowUp ? followUpLevel + 1 : 1);
+        
+        // Reset followUpPrompt but keep showSeedInput true for follow-ups
         setFollowUpPrompt('');
+        if (!isFollowUp) {
+          setShowSeedInput(false);
+        }
 
         toast({
           title: isSimulationMode ? "Images Simulated" : "Images Generated",
@@ -244,11 +274,13 @@ export default function FluxAIImageGenerator() {
     } finally {
       setTimeout(() => setIsProcessingSeed(false), 500);
     }
-  }, [isProcessingSeed, toast, followUpLevel, focusedImageIndex]);
+  }, [isProcessingSeed, toast, focusedImageIndex]);
 
   const clearFocusedImage = useCallback(() => {
     setFocusedImageIndex(null);
     setIsFocused(false);
+    setShowSeedInput(false);
+    setFollowUpPrompt('');
     
     toast({
       title: "Focus Cleared",
@@ -359,7 +391,6 @@ export default function FluxAIImageGenerator() {
     setImageUrls(previousEntry.images.map(result => result.imageUrls[0]));
     setCurrentSeed(previousEntry.seed);
 
-    const promptParts = previousEntry.prompt.split(',');
     if (newLevel === 1) {
       // For the initial prompt
       setShowSeedInput(false);
@@ -369,8 +400,11 @@ export default function FluxAIImageGenerator() {
     } else {
       // For follow-up prompts
       setShowSeedInput(true);
-      const newOriginalPrompt = promptParts.slice(0, -1).join(',').trim();
-      setOriginalPrompt(newOriginalPrompt);
+      // Set originalPrompt to the previous level's full prompt
+      const previousLevelEntry = promptHistory[newLevel - 2];
+      setOriginalPrompt(previousLevelEntry.prompt);
+      // Extract the last part of the current level's prompt as the follow-up
+      const promptParts = previousEntry.prompt.split(',');
       setFollowUpPrompt(promptParts[promptParts.length - 1]?.trim() || '');
     }
 
@@ -584,12 +618,18 @@ export default function FluxAIImageGenerator() {
                 </div>
                 <ShinyButton
                   onClick={handleSubmit}
-                  disabled={isLoading || !prompt.trim() || dailyUsage >= GENERATOR_DAILY_LIMIT}
+                  disabled={isLoading || (!showSeedInput && !prompt.trim()) || (showSeedInput && !followUpPrompt?.trim()) || dailyUsage >= GENERATOR_DAILY_LIMIT}
                   className={cn(
                     "w-full py-2 md:py-3 text-base md:text-lg font-semibold",
-                    (isLoading || !prompt.trim() || dailyUsage >= GENERATOR_DAILY_LIMIT) && "opacity-50 cursor-not-allowed"
+                    (isLoading || (!showSeedInput && !prompt.trim()) || (showSeedInput && !followUpPrompt?.trim()) || dailyUsage >= GENERATOR_DAILY_LIMIT) && "opacity-50 cursor-not-allowed"
                   )}
-                  text={isLoading ? "Generating..." : dailyUsage >= GENERATOR_DAILY_LIMIT ? "Daily Limit Reached" : 'Generate Image(s)'}
+                  text={
+                    isLoading 
+                      ? "Generating..." 
+                      : dailyUsage >= GENERATOR_DAILY_LIMIT 
+                        ? "Daily Limit Reached" 
+                        : 'Generate Image(s)'
+                  }
                 />
                 {dailyUsage >= GENERATOR_DAILY_LIMIT && (
                   <p className="text-xs text-red-400 mt-2">
