@@ -132,11 +132,23 @@ export default function FluxAIImageGenerator() {
                 setEnhancementFallback("Meta-Llama 3 enhancement failed. GPT-4o-mini was used as a fallback.");
               } else {
                 setEnhancementFallback(null);
+                toast({
+                  title: "Prompt Enhanced",
+                  description: `Enhanced using ${enhancementResult.usedModel === 'meta-llama-3-8b-instruct' ? 'Meta-Llama 3' : 'GPT-4o-mini'}.`,
+                  variant: "default",
+                });
               }
             }
           } else {
             console.warn("Prompt enhancement didn't produce a different result. Using original prompt.");
             setEnhancementFallback(null);
+            if (isEnhancePromptEnabled) {
+              toast({
+                title: "Prompt Not Enhanced",
+                description: "The AI didn't significantly change your prompt. Using the original.",
+                variant: "default",
+              });
+            }
           }
         } catch (enhanceError) {
           console.error("Error enhancing prompt:", enhanceError);
