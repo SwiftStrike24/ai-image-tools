@@ -134,25 +134,27 @@ export default function FluxAIImageGenerator() {
         }
       }
 
-      let finalPrompt = currentPrompt;
+      let finalPrompt = enhancedPrompt;
 
       // Update originalPrompt and followUpPrompts
       if (isFollowUp) {
         setFollowUpPrompts(prev => [...prev, currentPrompt]);
+        // **Remove seed from the prompt**
+        finalPrompt = `${originalPrompt} ${enhancedPrompt}`;
       } else {
         setOriginalPrompt(currentPrompt);
         setFollowUpPrompts([]);
       }
 
       const params: FluxImageParams = {
-        prompt: enhancedPrompt, // Use the enhanced prompt for image generation
+        prompt: finalPrompt,
         aspect_ratio: aspectRatio,
         num_outputs: numOutputs,
         output_format: outputFormat,
         output_quality: outputQuality,
         enhance_prompt: isEnhancePromptEnabled,
         disable_safety_checker: true,
-        seed: currentSeed !== null ? currentSeed : undefined,
+        seed: currentSeed !== null ? currentSeed : undefined, // Seed is passed separately
         followUpLevel: isFollowUp ? followUpLevel : 1,
       };
 
@@ -181,7 +183,7 @@ export default function FluxAIImageGenerator() {
         setCurrentSeed(newSeed);
 
         const newHistoryEntry: PromptHistoryEntry = { 
-          prompt: finalPrompt, // Store the user-visible prompt
+          prompt: currentPrompt, // Store only the user-added follow-up prompt
           images: newImageResults,
           followUpLevel: isFollowUp ? followUpLevel : 1,
           seed: newSeed,
@@ -425,7 +427,7 @@ export default function FluxAIImageGenerator() {
     // Update follow-up prompts
     setFollowUpPrompts(prevFollowUps => prevFollowUps.slice(0, newLevel - 1));
 
-    // **Add this line to update the input field with the previous prompt**
+    // Set only the user-added follow-up prompt
     setFollowUpPrompt(previousEntry.prompt);
 
     setShowSeedInput(true);
