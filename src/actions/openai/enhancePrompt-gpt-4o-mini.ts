@@ -38,7 +38,14 @@ CRITICAL INSTRUCTIONS:
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Enhance prompt request timed out")), 30000))
     ]);
 
-    const enhancedPrompt = response.data.choices[0].message?.content || "";
+    console.log('Full OpenAI Response:', JSON.stringify(response, null, 2));
+
+    if (!response || !response.choices || response.choices.length === 0) {
+      console.error('Invalid response structure:', response);
+      throw new Error("Invalid response structure from OpenAI API.");
+    }
+
+    const enhancedPrompt = response.choices[0].message?.content || "";
     
     // Extract the content between START and END markers
     const startMarker = "<<START_OF_ENHANCED_PROMPT>>";
@@ -65,6 +72,10 @@ CRITICAL INSTRUCTIONS:
     }
   } catch (error) {
     console.error('Error enhancing prompt with GPT-4o-mini:', error);
-    throw new Error(error instanceof Error ? error.message : "Failed to enhance prompt.");
+    if (error instanceof Error) {
+      throw new Error(`Failed to enhance prompt: ${error.message}`);
+    } else {
+      throw new Error("Failed to enhance prompt: Unknown error");
+    }
   }
 }

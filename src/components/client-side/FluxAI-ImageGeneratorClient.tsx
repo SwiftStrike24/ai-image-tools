@@ -31,6 +31,7 @@ import {
 import { canGenerateImages, getGeneratorUsage, incrementGeneratorUsage } from "@/actions/rateLimit"
 import { Progress } from "@/components/ui/progress"
 import { GENERATOR_DAILY_LIMIT } from "@/constants/rateLimits"
+import { SiMeta, SiOpenai } from "react-icons/si" // Import Meta and OpenAI icons from react-icons
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -66,6 +67,7 @@ export default function FluxAIImageGenerator() {
   const [dailyUsage, setDailyUsage] = useState(0)
   const [resetsIn, setResetsIn] = useState("")
   const [isAuthenticated, setIsAuthenticated] = useState(true)
+  const [enhancementModel, setEnhancementModel] = useState<'replicate' | 'gpt4o-mini'>('replicate') // New state for enhancement model
 
   useEffect(() => {
     if (!isSimulationMode) {
@@ -104,22 +106,25 @@ export default function FluxAIImageGenerator() {
     try {
       // Enhance prompt if enabled
       if (isEnhancePromptEnabled) {
-        console.log("Enhancing prompt using Replicate...");
-        try {
-          const enhancedPrompt = await enhancePrompt(currentPrompt);
-          console.log("Enhancement with Replicate successful.");
-          currentPrompt = enhancedPrompt;
-          setOriginalPrompt(enhancedPrompt);
-        } catch (replicateError) {
-          console.warn("Replicate enhancement failed, falling back to GPT-4o-mini:", replicateError);
-          console.log("Enhancing prompt using GPT-4o-mini...");
+        console.log(`Enhancing prompt using ${enhancementModel}...`);
+        if (enhancementModel === 'replicate') {
+          try {
+            const enhancedPrompt = await enhancePrompt(currentPrompt);
+            currentPrompt = enhancedPrompt;
+            setOriginalPrompt(enhancedPrompt);
+          } catch (replicateError) {
+            console.warn("Replicate enhancement failed, falling back to GPT-4o-mini:", replicateError);
+            const enhancedPrompt = await enhancePromptGPT4oMini(currentPrompt);
+            currentPrompt = enhancedPrompt;
+            setOriginalPrompt(enhancedPrompt);
+          }
+        } else if (enhancementModel === 'gpt4o-mini') {
           try {
             const enhancedPrompt = await enhancePromptGPT4oMini(currentPrompt);
-            console.log("Enhancement with GPT-4o-mini successful.");
             currentPrompt = enhancedPrompt;
             setOriginalPrompt(enhancedPrompt);
           } catch (gptError) {
-            console.error("GPT-4o-mini enhancement also failed:", gptError);
+            console.error("GPT-4o-mini enhancement failed:", gptError);
             throw gptError; // Re-throw the error to be handled later
           }
         }
@@ -664,6 +669,35 @@ export default function FluxAIImageGenerator() {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
+
+                {/* Enhance Prompt Section with Model Selection */}
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="enhance-prompt"
+                    checked={isEnhancePromptEnabled}
+                    onCheckedChange={setIsEnhancePromptEnabled}
+                  />
+                  <Label htmlFor="enhance-prompt" className="text-white">Enhance Prompt</Label>
+
+                  {/* Model Selection Buttons */}
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setEnhancementModel('replicate')}
+                      className={`p-2 rounded ${enhancementModel === 'replicate' ? 'bg-purple-600' : 'bg-gray-700'}`}
+                      aria-label="Replicate Model"
+                    >
+                      <SiMeta className="w-4 h-4 text-white" />
+                    </button>
+                    <button
+                      onClick={() => setEnhancementModel('gpt4o-mini')}
+                      className={`p-2 rounded ${enhancementModel === 'gpt4o-mini' ? 'bg-purple-600' : 'bg-gray-700'}`}
+                      aria-label="GPT-4o-mini Model"
+                    >
+                      <SiOpenai className="w-4 h-4 text-white" />
+                    </button>
+                  </div>
+                </div>
+
                 <ShinyButton
                   onClick={handleSubmit}
                   disabled={isLoading || (!showSeedInput && !prompt.trim()) || (showSeedInput && !followUpPrompt?.trim()) || dailyUsage >= GENERATOR_DAILY_LIMIT}
