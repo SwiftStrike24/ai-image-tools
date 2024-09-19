@@ -181,24 +181,22 @@ function ImageUpscalerComponent() {
       return;
     }
 
-    const { canProceed, usageCount } = await checkAndUpdateRateLimit();
-
-    if (!canProceed) {
-      toast({
-        title: "Daily limit reached",
-        description: "You've reached your daily limit of 20 upscaled images. Please try again tomorrow or upgrade your plan.",
-        variant: "destructive",
-      });
-      setDailyUsage(usageCount);
-      return;
-    }
-
-    setDailyUsage(usageCount);
-
     setIsLoading(true);
     setError(null);
 
     try {
+      const { canProceed, usageCount } = await checkAndUpdateRateLimit();
+
+      if (!canProceed) {
+        toast({
+          title: "Daily limit reached",
+          description: "You've reached your daily limit of 20 upscaled images. Please try again tomorrow or upgrade your plan.",
+          variant: "destructive",
+        });
+        setDailyUsage(usageCount);
+        return;
+      }
+
       const scale = parseInt(upscaleOption.replace('x', ''));
       const base64Image = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -223,6 +221,7 @@ function ImageUpscalerComponent() {
 
       setUpscaledImage(upscaledImageUrl);
       setRequestCount(prevCount => prevCount + 1);
+      setDailyUsage(prev => prev + 1); // Increment only on success
       setLastRequestTime(Date.now());
 
       toast({
