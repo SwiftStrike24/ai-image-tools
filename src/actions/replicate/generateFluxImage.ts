@@ -10,12 +10,12 @@ export async function generateFluxImage(params: FluxImageParams): Promise<FluxIm
   // Clean and prepare the prompt
   let cleanedPrompt = params.prompt
     .replace(/<<END_OF_ENHANCED_PROMPT>>/g, '')
-    .replace(/<<START_OF_ENHANCED_PROMPT>>/g, '') // Remove start marker
-    .replace(/\s+/g, ' ')
+    .replace(/<<START_OF_ENHANCED_PROMPT>>/g, '')
+    // .replace(/\s+/g, ' ') // Remove this to preserve original spacing
     .trim();
 
   // Ensure the prompt is not too long (adjust the max length as needed)
-  const maxPromptLength = 500;
+  const maxPromptLength = 10000;
   if (cleanedPrompt.length > maxPromptLength) {
     cleanedPrompt = cleanedPrompt.substring(0, maxPromptLength);
   }

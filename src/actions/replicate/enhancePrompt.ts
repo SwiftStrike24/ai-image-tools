@@ -9,6 +9,15 @@ interface EnhancePromptResult {
   usedModel: 'meta-llama-3-8b-instruct' | 'gpt-4o-mini';
 }
 
+// Updated prompt_template with explicit markers
+const promptTemplate = `system
+
+{system_prompt}
+
+<<START_OF_ENHANCED_PROMPT>>
+Enhance this prompt: {prompt}
+<<END_OF_ENHANCED_PROMPT>>`;
+
 // Function to enhance a prompt using Replicate
 export async function enhancePrompt(prompt: string): Promise<EnhancePromptResult> {
   const customStopSequence = "<<END_OF_ENHANCED_PROMPT>>";
@@ -31,7 +40,7 @@ CRITICAL INSTRUCTIONS:
     length_penalty: 1,
     max_new_tokens: 300,
     stop_sequences: customStopSequence,
-    prompt_template: "system\n\n{system_prompt}\n\nEnhance this prompt: {prompt}\n\n",
+    prompt_template: promptTemplate, // Use the updated prompt template
     presence_penalty: 0,
     log_performance_metrics: false
   };
@@ -46,12 +55,18 @@ CRITICAL INSTRUCTIONS:
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Enhance prompt request timed out")), 20000))
       ]) as string | string[];
 
-      if (typeof output === 'string') {
-        enhancedPrompt = output.trim();
-      } else if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
-        enhancedPrompt = output.join(' ').trim();
+      // Ensure output is a single string
+      const outputString = typeof output === 'string' ? output : output.join('');
+
+      // Use RegExp to extract content between markers, allowing for potential spaces
+      const markerRegex = /<<\s*START_OF_ENHANCED_PROMPT\s*>>([\s\S]*?)<<\s*END_OF_ENHANCED_PROMPT\s*>>/;
+      const match = outputString.match(markerRegex);
+
+      if (match && match[1]) {
+        enhancedPrompt = match[1].trim();
       } else {
-        throw new Error('Unexpected response format from Replicate API');
+        console.warn('Markers not found or improperly formatted, using entire output.');
+        enhancedPrompt = outputString.replace(/<<\s*START_OF_ENHANCED_PROMPT\s*>>|<<\s*END_OF_ENHANCED_PROMPT\s*>>/g, '').trim();
       }
     } catch (error) {
       console.warn('Meta-Llama 3 API failed, falling back to GPT-4o-mini:', error);
@@ -59,17 +74,8 @@ CRITICAL INSTRUCTIONS:
       usedModel = 'gpt-4o-mini';
     }
 
-    // Extract the content between START and END markers
-    const startMarker = "<<START_OF_ENHANCED_PROMPT>>";
-    const endMarker = customStopSequence;
-    const startIndex = enhancedPrompt.indexOf(startMarker);
-    const endIndex = enhancedPrompt.indexOf(endMarker);
-
-    if (startIndex !== -1 && endIndex !== -1 && startIndex < endIndex) {
-      enhancedPrompt = enhancedPrompt.slice(startIndex + startMarker.length, endIndex).trim();
-    } else {
-      console.warn('Markers not found in the expected format, using the whole output');
-    }
+    // Remove any markdown or annotations
+    enhancedPrompt = enhancedPrompt.replace(/\*\*[^*]+\*\*/, '').trim();
 
     // Ensure the output is within the desired token range
     const tokens = enhancedPrompt.split(/\s+/);
