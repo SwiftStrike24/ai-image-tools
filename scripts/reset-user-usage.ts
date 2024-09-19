@@ -15,6 +15,20 @@ async function resetUserUsage() {
     validate: (input: string) => input.trim() !== '' || 'User ID cannot be empty',
   });
 
+  // Check if the user exists
+  const upscalerKey = `${UPSCALER_KEY_PREFIX}${userId}`;
+  const generatorKey = `${GENERATOR_KEY_PREFIX}${userId}`;
+  
+  const [upscalerExists, generatorExists] = await Promise.all([
+    kv.exists(upscalerKey),
+    kv.exists(generatorKey)
+  ]);
+
+  if (!upscalerExists && !generatorExists) {
+    console.error('Error: User ID does not exist.');
+    process.exit(1);
+  }
+
   const { resetOption } = await inquirer.prompt({
     type: 'list',
     name: 'resetOption',
