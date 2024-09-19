@@ -107,30 +107,42 @@ export default function FluxAIImageGenerator() {
     try {
       let enhancedPrompt = currentPrompt;
       let enhancementSuccessful = false;
+      let usedEnhancementModel: 'meta-llama-3-8b-instruct' | 'gpt-4o-mini' | null = null;
+
       // Enhance prompt if enabled
       if (isEnhancePromptEnabled) {
         console.log(`Enhancing prompt using ${enhancementModel}...`);
         try {
-          let tempEnhancedPrompt;
+          let enhancementResult;
           if (enhancementModel === 'meta-llama-3-8b-instruct') {
-            tempEnhancedPrompt = await enhancePrompt(currentPrompt);
+            enhancementResult = await enhancePrompt(currentPrompt);
           } else if (enhancementModel === 'gpt-4o-mini') {
-            tempEnhancedPrompt = await enhancePromptGPT4oMini(currentPrompt);
+            enhancementResult = { enhancedPrompt: await enhancePromptGPT4oMini(currentPrompt), usedModel: 'gpt-4o-mini' as const };
           }
-          
+
           // Check if the enhancement was successful
-          if (tempEnhancedPrompt && tempEnhancedPrompt !== currentPrompt) {
-            enhancedPrompt = tempEnhancedPrompt;
+          if (enhancementResult && enhancementResult.enhancedPrompt !== currentPrompt) {
+            enhancedPrompt = enhancementResult.enhancedPrompt;
             enhancementSuccessful = true;
+            usedEnhancementModel = enhancementResult.usedModel;
             setEnhancedPromptHistory(prev => [...prev, enhancedPrompt]);
             console.log("Prompt enhancement successful:", enhancedPrompt);
-            
+
             if (enhancementSuccessful) {
               toast({
                 title: "Prompt Enhanced",
-                description: `Enhanced using ${enhancementModel === 'meta-llama-3-8b-instruct' ? 'Meta-Llama 3' : 'GPT-4o-mini'}.`,
-                variant: "default", // You can choose a variant that fits your theme
+                description: `Enhanced using ${enhancementResult.usedModel === 'meta-llama-3-8b-instruct' ? 'Meta-Llama 3' : 'GPT-4o-mini'}.`,
+                variant: "default",
               });
+
+              // If fallback was used, notify the user
+              if (enhancementResult.usedModel === 'gpt-4o-mini' && enhancementModel === 'meta-llama-3-8b-instruct') {
+                toast({
+                  title: "Fallback to GPT-4o-mini",
+                  description: "Prompt enhancement using Meta-Llama 3 failed. Falling back to GPT-4o-mini.",
+                  variant: "destructive",
+                });
+              }
             }
           } else {
             console.warn("Prompt enhancement didn't produce a different result. Using original prompt.");

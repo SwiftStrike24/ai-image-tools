@@ -1,9 +1,16 @@
 "use server";
 
 import replicate from "@/lib/replicate";
+import { enhancePromptGPT4oMini } from "../openai/enhancePrompt-gpt-4o-mini";
+
+// Define the return type to include the used model
+interface EnhancePromptResult {
+  enhancedPrompt: string;
+  usedModel: 'meta-llama-3-8b-instruct' | 'gpt-4o-mini';
+}
 
 // Function to enhance a prompt using Replicate
-export async function enhancePrompt(prompt: string): Promise<string> {
+export async function enhancePrompt(prompt: string): Promise<EnhancePromptResult> {
   const customStopSequence = "<<END_OF_ENHANCED_PROMPT>>";
   const input = {
     top_k: 0,
@@ -30,17 +37,26 @@ CRITICAL INSTRUCTIONS:
   };
 
   try {
-    const output = await Promise.race([
-      replicate.run("meta/meta-llama-3-8b-instruct", { input }),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Enhance prompt request timed out")), 20000)) // 20-second timeout
-    ]) as string | string[];
     let enhancedPrompt = '';
-    if (typeof output === 'string') {
-      enhancedPrompt = output.trim();
-    } else if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
-      enhancedPrompt = output.join(' ').trim();
-    } else {
-      throw new Error('Unexpected response format from Replicate API');
+    let usedModel: EnhancePromptResult['usedModel'] = 'meta-llama-3-8b-instruct';
+
+    try {
+      const output = await Promise.race([
+        replicate.run("meta/meta-llama-3-8b-instruct", { input }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Enhance prompt request timed out")), 20000))
+      ]) as string | string[];
+
+      if (typeof output === 'string') {
+        enhancedPrompt = output.trim();
+      } else if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
+        enhancedPrompt = output.join(' ').trim();
+      } else {
+        throw new Error('Unexpected response format from Replicate API');
+      }
+    } catch (error) {
+      console.warn('Meta-Llama 3 API failed, falling back to GPT-4o-mini:', error);
+      enhancedPrompt = await enhancePromptGPT4oMini(prompt);
+      usedModel = 'gpt-4o-mini';
     }
 
     // Extract the content between START and END markers
@@ -59,14 +75,14 @@ CRITICAL INSTRUCTIONS:
     const tokens = enhancedPrompt.split(/\s+/);
     if (tokens.length < 10) { // Lowered from 150
       console.warn('Generated prompt is too short, using original prompt');
-      return prompt;
+      return { enhancedPrompt: prompt, usedModel };
     } else if (tokens.length > 250) {
       enhancedPrompt = tokens.slice(0, 250).join(' ');
     }
 
-    return enhancedPrompt;
+    return { enhancedPrompt, usedModel };
   } catch (error) {
     console.error('Error enhancing prompt:', error);
-    return prompt; // Return original prompt if there's an error, instead of throwing
+    return { enhancedPrompt: prompt, usedModel: 'gpt-4o-mini' }; // Assume fallback was used
   }
 }
