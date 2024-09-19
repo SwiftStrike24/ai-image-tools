@@ -22,6 +22,7 @@ import { resizeImage } from '@/utils/imageUtils'
 import { Progress } from "@/components/ui/progress"
 import { checkAndUpdateRateLimit, getUserUsage } from "@/actions/rateLimit"
 import { UPSCALER_DAILY_LIMIT } from "@/constants/rateLimits"
+import { BorderBeam } from "@/components/magicui/border-beam"
 
 // Constants
 const MAX_FILE_SIZE_MB = 50; // 50MB
@@ -492,6 +493,13 @@ function ImageUpscalerComponent() {
                     className="transition-transform duration-300 ease-in-out"
                     style={{ transform: `scale(${zoom})` }}
                     onLoadingComplete={() => handleZoom(1)}
+                  />
+                  <BorderBeam 
+                    className="pointer-events-none"
+                    size={300}
+                    duration={10}
+                    colorFrom="#ff00ff"
+                    colorTo="#00ffff"
                   />
                   <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center">
                     <div className="flex space-x-2">

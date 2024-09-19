@@ -67,6 +67,7 @@ module.exports = {
         "grid-flow": "grid-flow 20s linear infinite",
         "move-up": "moveUp 150s linear infinite",
         "fade-in-out": "fadeInOut 8s ease-in-out infinite",
+        "border-beam": "border-beam calc(var(--duration)*1s) infinite linear",
       },
       keyframes: {
         grid: {
@@ -133,6 +134,11 @@ module.exports = {
         fadeInOut: {
           "0%, 100%": { opacity: 0 },
           "50%": { opacity: 1 },
+        },
+        "border-beam": {
+          "100%": {
+            "offset-distance": "100%",
+          },
         },
       },
     },
