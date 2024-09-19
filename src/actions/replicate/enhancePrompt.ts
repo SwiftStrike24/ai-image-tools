@@ -1,7 +1,7 @@
 "use server";
 
 import replicate from "@/lib/replicate";
-import { enhancePromptGPT4oMini } from "../openai/enhancePrompt-gpt-4o-mini";
+import { enhancePromptGPT4oMini } from "@/actions/openai/enhancePrompt-gpt-4o-mini";
 
 // Define the return type to include the used model
 interface EnhancePromptResult {
