@@ -32,7 +32,7 @@ CRITICAL INSTRUCTIONS:
   try {
     const output = await Promise.race([
       replicate.run("meta/meta-llama-3-8b-instruct", { input }),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Enhance prompt request timed out")), 5000)) // 5-second timeout
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Enhance prompt request timed out")), 30000)) // Increased to 30-second timeout
     ]) as string | string[];
     let enhancedPrompt = '';
     if (typeof output === 'string') {
@@ -57,7 +57,7 @@ CRITICAL INSTRUCTIONS:
 
     // Ensure the output is within the desired token range
     const tokens = enhancedPrompt.split(/\s+/);
-    if (tokens.length < 150) {
+    if (tokens.length < 10) { // Lowered from 150
       console.warn('Generated prompt is too short, using original prompt');
       return prompt;
     } else if (tokens.length > 250) {
@@ -67,6 +67,6 @@ CRITICAL INSTRUCTIONS:
     return enhancedPrompt;
   } catch (error) {
     console.error('Error enhancing prompt:', error);
-    throw new Error(error instanceof Error ? error.message : "Failed to enhance prompt.");
+    return prompt; // Return original prompt if there's an error, instead of throwing
   }
 }
