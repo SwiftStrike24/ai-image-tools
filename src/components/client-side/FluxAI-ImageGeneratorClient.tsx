@@ -124,6 +124,14 @@ export default function FluxAIImageGenerator() {
             enhancementSuccessful = true;
             setEnhancedPromptHistory(prev => [...prev, enhancedPrompt]);
             console.log("Prompt enhancement successful:", enhancedPrompt);
+            
+            if (enhancementSuccessful) {
+              toast({
+                title: "Prompt Enhanced",
+                description: `Enhanced using ${enhancementModel === 'meta-llama-3-8b-instruct' ? 'Meta-Llama 3' : 'GPT-4o-mini'}.`,
+                variant: "default", // You can choose a variant that fits your theme
+              });
+            }
           } else {
             console.warn("Prompt enhancement didn't produce a different result. Using original prompt.");
           }
