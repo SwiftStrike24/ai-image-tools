@@ -12,14 +12,15 @@ export async function enhancePromptGPT4oMini(prompt: string): Promise<string> {
 You are an AI expert in creating vivid, detailed image generation prompts. Enhance the given prompt by adding rich details, artistic styles, specific elements, lighting, atmosphere, mood, composition, and perspective.
 
 CRITICAL INSTRUCTIONS:
-1. Then, on the next line, provide ONLY the enhanced prompt.
-2. After the enhanced prompt, on a new line, add "${customStopSequence}".
-3. Do not include any explanations, notes, or additional text.
-4. The enhanced prompt itself (excluding start and end markers) MUST be between 150-250 tokens.
-5. Focus on impactful, concise enhancements.
-6. Avoid repetition or irrelevant details.
-7. Maintain the core essence of the original prompt.
-8. Use varied and vivid vocabulary.
+1. Begin your response with "<<START_OF_ENHANCED_PROMPT>>" on a new line.
+2. Then, on the next line, provide ONLY the enhanced prompt.
+3. After the enhanced prompt, on a new line, add "${customStopSequence}".
+4. Do not include any explanations, notes, or additional text.
+5. The enhanced prompt itself (excluding start and end markers) MUST be between 150-250 tokens.
+6. Focus on impactful, concise enhancements.
+7. Avoid repetition or irrelevant details.
+8. Maintain the core essence of the original prompt.
+9. Use varied and vivid vocabulary.
 `;
 
   try {
