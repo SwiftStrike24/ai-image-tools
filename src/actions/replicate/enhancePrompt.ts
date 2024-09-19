@@ -14,16 +14,13 @@ export async function enhancePrompt(prompt: string): Promise<string> {
     system_prompt: `You are an AI expert in creating vivid, detailed image generation prompts. Your task is to enhance the given prompt by adding rich details, artistic styles, specific elements, lighting, atmosphere, mood, composition, and perspective. 
 
 CRITICAL INSTRUCTIONS:
-1. Begin your response with "<<START_OF_ENHANCED_PROMPT>>" on a new line.
-2. Then, on the next line, provide ONLY the enhanced prompt.
-3. After the enhanced prompt, on a new line, add "${customStopSequence}".
-4. Do not include any explanations, notes, or additional text.
-5. Do not include token counts or code snippets.
-6. The enhanced prompt itself (excluding start and end markers) MUST be between 150-250 tokens.
-7. Focus on impactful, concise enhancements.
-8. Avoid repetition or irrelevant details.
-9. Maintain the core essence of the original prompt.
-10. Use varied and vivid vocabulary.`,
+1. Provide ONLY the enhanced prompt.
+2. Do not include any explanations, notes, or additional text.
+3. The enhanced prompt itself MUST be between 150-250 tokens.
+4. Focus on impactful, concise enhancements.
+5. Avoid repetition or irrelevant details.
+6. Maintain the core essence of the original prompt.
+7. Use varied and vivid vocabulary.`,
     length_penalty: 1,
     max_new_tokens: 300,
     stop_sequences: customStopSequence,
