@@ -69,6 +69,7 @@ export default function FluxAIImageGenerator() {
   const [isAuthenticated, setIsAuthenticated] = useState(true)
   const [enhancementModel, setEnhancementModel] = useState<'meta-llama-3-8b-instruct' | 'gpt-4o-mini'>('meta-llama-3-8b-instruct')
   const [enhancedPromptHistory, setEnhancedPromptHistory] = useState<string[]>([])
+  const [enhancementFallback, setEnhancementFallback] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isSimulationMode) {
@@ -109,7 +110,6 @@ export default function FluxAIImageGenerator() {
       let enhancementSuccessful = false;
       let usedEnhancementModel: 'meta-llama-3-8b-instruct' | 'gpt-4o-mini' | null = null;
 
-      // Enhance prompt if enabled
       if (isEnhancePromptEnabled) {
         console.log(`Enhancing prompt using ${enhancementModel}...`);
         try {
@@ -120,7 +120,6 @@ export default function FluxAIImageGenerator() {
             enhancementResult = { enhancedPrompt: await enhancePromptGPT4oMini(currentPrompt), usedModel: 'gpt-4o-mini' as const };
           }
 
-          // Check if the enhancement was successful
           if (enhancementResult && enhancementResult.enhancedPrompt !== currentPrompt) {
             enhancedPrompt = enhancementResult.enhancedPrompt;
             enhancementSuccessful = true;
@@ -129,32 +128,22 @@ export default function FluxAIImageGenerator() {
             console.log("Prompt enhancement successful:", enhancedPrompt);
 
             if (enhancementSuccessful) {
-              toast({
-                title: "Prompt Enhanced",
-                description: `Enhanced using ${enhancementResult.usedModel === 'meta-llama-3-8b-instruct' ? 'Meta-Llama 3' : 'GPT-4o-mini'}.`,
-                variant: "default",
-              });
-
-              // If fallback was used, notify the user
               if (enhancementResult.usedModel === 'gpt-4o-mini' && enhancementModel === 'meta-llama-3-8b-instruct') {
-                toast({
-                  title: "Fallback to GPT-4o-mini",
-                  description: "Prompt enhancement using Meta-Llama 3 failed. Falling back to GPT-4o-mini.",
-                  variant: "destructive",
-                });
+                setEnhancementFallback("Meta-Llama 3 enhancement failed. GPT-4o-mini was used as a fallback.");
+              } else {
+                setEnhancementFallback(null);
               }
             }
           } else {
             console.warn("Prompt enhancement didn't produce a different result. Using original prompt.");
+            setEnhancementFallback(null);
           }
         } catch (enhanceError) {
           console.error("Error enhancing prompt:", enhanceError);
-          toast({
-            title: "Prompt Enhancement Failed",
-            description: "Using original prompt for image generation.",
-            variant: "destructive",
-          });
+          setEnhancementFallback("Prompt enhancement failed. Using original prompt.");
         }
+      } else {
+        setEnhancementFallback(null);
       }
 
       // Check rate limits after enhancing prompt
@@ -685,63 +674,69 @@ export default function FluxAIImageGenerator() {
                 </div>
 
                 {/* Enhance Prompt Section with Model Selection */}
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="enhance-prompt"
-                    checked={isEnhancePromptEnabled}
-                    onCheckedChange={handleEnhancePromptToggle}
-                  />
-                  <Label htmlFor="enhance-prompt" className="text-white">Enhance Prompt</Label>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="enhance-prompt"
+                      checked={isEnhancePromptEnabled}
+                      onCheckedChange={handleEnhancePromptToggle}
+                    />
+                    <Label htmlFor="enhance-prompt" className="text-white">Enhance Prompt</Label>
 
-                  {/* Model Selection Buttons */}
-                  <div className="flex space-x-2">
+                    {/* Model Selection Buttons */}
+                    <div className="flex space-x-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => handleModelSelection('meta-llama-3-8b-instruct')}
+                              className={`p-2 rounded ${enhancementModel === 'meta-llama-3-8b-instruct' && isEnhancePromptEnabled ? 'bg-purple-600' : 'bg-gray-700'}`}
+                              aria-label="Meta-Llama Model"
+                            >
+                              <SiMeta className="w-4 h-4 text-white" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="bg-purple-900 text-white border-purple-500">
+                            <p>Use Meta-Llama 3 (8B) for prompt enhancement</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => handleModelSelection('gpt-4o-mini')}
+                              className={`p-2 rounded ${enhancementModel === 'gpt-4o-mini' && isEnhancePromptEnabled ? 'bg-purple-600' : 'bg-gray-700'}`}
+                              aria-label="GPT-4o-mini Model"
+                            >
+                              <SiOpenai className="w-4 h-4 text-white" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="bg-purple-900 text-white border-purple-500">
+                            <p>Use GPT-4o-mini (OpenAI) for prompt enhancement</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <button
-                            type="button" // Add this to prevent form submission
-                            onClick={() => handleModelSelection('meta-llama-3-8b-instruct')}
-                            className={`p-2 rounded ${enhancementModel === 'meta-llama-3-8b-instruct' && isEnhancePromptEnabled ? 'bg-purple-600' : 'bg-gray-700'}`}
-                            aria-label="Meta-Llama Model"
-                          >
-                            <SiMeta className="w-4 h-4 text-white" />
-                          </button>
+                          <Info className="w-4 h-4 text-purple-400 cursor-help" />
                         </TooltipTrigger>
-                        <TooltipContent side="top" className="bg-purple-900 text-white border-purple-500">
-                          <p>Use Meta-Llama 3 (8B) for prompt enhancement</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button" // Add this to prevent form submission
-                            onClick={() => handleModelSelection('gpt-4o-mini')}
-                            className={`p-2 rounded ${enhancementModel === 'gpt-4o-mini' && isEnhancePromptEnabled ? 'bg-purple-600' : 'bg-gray-700'}`}
-                            aria-label="GPT-4o-mini Model"
-                          >
-                            <SiOpenai className="w-4 h-4 text-white" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="bg-purple-900 text-white border-purple-500">
-                          <p>Use GPT-4o-mini (OpenAI) for prompt enhancement</p>
+                        <TooltipContent side="right" className="bg-purple-900 text-white border-purple-500">
+                          <p>Use AI to enhance your prompt for better results. Meta-Llama is the default.</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </div>
-
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="w-4 h-4 text-purple-400 cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent side="right" className="bg-purple-900 text-white border-purple-500">
-                        <p>Use AI to enhance your prompt for better results. Meta-Llama is the default.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  
+                  {enhancementFallback && (
+                    <p className="text-red-500 text-sm mt-1">{enhancementFallback}</p>
+                  )}
                 </div>
 
                 <ShinyButton
