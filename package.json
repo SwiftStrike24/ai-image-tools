@@ -33,6 +33,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "dotenv": "^16.4.5",
+    "embla-carousel-react": "^8.3.0",
     "framer-motion": "^11.5.4",
     "heic2any": "^0.0.4",
     "lucide-react": "^0.438.0",

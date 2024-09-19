@@ -64,8 +64,7 @@ const Carousel = React.forwardRef<
         axis: orientation === "horizontal" ? "x" : "y",
         dragFree: false,
         containScroll: "keepSnaps",
-        watchDrag: false,
-        watchScroll: false,
+        watchDrag: () => false, // This effectively disables dragging
       },
       plugins
     )

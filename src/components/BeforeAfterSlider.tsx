@@ -11,31 +11,35 @@ interface BeforeAfterSliderProps {
   afterAlt?: string
 }
 
+// Extend the Props type to include onSliderPositionChange
+interface ExtendedProps extends React.ComponentProps<typeof ReactBeforeSliderComponent> {
+  onSliderPositionChange?: () => void;
+}
+
 const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
   beforeImage,
   afterImage,
   beforeAlt = 'Before image',
   afterAlt = 'After image',
 }) => {
-  const FIRST_IMAGE = {
-    imageUrl: beforeImage,
-    alt: beforeAlt,
-  }
-  const SECOND_IMAGE = {
-    imageUrl: afterImage,
-    alt: afterAlt,
+  const sliderProps: ExtendedProps = {
+    firstImage: {
+      imageUrl: beforeImage,
+      alt: beforeAlt,
+    },
+    secondImage: {
+      imageUrl: afterImage,
+      alt: afterAlt,
+    },
+    delimiterColor: "#8B5CF6",
+    className: "rounded-lg shadow-lg",
+    onSliderPositionChange: () => {},
   }
 
   return (
     <div className="w-full mx-auto relative">
       <div className="w-full aspect-video">
-        <ReactBeforeSliderComponent
-          firstImage={FIRST_IMAGE}
-          secondImage={SECOND_IMAGE}
-          delimiterColor="#8B5CF6"
-          className="rounded-lg shadow-lg"
-          onSliderPositionChange={() => {}} // Prevent default behavior
-        />
+        <ReactBeforeSliderComponent {...sliderProps} />
       </div>
       <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded">
         Before
