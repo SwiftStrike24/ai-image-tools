@@ -63,7 +63,6 @@ const Carousel = React.forwardRef<
         ...opts,
         axis: orientation === "horizontal" ? "x" : "y",
         dragFree: false,
-        draggable: false,
         containScroll: "keepSnaps",
         watchDrag: false,
         watchScroll: false,
@@ -141,8 +140,9 @@ const Carousel = React.forwardRef<
       >
         <div
           ref={ref}
-          onKeyDownCapture={handleKeyDown}
-          className={cn("relative", className)}
+          onKeyDown={handleKeyDown}
+          tabIndex={0}
+          className={cn("relative focus:outline-none", className)}
           role="region"
           aria-roledescription="carousel"
           {...props}

@@ -259,17 +259,11 @@ export default function LandingPage() {
   const [beforeAfterImages, setBeforeAfterImages] = useState<{ before: string; after: string }[]>([])
 
   useEffect(() => {
-    async function loadImages() {
-      try {
-        const response = await fetch('/api/getBeforeAfterImages')
-        const data = await response.json()
-        setBeforeAfterImages(data.imagePairs)
-      } catch (error) {
-        console.error('Error loading before/after images:', error)
-      }
-    }
-
-    loadImages()
+    // Set up the before and after image pairs
+    setBeforeAfterImages([
+      { before: '/images/landing-page/before-after-images/before-image2.webp', after: '/images/landing-page/before-after-images/after-image2.jpg' },
+      { before: '/images/landing-page/before-after-images/before-image.jpg', after: '/images/landing-page/before-after-images/after-image.jpg' },
+    ])
   }, [])
 
   return (
@@ -451,7 +445,12 @@ export default function LandingPage() {
             >
               <h3 className="text-2xl font-bold mb-4 text-center">See the Difference</h3>
               <p className="text-gray-300 text-center mb-6">Experience the power of AI-enhanced images</p>
-              <Carousel className="w-full max-w-3xl mx-auto" opts={{ dragFree: false, draggable: false, containScroll: 'keepSnaps', watchDrag: false, watchScroll: false }}>
+              <Carousel 
+                className="w-full max-w-3xl mx-auto" 
+                opts={{ 
+                  loop: true,
+                }}
+              >
                 <CarouselContent>
                   {beforeAfterImages.map((pair, index) => (
                     <CarouselItem key={index}>
@@ -468,8 +467,8 @@ export default function LandingPage() {
                     </CarouselItem>
                   ))}
                 </CarouselContent>
-                <CarouselPrevious />
-                <CarouselNext />
+                <CarouselPrevious className="bg-purple-600 hover:bg-purple-700 text-white" />
+                <CarouselNext className="bg-purple-600 hover:bg-purple-700 text-white" />
               </Carousel>
             </motion.div>
 
