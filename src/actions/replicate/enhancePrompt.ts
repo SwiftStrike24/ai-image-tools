@@ -32,7 +32,7 @@ CRITICAL INSTRUCTIONS:
   try {
     const output = await Promise.race([
       replicate.run("meta/meta-llama-3-8b-instruct", { input }),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Enhance prompt request timed out")), 30000)) // Increased to 30-second timeout
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Enhance prompt request timed out")), 20000)) // 20-second timeout
     ]) as string | string[];
     let enhancedPrompt = '';
     if (typeof output === 'string') {
