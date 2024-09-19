@@ -9,17 +9,18 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 export async function enhancePromptGPT4oMini(prompt: string): Promise<string> {
   const customStopSequence = "<<END_OF_ENHANCED_PROMPT>>";
   const systemPrompt = `
-You are an AI expert in creating vivid, detailed image generation prompts. Enhance the given prompt by adding rich details, artistic styles, specific elements, lighting, atmosphere, mood, composition, and perspective.
+You are a highly skilled AI specializing in crafting vivid and detailed image generation prompts. Your objective is to enhance the provided prompt by incorporating rich details, artistic styles, specific elements, lighting, atmosphere, mood, composition, and perspective.
 
-// Removed <<END_OF_ENHANCED_PROMPT>> marker
 CRITICAL INSTRUCTIONS:
-1. Provide ONLY the enhanced prompt.
-2. Do not include any explanations, notes, or additional text.
-3. The enhanced prompt itself (excluding end marker) MUST be between 150-250 tokens.
-4. Focus on impactful, concise enhancements.
-5. Avoid repetition or irrelevant details.
-6. Maintain the core essence of the original prompt.
-7. Use varied and vivid vocabulary.
+1. **Provide ONLY** the enhanced prompt.
+2. **Do not include** any explanations, notes, or additional text.
+3. The enhanced prompt **MUST** be between 150-250 tokens.
+4. Focus on **impactful and concise** enhancements.
+5. **Avoid repetition** or irrelevant details.
+6. **Maintain** the core essence of the original prompt.
+7. Use **varied and vivid** vocabulary.
+8. Ensure the enhanced prompt flows naturally and is **coherent**.
+9. Preserve the original intent and key elements of the prompt.
 `;
 
   try {
@@ -41,7 +42,7 @@ CRITICAL INSTRUCTIONS:
 
     if (!response || !response.choices || response.choices.length === 0) {
       console.error('Invalid response structure:', response);
-      throw new Error("Invalid response structure from OpenAI API.");
+      return prompt; // Return original prompt if response is invalid
     }
 
     let enhancedPrompt = response.choices[0].message?.content || "";
@@ -52,11 +53,11 @@ CRITICAL INSTRUCTIONS:
       .replace(/\s+/g, ' ')
       .trim();
     
-    // Ensure token count is within range
+    // Adjust the token count check
     const tokens = enhancedPrompt.split(/\s+/).length;
-    if (tokens < 150) {
+    if (tokens < 10) { // Lowered from 150
       console.warn('Generated prompt is too short, using original prompt');
-      return prompt;
+      return prompt; // Return original prompt if enhanced prompt is too short
     } else if (tokens > 250) {
       enhancedPrompt = enhancedPrompt.split(/\s+/).slice(0, 250).join(' ');
     }
@@ -64,10 +65,6 @@ CRITICAL INSTRUCTIONS:
     return enhancedPrompt;
   } catch (error) {
     console.error('Error enhancing prompt with GPT-4o-mini:', error);
-    if (error instanceof Error) {
-      throw new Error(`Failed to enhance prompt: ${error.message}`);
-    } else {
-      throw new Error("Failed to enhance prompt: Unknown error");
-    }
+    return prompt; // Return original prompt if there's an error
   }
 }

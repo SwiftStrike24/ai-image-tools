@@ -106,16 +106,35 @@ export default function FluxAIImageGenerator() {
 
     try {
       let enhancedPrompt = currentPrompt;
+      let enhancementSuccessful = false;
       // Enhance prompt if enabled
       if (isEnhancePromptEnabled) {
         console.log(`Enhancing prompt using ${enhancementModel}...`);
         try {
-          enhancedPrompt = await enhancePrompt(currentPrompt);
-        } catch (error) {
-          console.error("Primary enhancement failed, falling back to GPT-4o-mini:", error);
-          enhancedPrompt = await enhancePromptGPT4oMini(currentPrompt);
+          let tempEnhancedPrompt;
+          if (enhancementModel === 'meta-llama-3-8b-instruct') {
+            tempEnhancedPrompt = await enhancePrompt(currentPrompt);
+          } else if (enhancementModel === 'gpt-4o-mini') {
+            tempEnhancedPrompt = await enhancePromptGPT4oMini(currentPrompt);
+          }
+          
+          // Check if the enhancement was successful
+          if (tempEnhancedPrompt && tempEnhancedPrompt !== currentPrompt) {
+            enhancedPrompt = tempEnhancedPrompt;
+            enhancementSuccessful = true;
+            setEnhancedPromptHistory(prev => [...prev, enhancedPrompt]);
+            console.log("Prompt enhancement successful:", enhancedPrompt);
+          } else {
+            console.warn("Prompt enhancement didn't produce a different result. Using original prompt.");
+          }
+        } catch (enhanceError) {
+          console.error("Error enhancing prompt:", enhanceError);
+          toast({
+            title: "Prompt Enhancement Failed",
+            description: "Using original prompt for image generation.",
+            variant: "destructive",
+          });
         }
-        setEnhancedPromptHistory(prev => [...prev, enhancedPrompt]);
       }
 
       // Check rate limits after enhancing prompt
@@ -134,7 +153,8 @@ export default function FluxAIImageGenerator() {
         }
       }
 
-      let finalPrompt = enhancedPrompt;
+      let finalPrompt = enhancementSuccessful ? enhancedPrompt : currentPrompt;
+      console.log(`Final prompt ${enhancementSuccessful ? 'after enhancement' : 'without enhancement'}: ${finalPrompt}`);
 
       // Update originalPrompt and followUpPrompts
       if (isFollowUp) {
@@ -152,9 +172,9 @@ export default function FluxAIImageGenerator() {
         num_outputs: numOutputs,
         output_format: outputFormat,
         output_quality: outputQuality,
-        enhance_prompt: isEnhancePromptEnabled,
+        enhance_prompt: enhancementSuccessful, // Only set to true if enhancement was successful
         disable_safety_checker: true,
-        seed: currentSeed !== null ? currentSeed : undefined, // Seed is passed separately
+        seed: currentSeed !== null ? currentSeed : undefined,
         followUpLevel: isFollowUp ? followUpLevel : 1,
       };
 
