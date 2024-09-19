@@ -46,22 +46,23 @@ async function viewUserUpscales() {
     const timeRemaining = getTimeRemaining();
 
     console.log("User Upscales Summary:");
-    console.log("-----------------------------------------------------------------------------------------------------------------------------------------");
-    console.log("User ID                          | Username       | Email                  | Remaining | Daily Upscaled | Total Upscaled | Time Remaining"); // {{ edit_10 }}
-    console.log("-----------------------------------------------------------------------------------------------------------------------------------------");
-    userUpscales.forEach(({ userId, username, email, remainingUpscales, usageCount, totalUpscaledImages }) => { // {{ edit_11 }}
+    console.log("-----------------------------------------------------------------------------------------------------------------------------------------------------");
+    console.log("User ID                          | Username       | Email                          | Remaining | Daily Upscaled | Total Upscaled | Time Until Reset");
+    console.log("-----------------------------------------------------------------------------------------------------------------------------------------------------");
+
+    userUpscales.forEach(({ userId, username, email, remainingUpscales, usageCount, totalUpscaledImages }) => {
       console.log(
-        `${userId.padEnd(22)} | ${username.padEnd(14)} | ${email.padEnd(22)} | ${
+        `${userId.padEnd(22)} | ${username.padEnd(14)} | ${email.padEnd(30)} | ${
           String(remainingUpscales).padStart(9)
-        } | ${String(usageCount).padStart(14)} | ${String(totalUpscaledImages).padStart(14)} | ${timeRemaining}` // {{ edit_12 }}
+        } | ${String(usageCount).padStart(14)} | ${String(totalUpscaledImages).padStart(14)} | ${timeRemaining}`
       );
     });
-    console.log("-----------------------------------------------------------------------------------------------------------------------------------------");
+    console.log("-----------------------------------------------------------------------------------------------------------------------------------------------------");
 
     const totalUsers = userUpscales.length;
-    const totalUpscaled = userUpscales.reduce((sum, user) => sum + user.totalUpscaledImages, 0); // {{ edit_7 }}
-    const totalRemaining = userUpscales.reduce((sum, user) => sum + user.remainingUpscales, 0); // {{ edit_8 }}
-    const totalCost = (totalUpscaled * 0.0017).toFixed(4).toString(); // Calculate total cost
+    const totalUpscaled = userUpscales.reduce((sum, user) => sum + user.totalUpscaledImages, 0);
+    const totalRemaining = userUpscales.reduce((sum, user) => sum + user.remainingUpscales, 0);
+    const totalCost = Number((totalUpscaled * 0.0017).toFixed(4)).toString(); // Calculate total cost
 
     console.log(`\nSummary:`);
     console.log(`Total users: ${totalUsers}`);

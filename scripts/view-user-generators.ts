@@ -46,18 +46,18 @@ async function viewUserGenerators() {
     const timeRemaining = getTimeRemaining();
 
     console.log("User Generator Usage Summary:");
-    console.log("---------------------------------------------------------------------------------------------------------------------------------------------");
-    console.log("User ID                          | Username       | Email                  | Remaining | Daily Generated | Total Generated | Time Until Reset"); // {{ edit_10 }}
-    console.log("---------------------------------------------------------------------------------------------------------------------------------------------");
+    console.log("-----------------------------------------------------------------------------------------------------------------------------------------------------");
+    console.log("User ID                          | Username       | Email                          | Remaining | Daily Generated | Total Generated | Time Until Reset");
+    console.log("-----------------------------------------------------------------------------------------------------------------------------------------------------");
 
     userGenerators.forEach(({ userId, username, email, remainingGenerations, usageCount, totalGeneratedImages }) => { // {{ edit_11 }}
       console.log(
-        `${userId.padEnd(22)} | ${username.padEnd(14)} | ${email.padEnd(22)} | ${
+        `${userId.padEnd(22)} | ${username.padEnd(14)} | ${email.padEnd(30)} | ${
           String(remainingGenerations).padStart(9)
         } | ${String(usageCount).padStart(15)} | ${String(totalGeneratedImages).padStart(16)} | ${timeRemaining}` // {{ edit_12 }}
       );
     });
-    console.log("---------------------------------------------------------------------------------------------------------------------------------------------");
+    console.log("-----------------------------------------------------------------------------------------------------------------------------------------------------");
 
     const totalUsers = userGenerators.length;
     const totalGenerated = userGenerators.reduce((sum, user) => sum + user.totalGeneratedImages, 0); // {{ edit_7 }}
