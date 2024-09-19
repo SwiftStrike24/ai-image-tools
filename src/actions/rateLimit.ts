@@ -16,6 +16,60 @@ function isNewDay(lastUsageDate: string | null): boolean {
   return now.getUTCDate() !== last.getUTCDate() || now.getUTCMonth() !== last.getUTCMonth() || now.getUTCFullYear() !== last.getUTCFullYear();
 }
 
+// Separate function to check generator limit without incrementing
+export async function canGenerateImages(imagesToGenerate: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
+  const { userId } = auth();
+  
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  const key = `${GENERATOR_KEY_PREFIX}${userId}`;
+  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  
+  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+
+  if (isNewDay(lastUsageDate as string | null)) {
+    currentUsage = 0;
+  }
+
+  const resetsIn = getTimeUntilMidnight(); // {{ edit }}
+  
+  if (currentUsage + imagesToGenerate > GENERATOR_DAILY_LIMIT) {
+    return { canProceed: false, usageCount: currentUsage, resetsIn };
+  }
+
+  return { canProceed: true, usageCount: currentUsage, resetsIn }; // {{ edit }}
+}
+
+// Separate function to increment generator usage after successful generation
+export async function incrementGeneratorUsage(imagesToGenerate: number): Promise<void> {
+  const { userId } = auth();
+  
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  const key = `${GENERATOR_KEY_PREFIX}${userId}`;
+  const today = new Date().toUTCString();
+
+  const [usageCount, _] = await kv.mget([key, `${key}:date`]);
+
+  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+
+  if (isNewDay(null)) { // Assuming isNewDay handles null appropriately
+    currentUsage = 0;
+  }
+
+  currentUsage += imagesToGenerate;
+
+  await kv.mset({
+    [key]: currentUsage,
+    [`${key}:date`]: today,
+    [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + imagesToGenerate
+  });
+}
+
 export async function checkAndUpdateRateLimit(): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
   const { userId } = auth();
   
@@ -103,7 +157,7 @@ export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Pr
   return { canProceed: true, usageCount: currentUsage, resetsIn };
 }
 
-export async function getGeneratorUsage(): Promise<{ usageCount: number; resetsIn: string; totalGenerated: number }> { // {{ edit_2 }}
+export async function getGeneratorUsage(): Promise<{ usageCount: number; resetsIn: string; totalGenerated: number }> {
   const { userId } = auth();
   
   if (!userId) {
@@ -111,17 +165,17 @@ export async function getGeneratorUsage(): Promise<{ usageCount: number; resetsI
   }
 
   const key = `${GENERATOR_KEY_PREFIX}${userId}`;
-  const [usageCount, lastUsageDate, totalGenerated] = await kv.mget([key, `${key}:date`, `${key}:total`]); // {{ edit_3 }}
+  const [usageCount, lastUsageDate, totalGenerated] = await kv.mget([key, `${key}:date`, `${key}:total`]);
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
-  let total = typeof totalGenerated === 'number' ? totalGenerated : 0; // {{ edit_4 }}
+  let total = typeof totalGenerated === 'number' ? totalGenerated : 0;
 
   if (isNewDay(lastUsageDate as string | null)) {
     currentUsage = 0;
   }
 
   const resetsIn = getTimeUntilMidnight();
-  return { usageCount: currentUsage, resetsIn, totalGenerated: total }; // {{ edit_5 }}
+  return { usageCount: currentUsage, resetsIn, totalGenerated: total };
 }
 
 function getTimeUntilMidnight(): string {

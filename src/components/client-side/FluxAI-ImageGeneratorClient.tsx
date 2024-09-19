@@ -27,7 +27,7 @@ import {
   aspectRatioOptions,
   simulateImageGeneration
 } from '@/utils/imageUtils'
-import { checkAndUpdateGeneratorLimit, getGeneratorUsage } from "@/actions/rateLimit"
+import { canGenerateImages, getGeneratorUsage, incrementGeneratorUsage } from "@/actions/rateLimit"
 import { Progress } from "@/components/ui/progress"
 import { GENERATOR_DAILY_LIMIT } from "@/constants/rateLimits"
 
@@ -101,11 +101,16 @@ export default function FluxAIImageGenerator() {
     setError(null);
 
     try {
-      if (!isSimulationMode) {
-        const { canProceed, usageCount, resetsIn } = await checkAndUpdateGeneratorLimit(numOutputs);
-        setDailyUsage(usageCount);
-        setResetsIn(resetsIn);
+      // Enhance prompt if enabled
+      if (isEnhancePromptEnabled) {
+        const enhancedPrompt = await enhancePrompt(currentPrompt);
+        currentPrompt = enhancedPrompt;
+        setOriginalPrompt(enhancedPrompt);
+      }
 
+      // Check rate limits after enhancing prompt
+      if (!isSimulationMode) {
+        const { canProceed, usageCount, resetsIn } = await canGenerateImages(numOutputs);
         if (!canProceed) {
           const remainingGenerations = GENERATOR_DAILY_LIMIT - usageCount;
           setError(`You've reached your daily limit. You can generate ${remainingGenerations} more image${remainingGenerations !== 1 ? 's' : ''} today.`);
@@ -138,18 +143,6 @@ export default function FluxAIImageGenerator() {
       }
       setOriginalPrompt(finalPrompt);
 
-      if (isEnhancePromptEnabled) {
-        const enhancedPromptResult = await enhancePrompt(finalPrompt);
-        finalPrompt = enhancedPromptResult !== finalPrompt ? enhancedPromptResult : finalPrompt;
-        toast({
-          title: enhancedPromptResult !== finalPrompt ? "Prompt Enhanced" : "Prompt Enhancement Skipped",
-          description: enhancedPromptResult !== finalPrompt 
-            ? "Your prompt was enhanced for better results." 
-            : "The original prompt was used as the enhanced version was too short.",
-          duration: 5000,
-        });
-      }
-
       const params: FluxImageParams = {
         prompt: finalPrompt,
         aspect_ratio: aspectRatio,
@@ -171,6 +164,12 @@ export default function FluxAIImageGenerator() {
       console.log("Results received from generateFluxImage:", results);
 
       if (results.length > 0) {
+        // Increment usage after successful image generation
+        if (!isSimulationMode) {
+          await incrementGeneratorUsage(numOutputs);
+          setDailyUsage(prev => prev + numOutputs);
+        }
+
         const newImageResults = results.map((result, index) => ({
           ...result,
           followUpLevel: isFollowUp ? followUpLevel : 1,
@@ -216,6 +215,10 @@ export default function FluxAIImageGenerator() {
       }
     } catch (error) {
       console.error('Image generation error:', error);
+      // If rate limit was checked and usageCount was incremented, consider rolling back
+      if (!isSimulationMode && typeof error !== 'string') {
+        // Optionally implement rollback logic here if necessary
+      }
       setError(error instanceof Error ? error.message : "Failed to generate image(s). Please try again.");
       toast({
         title: "Generation Failed",

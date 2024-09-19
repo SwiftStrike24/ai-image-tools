@@ -33,7 +33,10 @@ CRITICAL INSTRUCTIONS:
   };
 
   try {
-    const output = await replicate.run("meta/meta-llama-3-8b-instruct", { input }) as string | string[];
+    const output = await Promise.race([
+      replicate.run("meta/meta-llama-3-8b-instruct", { input }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Enhance prompt request timed out")), 30000)) // 30-second timeout
+    ]) as string | string[];
     let enhancedPrompt = '';
     if (typeof output === 'string') {
       enhancedPrompt = output.trim();
@@ -67,6 +70,6 @@ CRITICAL INSTRUCTIONS:
     return enhancedPrompt;
   } catch (error) {
     console.error('Error enhancing prompt:', error);
-    return prompt;
+    throw new Error(error instanceof Error ? error.message : "Failed to enhance prompt.");
   }
 }
