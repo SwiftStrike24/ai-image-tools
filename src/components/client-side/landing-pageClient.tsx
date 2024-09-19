@@ -481,7 +481,9 @@ export default function LandingPage() {
               <Accordion type="single" collapsible className="w-full space-y-4">
                 {faqs.map((faq, index) => (
                   <AccordionItem key={index} value={`item-${index}`} className="border-b border-purple-700">
-                    <AccordionTrigger className="text-left hover:no-underline">
+                    <AccordionTrigger 
+                      className="text-left hover:no-underline"
+                    >
                       <motion.div
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
