@@ -110,14 +110,12 @@ export default function FluxAIImageGenerator() {
       if (isEnhancePromptEnabled) {
         console.log(`Enhancing prompt using ${enhancementModel}...`);
         try {
-          enhancedPrompt = enhancementModel === 'meta-llama-3-8b-instruct' 
-            ? await enhancePrompt(currentPrompt)
-            : await enhancePromptGPT4oMini(currentPrompt);
-          setEnhancedPromptHistory(prev => [...prev, enhancedPrompt]);
+          enhancedPrompt = await enhancePrompt(currentPrompt);
         } catch (error) {
-          console.error(`${enhancementModel} enhancement failed:`, error);
-          // Optionally, you can add a fallback here or just continue with the original prompt
+          console.error("Primary enhancement failed, falling back to GPT-4o-mini:", error);
+          enhancedPrompt = await enhancePromptGPT4oMini(currentPrompt);
         }
+        setEnhancedPromptHistory(prev => [...prev, enhancedPrompt]);
       }
 
       // Check rate limits after enhancing prompt
