@@ -34,6 +34,7 @@ const BeforeAfterSlider: React.FC<BeforeAfterSliderProps> = ({
           secondImage={SECOND_IMAGE}
           delimiterColor="#8B5CF6"
           className="rounded-lg shadow-lg"
+          onSliderPositionChange={() => {}} // Prevent default behavior
         />
       </div>
       <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded">

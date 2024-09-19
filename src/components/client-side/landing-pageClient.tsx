@@ -18,6 +18,7 @@ import GridPattern from "@/components/magicui/animated-grid-pattern"
 import HyperText from "@/components/magicui/hyper-text"
 import BlurFade from "@/components/magicui/blur-fade"
 import AnimatedGradientText from "@/components/magicui/animated-gradient-text"
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
@@ -255,6 +256,22 @@ export default function LandingPage() {
     "url": "https://fluxscaleai.com"
   }
 
+  const [beforeAfterImages, setBeforeAfterImages] = useState<{ before: string; after: string }[]>([])
+
+  useEffect(() => {
+    async function loadImages() {
+      try {
+        const response = await fetch('/api/getBeforeAfterImages')
+        const data = await response.json()
+        setBeforeAfterImages(data.imagePairs)
+      } catch (error) {
+        console.error('Error loading before/after images:', error)
+      }
+    }
+
+    loadImages()
+  }, [])
+
   return (
     <AnimatePresence>
       <motion.div
@@ -434,14 +451,26 @@ export default function LandingPage() {
             >
               <h3 className="text-2xl font-bold mb-4 text-center">See the Difference</h3>
               <p className="text-gray-300 text-center mb-6">Experience the power of AI-enhanced images</p>
-              <div className="w-full">
-                <BeforeAfterSlider
-                  beforeImage="/images/landing-page/before-after-images/before-image.jpg"
-                  afterImage="/images/landing-page/before-after-images/after-image.jpg"
-                  beforeAlt="Image before AI enhancement"
-                  afterAlt="Image after AI enhancement"
-                />
-              </div>
+              <Carousel className="w-full max-w-3xl mx-auto" opts={{ dragFree: false, draggable: false, containScroll: 'keepSnaps', watchDrag: false, watchScroll: false }}>
+                <CarouselContent>
+                  {beforeAfterImages.map((pair, index) => (
+                    <CarouselItem key={index}>
+                      <Card>
+                        <CardContent className="p-0">
+                          <BeforeAfterSlider
+                            beforeImage={pair.before}
+                            afterImage={pair.after}
+                            beforeAlt={`Before image ${index + 1}`}
+                            afterAlt={`After image ${index + 1}`}
+                          />
+                        </CardContent>
+                      </Card>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <CarouselPrevious />
+                <CarouselNext />
+              </Carousel>
             </motion.div>
 
             <motion.div
