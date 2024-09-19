@@ -53,11 +53,12 @@ export async function incrementGeneratorUsage(imagesToGenerate: number): Promise
   const key = `${GENERATOR_KEY_PREFIX}${userId}`;
   const today = new Date().toUTCString();
 
-  const [usageCount, _] = await kv.mget([key, `${key}:date`]);
+  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
 
-  if (isNewDay(null)) { // Assuming isNewDay handles null appropriately
+  // {{ edit }} Pass lastUsageDate instead of null
+  if (isNewDay(lastUsageDate as string | null)) {
     currentUsage = 0;
   }
 
