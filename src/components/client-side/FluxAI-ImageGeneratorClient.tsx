@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { AlertCircle, X, Info, Loader2 } from "lucide-react"
 import { generateFluxImage } from "@/actions/replicate/generateFluxImage"
 import { enhancePrompt } from "@/actions/replicate/enhancePrompt"
+import { enhancePromptGPT4oMini } from "@/actions/openai/enhancePrompt-gpt-4o-mini"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { motion, AnimatePresence } from "framer-motion"
@@ -103,9 +104,25 @@ export default function FluxAIImageGenerator() {
     try {
       // Enhance prompt if enabled
       if (isEnhancePromptEnabled) {
-        const enhancedPrompt = await enhancePrompt(currentPrompt);
-        currentPrompt = enhancedPrompt;
-        setOriginalPrompt(enhancedPrompt);
+        console.log("Enhancing prompt using Replicate...");
+        try {
+          const enhancedPrompt = await enhancePrompt(currentPrompt);
+          console.log("Enhancement with Replicate successful.");
+          currentPrompt = enhancedPrompt;
+          setOriginalPrompt(enhancedPrompt);
+        } catch (replicateError) {
+          console.warn("Replicate enhancement failed, falling back to GPT-4o-mini:", replicateError);
+          console.log("Enhancing prompt using GPT-4o-mini...");
+          try {
+            const enhancedPrompt = await enhancePromptGPT4oMini(currentPrompt);
+            console.log("Enhancement with GPT-4o-mini successful.");
+            currentPrompt = enhancedPrompt;
+            setOriginalPrompt(enhancedPrompt);
+          } catch (gptError) {
+            console.error("GPT-4o-mini enhancement also failed:", gptError);
+            throw gptError; // Re-throw the error to be handled later
+          }
+        }
       }
 
       // Check rate limits after enhancing prompt
