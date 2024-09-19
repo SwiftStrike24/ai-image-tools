@@ -263,6 +263,7 @@ export default function LandingPage() {
     setBeforeAfterImages([
       { before: '/images/landing-page/before-after-images/before-image2.webp', after: '/images/landing-page/before-after-images/after-image2.jpg' },
       { before: '/images/landing-page/before-after-images/before-image.jpg', after: '/images/landing-page/before-after-images/after-image.jpg' },
+      { before: '/images/landing-page/before-after-images/before-image3.webp', after: '/images/landing-page/before-after-images/after-image3.jpg' },
     ])
   }, [])
 
