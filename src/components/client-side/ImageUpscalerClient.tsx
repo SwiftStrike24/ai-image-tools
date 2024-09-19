@@ -482,7 +482,7 @@ function ImageUpscalerComponent() {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.3 }}
-                  className="relative aspect-square rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center"
+                  className="relative aspect-square rounded-lg overflow-hidden flex items-center justify-center"
                   ref={imageContainerRef}
                 >
                   <Image
@@ -605,7 +605,7 @@ function ImageUpscalerComponent() {
                     className="space-y-4"
                   >
                     <div 
-                      className={`relative ${getAspectRatioClass(upscaleOption)} rounded-lg overflow-hidden bg-purple-900/30 flex items-center justify-center cursor-pointer group`}
+                      className={`relative ${getAspectRatioClass(upscaleOption)} rounded-lg overflow-hidden flex items-center justify-center cursor-pointer group`}
                       onClick={() => handleImageClick(upscaledImage)}
                     >
                       <Image
@@ -621,6 +621,13 @@ function ImageUpscalerComponent() {
                       />
                       <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity duration-300" />
                       <ZoomIn className="absolute text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <BorderBeam 
+                        className="pointer-events-none"
+                        size={300}
+                        duration={10}
+                        colorFrom="#ff00ff"
+                        colorTo="#00ffff"
+                      />
                     </div>
                     <ShinyButton
                       onClick={handleDownload}
