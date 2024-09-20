@@ -5,6 +5,9 @@ import { motion } from 'framer-motion'
 import { CheckIcon, SparklesIcon } from 'lucide-react'
 import ShineBorder from './magicui/shine-border'
 import { MagicCard } from './magicui/magic-card'
+import { loadStripe } from '@stripe/stripe-js'
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 const plans = [
   {
@@ -29,6 +32,7 @@ const plans = [
     ],
     cta: 'Upgrade to Pro',
     popular: true,
+    paymentLink: 'https://buy.stripe.com/test_eVacOG1ra3ls4Za3cc'
   },
   {
     name: 'Premium',
@@ -40,6 +44,7 @@ const plans = [
       'AI model choice available',
     ],
     cta: 'Go Premium',
+    paymentLink: 'https://buy.stripe.com/test_fZeaGyc5O8FM0IUcMN'
   },
 ]
 
@@ -50,6 +55,23 @@ const featureComparison = [
   { name: 'Prompt enhancements', free: '5/day', pro: 'Unlimited', premium: 'Unlimited' },
   { name: 'AI model choice', free: 'Yes', pro: 'Yes', premium: 'Yes' },
 ]
+
+// Add this custom component for the Stripe Buy Button
+const StripeBuyButton = ({ buyButtonId, publishableKey }: { buyButtonId: string; publishableKey: string }) => {
+  return (
+    <div
+      dangerouslySetInnerHTML={{
+        __html: `
+          <stripe-buy-button
+            buy-button-id="${buyButtonId}"
+            publishable-key="${publishableKey}"
+          >
+          </stripe-buy-button>
+        `
+      }}
+    />
+  )
+}
 
 export function PricingComponentComponent() {
   const [isMonthly, setIsMonthly] = useState(true)
@@ -155,6 +177,15 @@ export function PricingComponentComponent() {
 }
 
 function PlanContent({ plan, isMonthly }: { plan: any; isMonthly: boolean }) {
+  const handleSubscribe = () => {
+    if (plan.paymentLink) {
+      window.location.href = plan.paymentLink;
+    } else {
+      // Handle free plan or any other cases
+      console.log(`${plan.name} plan selected`);
+    }
+  };
+
   return (
     <div 
       className="flex flex-col h-full rounded-2xl"
@@ -186,7 +217,7 @@ function PlanContent({ plan, isMonthly }: { plan: any; isMonthly: boolean }) {
       </div>
       <div className="flex-1 px-6 pt-6 pb-8 sm:p-10 sm:pt-6">
         <ul className="space-y-4">
-          {plan.features.map((feature, index) => (
+          {plan.features.map((feature: string, index: number) => (
             <li key={index} className="flex items-start">
               <div className="flex-shrink-0">
                 <CheckIcon className="h-6 w-6 text-purple-400" aria-hidden="true" />
@@ -200,6 +231,7 @@ function PlanContent({ plan, isMonthly }: { plan: any; isMonthly: boolean }) {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={handleSubscribe}
               className={`w-full flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-gray-100 ${
                 plan.popular
                   ? 'bg-purple-600 hover:bg-purple-700'
