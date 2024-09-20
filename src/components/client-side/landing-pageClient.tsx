@@ -20,6 +20,20 @@ import BlurFade from "@/components/magicui/blur-fade"
 import AnimatedGradientText from "@/components/magicui/animated-gradient-text"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { PricingComponentComponent } from '@/components/pricing-component'
+import { styled } from '@stitches/react';
+
+const PricingWrapper = styled('div', {
+  '& > div': {
+    background: 'transparent !important',
+    backdropFilter: 'none !important',
+    WebkitBackdropFilter: 'none !important',
+  },
+  '& .pricing-card': {
+    background: 'rgba(30, 30, 30, 0.6) !important',
+    backdropFilter: 'blur(20px) !important',
+    WebkitBackdropFilter: 'blur(20px) !important',
+  }
+});
 
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
@@ -529,7 +543,7 @@ export default function LandingPage() {
               </ShimmerButton>
             </motion.div>
 
-            {/* New Pricing Section */}
+            {/* New Pricing Section with background override */}
             <motion.div
               variants={itemVariants}
               className="mb-24"
@@ -542,7 +556,9 @@ export default function LandingPage() {
               <p className="text-xl text-gray-300 text-center mb-12">
                 Unlock the full potential of AI-powered image tools
               </p>
-              <PricingComponentComponent />
+              <PricingWrapper>
+                <PricingComponentComponent />
+              </PricingWrapper>
             </motion.div>
 
             <motion.footer
