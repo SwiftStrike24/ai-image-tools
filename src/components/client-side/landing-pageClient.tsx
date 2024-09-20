@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, useAnimation, AnimatePresence, useInView } from 'framer-motion'
 import { Input } from "@/components/ui/input"
-import { ArrowRight, Wand2, Maximize, Layout, Download, Sparkles } from 'lucide-react'
+import { ArrowRight, Wand2, Maximize, Layout, Download, Sparkles, CreditCard, Menu } from 'lucide-react'
 import Image from 'next/image'
 import BeforeAfterSlider from '@/components/BeforeAfterSlider'
 import { addToWaitlist } from '@/actions/waitlist-actions'
@@ -21,6 +21,8 @@ import AnimatedGradientText from "@/components/magicui/animated-gradient-text"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { PricingComponentComponent } from '@/components/pricing-component'
 import { styled } from '@stitches/react';
+import { Button } from "@/components/ui/button"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
 const PricingWrapper = styled('div', {
   '& > div': {
@@ -122,6 +124,7 @@ export default function LandingPage() {
   const { toast } = useToast()
   const emailInputRef = useRef<HTMLTextAreaElement>(null)
   const waitlistRef = useRef<HTMLDivElement>(null)
+  const pricingRef = useRef<HTMLDivElement>(null)
   const [isSuccess, setIsSuccess] = useState(false)
 
   const MAX_EMAIL_LENGTH = 40 // Set a reasonable maximum length for email addresses
@@ -256,6 +259,10 @@ export default function LandingPage() {
     waitlistRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
+  const scrollToPricing = () => {
+    pricingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
@@ -286,6 +293,14 @@ export default function LandingPage() {
       { before: '/images/landing-page/before-after-images/before-image4.webp', after: '/images/landing-page/before-after-images/after-image4.jpg' },
     ])
   }, [])
+
+  const featuresRef = useRef<HTMLDivElement>(null)
+  const beforeAfterRef = useRef<HTMLDivElement>(null)
+  const faqRef = useRef<HTMLDivElement>(null)
+
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
     <AnimatePresence>
@@ -336,6 +351,90 @@ export default function LandingPage() {
                 />
               </motion.div>
             </motion.div>
+            
+            {/* Desktop navigation */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+              className="hidden md:flex space-x-4"
+            >
+              <Button
+                onClick={() => scrollToSection(featuresRef)}
+                className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                Features
+              </Button>
+              <Button
+                onClick={() => scrollToSection(beforeAfterRef)}
+                className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                Before/After
+              </Button>
+              <Button
+                onClick={() => scrollToSection(faqRef)}
+                className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                FAQ
+              </Button>
+              <Button
+                onClick={scrollToPricing}
+                className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                Pricing
+              </Button>
+            </motion.div>
+
+            {/* Mobile navigation */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button className="md:hidden bg-black hover:bg-gray-900 text-white">
+                  <Menu className="h-6 w-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
+                <nav className="flex flex-col space-y-4">
+                  <Button
+                    onClick={() => {
+                      scrollToSection(featuresRef)
+                      document.body.click() // Close the sheet
+                    }}
+                    className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    Features
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      scrollToSection(beforeAfterRef)
+                      document.body.click() // Close the sheet
+                    }}
+                    className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    Before/After
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      scrollToSection(faqRef)
+                      document.body.click() // Close the sheet
+                    }}
+                    className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    FAQ
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      scrollToPricing()
+                      document.body.click() // Close the sheet
+                    }}
+                    className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Pricing
+                  </Button>
+                </nav>
+              </SheetContent>
+            </Sheet>
           </motion.nav>
           
           <main className="container mx-auto px-4 py-16">
@@ -419,6 +518,7 @@ export default function LandingPage() {
             </motion.div>
 
             <motion.div 
+              ref={featuresRef}
               className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16 mt-24"
               variants={itemVariants}
             >
@@ -461,6 +561,7 @@ export default function LandingPage() {
             </motion.div>
 
             <motion.div
+              ref={beforeAfterRef}
               variants={itemVariants}
               className="mb-16 p-8 rounded-lg max-w-5xl mx-auto"
             >
@@ -494,6 +595,7 @@ export default function LandingPage() {
             </motion.div>
 
             <motion.div
+              ref={faqRef}
               variants={itemVariants}
               className="mb-16 p-8 rounded-lg max-w-4xl mx-auto"
             >
@@ -545,8 +647,9 @@ export default function LandingPage() {
 
             {/* New Pricing Section with background override */}
             <motion.div
+              ref={pricingRef}
               variants={itemVariants}
-              className="mb-24"
+              className="mb-24 pt-16" // Added pt-16 for better scrolling position
             >
               <h2 className="text-4xl font-bold mb-8 text-center">
                 <AnimatedGradientText>
