@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { CheckIcon, SparklesIcon } from 'lucide-react'
 import ShineBorder from './magicui/shine-border'
+import { MagicCard } from './magicui/magic-card'
 
 const plans = [
   {
@@ -72,23 +73,28 @@ export function PricingComponentComponent() {
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className={`flex flex-col rounded-2xl overflow-hidden ${
-                plan.popular ? 'transform scale-105 z-10' : ''
-              }`}
+              className={`${plan.popular ? 'transform scale-105 z-10' : ''}`}
             >
-              {plan.popular ? (
-                <ShineBorder
-                  borderRadius={16}
-                  borderWidth={2}
-                  duration={10}
-                  color={["#8B5CF6", "#6366F1", "#EC4899"]}
-                  className="h-full"
-                >
+              <MagicCard
+                gradientSize={300}
+                gradientColor={plan.popular ? "#8B5CF6" : "#4B5563"}
+                gradientOpacity={0.15}
+                className="h-full rounded-2xl"
+              >
+                {plan.popular ? (
+                  <ShineBorder
+                    borderRadius={16}
+                    borderWidth={2}
+                    duration={10}
+                    color={["#8B5CF6", "#6366F1", "#EC4899"]}
+                    className="h-full"
+                  >
+                    <PlanContent plan={plan} isMonthly={isMonthly} />
+                  </ShineBorder>
+                ) : (
                   <PlanContent plan={plan} isMonthly={isMonthly} />
-                </ShineBorder>
-              ) : (
-                <PlanContent plan={plan} isMonthly={isMonthly} />
-              )}
+                )}
+              </MagicCard>
             </motion.div>
           ))}
         </div>
