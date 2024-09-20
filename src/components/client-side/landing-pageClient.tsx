@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, useAnimation, AnimatePresence, useInView } from 'framer-motion'
 import { Input } from "@/components/ui/input"
-import { ArrowRight, Wand2, Maximize, Layout, Download, Sparkles, CreditCard, Menu } from 'lucide-react'
+import { ArrowRight, Wand2, Maximize, Layout, Download, Sparkles, CreditCard, Menu, UserCheck } from 'lucide-react'
 import Image from 'next/image'
 import BeforeAfterSlider from '@/components/BeforeAfterSlider'
 import { addToWaitlist } from '@/actions/waitlist-actions'
@@ -133,6 +133,8 @@ export default function LandingPage() {
     { icon: <Wand2 className="w-6 h-6" />, title: "AI Image Generation", description: "Create stunning visuals from text prompts using FLUX.1 model", badge: "FLUX.1" },
     { icon: <Maximize className="w-6 h-6" />, title: "Image Upscaling", description: "Enhance image quality up to 10x with Real-ESRGAN", badge: "Real-ESRGAN" },
     { icon: <Layout className="w-6 h-6" />, title: "Multiple Aspect Ratios", description: "Support for various dimensions", badge: "16:9 • 1:1 • 9:16 • more" },
+    { icon: <UserCheck className="w-6 h-6" />, title: "Face Enhancement", description: "Run GFPGAN to improve facial details during upscaling", badge: "GFPGAN" },
+    { icon: <Sparkles className="w-6 h-6" />, title: "Prompt Enhancement", description: "Boost prompts with Meta-Llama 3 (8B) or GPT-4o-mini during generation", badge: "AI-Powered" },
     { icon: <Download className="w-6 h-6" />, title: "High-Quality Outputs", description: "Generate WebP, JPG, or PNG formats", badge: "HD" },
   ]
 
