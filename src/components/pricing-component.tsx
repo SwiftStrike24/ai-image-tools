@@ -11,24 +11,24 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 
 const plans = [
   {
-    name: 'Free',
+    name: 'Basic',
     price: '$0',
     features: [
       '10 upscales/day & 10 generations/day',
       'Upscale options: 2x and 4x only',
       '5 prompt enhancements/day',
-      'AI model choice available',
+      'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
     ],
     cta: 'Get Started',
   },
   {
     name: 'Pro',
-    price: '$10',
+    price: '$8',
     features: [
       '1000 upscales/month & 1000 generations/month',
       'Upscale options: 2x, 4x, 6x, 8x',
       'Unlimited prompt enhancements',
-      'AI model choice available',
+      'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
     ],
     cta: 'Upgrade to Pro',
     popular: true,
@@ -36,15 +36,29 @@ const plans = [
   },
   {
     name: 'Premium',
-    price: '$20',
+    price: '$15',
     features: [
       '2000 upscales/month & 2000 generations/month',
       'Upscale options: 2x, 4x, 6x, 8x, 10x',
       'Unlimited prompt enhancements',
-      'AI model choice available',
+      'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
+      'Priority queue for generations',
     ],
     cta: 'Go Premium',
     paymentLink: 'https://buy.stripe.com/test_fZeaGyc5O8FM0IUcMN'
+  },
+  {
+    name: 'Ultimate',
+    price: '$29',
+    features: [
+      '5000 upscales/month & 5000 generations/month',
+      'All upscale options available',
+      'Unlimited prompt enhancements',
+      'Exclusive access to GPT-4o for prompt enhancements',
+      'Priority support and fastest generation times',
+    ],
+    cta: 'Go Ultimate',
+    paymentLink: 'https://buy.stripe.com/test_ultimateplan'
   },
 ]
 
