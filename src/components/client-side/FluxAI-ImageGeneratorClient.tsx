@@ -93,7 +93,8 @@ export default function FluxAIImageGenerator() {
       getEnhancePromptUsage().then(({ usageCount, resetsIn }) => {
         setEnhancePromptUsage(usageCount);
         setEnhancePromptResetsIn(resetsIn);
-        setEnhancePromptLimitReached(usageCount >= ENHANCE_PROMPT_DAILY_LIMIT);
+        // Remove this line to prevent setting the limit reached state on load
+        // setEnhancePromptLimitReached(usageCount >= ENHANCE_PROMPT_DAILY_LIMIT);
       }).catch((error) => {
         console.error(error);
         if (error.message === "User not authenticated") {
@@ -112,12 +113,7 @@ export default function FluxAIImageGenerator() {
 
     if (!currentPrompt?.trim()) {
       setError("Please enter a prompt before generating images.");
-      toast({
-        title: "Empty Prompt",
-        description: "Please enter a prompt before generating images.",
-        variant: "destructive",
-      });
-      return;
+      return; // Remove toast here
     }
 
     setIsLoading(true);
@@ -128,22 +124,14 @@ export default function FluxAIImageGenerator() {
       let enhancementSuccessful = false;
       let usedEnhancementModel: 'meta-llama-3-8b-instruct' | 'gpt-4o-mini' | null = null;
 
-      if (isEnhancePromptEnabled) {
-        if (!isSimulationMode) {
-          const { canProceed, usageCount } = await canEnhancePrompt();
-          if (!canProceed) {
-            setError(`You've reached your daily limit for prompt enhancements. You can enhance ${ENHANCE_PROMPT_DAILY_LIMIT - usageCount} more prompt${usageCount !== ENHANCE_PROMPT_DAILY_LIMIT - 1 ? 's' : ''} today.`);
-            toast({
-              title: "Daily Limit Reached",
-              description: `You've reached your daily limit for prompt enhancements. Please try again tomorrow or upgrade your plan.`,
-              variant: "destructive",
-            });
-            setIsLoading(false);
-            return;
-          }
+      if (isEnhancePromptEnabled && !isSimulationMode) {
+        const { canProceed, usageCount } = await canEnhancePrompt();
+        if (!canProceed) {
+          setEnhancePromptLimitReached(true);
+          setIsLoading(false);
+          return; // Remove toast here
         }
 
-        console.log(`Enhancing prompt using ${enhancementModel}...`);
         try {
           let enhancementResult;
           if (enhancementModel === 'meta-llama-3-8b-instruct') {
@@ -158,41 +146,12 @@ export default function FluxAIImageGenerator() {
             usedEnhancementModel = enhancementResult.usedModel;
             setEnhancedPromptHistory(prev => [...prev, enhancedPrompt]);
             console.log("Prompt enhancement successful:", enhancedPrompt);
-
-            if (!isSimulationMode) {
-              await incrementEnhancePromptUsage();
-              setEnhancePromptUsage(prev => prev + 1);
-            }
-
-            if (enhancementSuccessful) {
-              if (enhancementResult.usedModel === 'gpt-4o-mini' && enhancementModel === 'meta-llama-3-8b-instruct') {
-                setEnhancementFallback("Meta-Llama 3 enhancement failed. GPT-4o-mini was used as a fallback.");
-              } else {
-                setEnhancementFallback(null);
-                toast({
-                  title: "Prompt Enhanced",
-                  description: `Enhanced using ${enhancementResult.usedModel === 'meta-llama-3-8b-instruct' ? 'Meta-Llama 3' : 'GPT-4o-mini'}.`,
-                  variant: "default",
-                });
-              }
-            }
           } else {
             console.warn("Prompt enhancement didn't produce a different result. Using original prompt.");
-            setEnhancementFallback(null);
-            if (isEnhancePromptEnabled) {
-              toast({
-                title: "Prompt Not Enhanced",
-                description: "The AI didn't significantly change your prompt. Using the original.",
-                variant: "default",
-              });
-            }
           }
         } catch (enhanceError) {
           console.error("Error enhancing prompt:", enhanceError);
-          setEnhancementFallback("Prompt enhancement failed. Using original prompt.");
         }
-      } else {
-        setEnhancementFallback(null);
       }
 
       // Check rate limits after enhancing prompt
@@ -201,11 +160,6 @@ export default function FluxAIImageGenerator() {
         if (!canProceed) {
           const remainingGenerations = GENERATOR_DAILY_LIMIT - usageCount;
           setError(`You've reached your daily limit. You can generate ${remainingGenerations} more image${remainingGenerations !== 1 ? 's' : ''} today.`);
-          toast({
-            title: "Daily Limit Reached",
-            description: `You can generate ${remainingGenerations} more image${remainingGenerations !== 1 ? 's' : ''} today. Please try again tomorrow or upgrade your plan.`,
-            variant: "destructive",
-          });
           setIsLoading(false);
           return;
         }
@@ -217,7 +171,6 @@ export default function FluxAIImageGenerator() {
       // Update originalPrompt and followUpPrompts
       if (isFollowUp) {
         setFollowUpPrompts(prev => [...prev, currentPrompt]);
-        // **Remove seed from the prompt**
         finalPrompt = `${originalPrompt} ${enhancedPrompt}`;
       } else {
         setOriginalPrompt(currentPrompt);
@@ -230,7 +183,7 @@ export default function FluxAIImageGenerator() {
         num_outputs: numOutputs,
         output_format: outputFormat,
         output_quality: outputQuality,
-        enhance_prompt: enhancementSuccessful, // Only set to true if enhancement was successful
+        enhance_prompt: enhancementSuccessful,
         disable_safety_checker: true,
         seed: currentSeed !== null ? currentSeed : undefined,
         followUpLevel: isFollowUp ? followUpLevel : 1,
@@ -249,6 +202,12 @@ export default function FluxAIImageGenerator() {
         if (!isSimulationMode) {
           await incrementGeneratorUsage(numOutputs);
           setDailyUsage(prev => prev + numOutputs);
+
+          // Only increment enhance prompt usage if enhancement was successful
+          if (enhancementSuccessful) {
+            await incrementEnhancePromptUsage();
+            setEnhancePromptUsage(prev => prev + 1);
+          }
         }
 
         const newImageResults = results.map((result, index) => ({
@@ -284,10 +243,13 @@ export default function FluxAIImageGenerator() {
         setFollowUpPrompt('');
         setShowSeedInput(isFollowUp ? true : false);
 
-        toast({
-          title: isSimulationMode ? "Images Simulated" : "Images Generated",
-          description: `Successfully ${isSimulationMode ? 'simulated' : 'generated'} ${newImageResults.length} image(s).`,
-        });
+        if (enhancementSuccessful) {
+          toast({
+            title: "Prompt Enhanced",
+            description: `Enhanced using ${usedEnhancementModel === 'meta-llama-3-8b-instruct' ? 'Meta-Llama 3' : 'GPT-4o-mini'}.`,
+            variant: "default",
+          });
+        }
       } else {
         throw new Error('No images were generated. Please try again.');
       }
@@ -297,16 +259,7 @@ export default function FluxAIImageGenerator() {
       }
     } catch (error) {
       console.error('Image generation error:', error);
-      // If rate limit was checked and usageCount was incremented, consider rolling back
-      if (!isSimulationMode && typeof error !== 'string') {
-        // Optionally implement rollback logic here if necessary
-      }
       setError(error instanceof Error ? error.message : "Failed to generate image(s). Please try again.");
-      toast({
-        title: "Generation Failed",
-        description: error instanceof Error ? error.message : "There was an error while generating your image(s).",
-        variant: "destructive",
-      });
     } finally {
       setIsLoading(false);
     }
@@ -524,11 +477,8 @@ export default function FluxAIImageGenerator() {
 
   const handleEnhancePromptToggle = (checked: boolean) => {
     setIsEnhancePromptEnabled(checked);
-    if (checked) {
-      setEnhancementModel('meta-llama-3-8b-instruct'); // Set default to meta-llama when enabling
-      if (enhancePromptUsage >= ENHANCE_PROMPT_DAILY_LIMIT) {
-        setEnhancePromptLimitReached(true);
-      }
+    if (checked && enhancePromptUsage >= ENHANCE_PROMPT_DAILY_LIMIT) {
+      setEnhancePromptLimitReached(true);
     } else {
       setEnhancePromptLimitReached(false);
     }
@@ -798,8 +748,12 @@ export default function FluxAIImageGenerator() {
                     )}
                   </div>
                   
-                  {enhancementFallback && (
-                    <p className="text-red-500 text-sm mt-1">{enhancementFallback}</p>
+                  {isEnhancePromptEnabled && enhancePromptLimitReached && (
+                    <p className="text-red-500 text-sm mt-2">
+                      Daily limit reached. Enhance up to {ENHANCE_PROMPT_DAILY_LIMIT} prompts per day.
+                      <br />
+                      Resets in: {enhancePromptResetsIn}
+                    </p>
                   )}
                 </div>
 
