@@ -141,23 +141,31 @@ export default function LandingPage() {
   const faqs = [
     {
       question: "What's included in the free tier?",
-      answer: "Our free tier offers 20 image upscales and 20 image generations per day. Each feature has its own counter, giving you plenty of room to experiment with both capabilities."
+      answer: "10 image upscales, 10 image generations, and 5 prompt enhancements per day during generation. Choose your LLM for prompt enhancement."
     },
     {
-      question: "Which AI models are used for image generation and upscaling?",
-      answer: "We use the cutting-edge FLUX.1 model for image generation, known for its exceptional quality and versatility in creating stunning visuals from text prompts. For image upscaling, we utilize Real-ESRGAN, a state-of-the-art AI model that produces high-quality, artifact-free upscaled images."
+      question: "Which AI models do you use?",
+      answer: "FLUX.1 for image generation and Real-ESRGAN for upscaling."
     },
     {
       question: "How does image upscaling work?",
-      answer: "Our AI-powered upscaling technology, powered by Real-ESRGAN, enhances the resolution and quality of your images, making them sharper and more detailed without losing the original essence. We offer multiple upscale options: 2x, 4x, 6x, 8x, and 10x."
+      answer: "Real-ESRGAN enhances image resolution and quality. We offer 2x, 4x, 6x, 8x, and 10x upscaling."
     },
     {
-      question: "What makes Real-ESRGAN special for image upscaling?",
-      answer: "Real-ESRGAN is an advanced AI model specifically designed for image upscaling. It excels at removing artifacts, restoring details, and producing natural-looking results. This makes it ideal for enhancing old photos, improving low-resolution images, or preparing visuals for large-format printing."
+      question: "What's special about Real-ESRGAN?",
+      answer: "It removes artifacts, restores details, and produces natural-looking results."
     },
     {
-      question: "Can I use the generated and upscaled images commercially?",
-      answer: "Yes, all images generated and upscaled using our platform are free for commercial use."
+      question: "How does GFPGAN face enhancement work?",
+      answer: "GFPGAN automatically improves facial details during upscaling, enhancing eyes, nose, and mouth for more realistic portraits."
+    },
+    {
+      question: "Can I use the images commercially?",
+      answer: "Yes, all generated and upscaled images are free for commercial use."
+    },
+    {
+      question: "How does Prompt Enhancement work?",
+      answer: "We use Meta-Llama 3 (8B) or GPT-4o-mini to automatically enhance your prompts during image generation, resulting in more detailed and creative outputs."
     }
   ]
 
