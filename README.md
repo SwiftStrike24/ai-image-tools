@@ -1,6 +1,6 @@
-# AI Image Tools 🎨🖼️
+# FluxScale AI: Advanced AI Image Tools 🎨🖼️
 
-![AI Image Tools Banner](https://via.placeholder.com/1200x300?text=AI+Image+Tools)
+![FluxScale AI Banner](https://via.placeholder.com/1200x300?text=FluxScale+AI)
 
 ## 🚀 Features
 
@@ -24,6 +24,14 @@
 - **📱 Responsive Design**: Optimized for both desktop and mobile devices
 - **⏱️ Rate Limiting**: Implemented daily usage limits for both upscaling and generation
 - **👀 Admin View**: Scripts to view user upscales and generations with detailed statistics
+- **🎠 Image Carousel**: Showcase before/after comparisons of upscaled images
+- **🔍 SEO Optimization**: Improved metadata and structured data for better search engine visibility
+- **🚀 Performance Enhancements**: Optimized code for faster load times and smoother interactions
+- **📊 Usage Analytics**: Integration with Vercel Analytics for insights on user behavior
+- **🔄 Improved State Management**: Enhanced React hooks for more efficient state updates
+- **🖼️ HEIC Support**: Added capability to handle HEIC image format
+- **🎨 Customizable UI**: User-friendly interface with adjustable settings
+- **🔐 Enhanced Security**: Implemented additional security measures for user data protection
 
 ## 🛠️ Tech Stack
 
@@ -35,6 +43,9 @@
 - **Deployment**: Vercel
 - **Image Optimization**: Next.js Image component
 - **Database**: Vercel KV (Redis)
+- **Analytics**: Vercel Analytics, Vercel Speed Insights
+- **State Management**: React Hooks, Context API
+- **Testing**: (Add your testing framework here)
 
 ## 🧩 Key Components
 
@@ -46,6 +57,8 @@
 - `RetroGrid`: Background component for visual appeal
 - `ShinyButton`: Custom button component with animated effects
 - `LandingPageClient`: Introduces users to the app's features
+- `BeforeAfterSlider`: Showcases image transformations
+- `Carousel`: Displays multiple images in a scrollable format
 
 ## 🔌 APIs and Server Actions
 
@@ -115,7 +128,7 @@
 
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome! Feel free to check [issues page](https://github.com/yourusername/ai-image-tools/issues).
+Contributions, issues, and feature requests are welcome! Feel free to check [issues page](https://github.com/yourusername/fluxscale-ai/issues).
 
 ## 📄 License
 
@@ -131,12 +144,13 @@ This project is [MIT](https://choosealicense.com/licenses/mit/) licensed.
 ## 🙏 Acknowledgments
 
 - [Replicate](https://replicate.com/) for their amazing AI models (Real-ESRGAN and FLUX.1)
-- [Vercel](https://vercel.com/) for hosting, deployment, and Vercel KV
+- [Vercel](https://vercel.com/) for hosting, deployment, Vercel KV, and analytics
 - [Shadcn UI](https://ui.shadcn.com/) for beautiful UI components
 - [Magic UI](https://magicui.design/) for additional UI enhancements
 - [Tailwind CSS](https://tailwindcss.com/) for utility-first CSS framework
 - [Clerk](https://clerk.com/) for authentication services
 - [Framer Motion](https://www.framer.com/motion/) for smooth animations
+- [OpenAI](https://openai.com/) for AI-powered prompt enhancement
 
 ---
 
