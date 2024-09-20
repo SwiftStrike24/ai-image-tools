@@ -28,9 +28,9 @@ import {
   aspectRatioOptions,
   simulateImageGeneration
 } from '@/utils/imageUtils'
-import { canGenerateImages, getGeneratorUsage, incrementGeneratorUsage } from "@/actions/rateLimit"
+import { canGenerateImages, getGeneratorUsage, incrementGeneratorUsage, canEnhancePrompt, incrementEnhancePromptUsage, getEnhancePromptUsage } from "@/actions/rateLimit"
 import { Progress } from "@/components/ui/progress"
-import { GENERATOR_DAILY_LIMIT } from "@/constants/rateLimits"
+import { GENERATOR_DAILY_LIMIT, ENHANCE_PROMPT_DAILY_LIMIT } from "@/constants/rateLimits"
 import { SiMeta, SiOpenai } from "react-icons/si" // Import Meta and OpenAI icons from react-icons
 
 export default function FluxAIImageGenerator() {
@@ -70,12 +70,30 @@ export default function FluxAIImageGenerator() {
   const [enhancementModel, setEnhancementModel] = useState<'meta-llama-3-8b-instruct' | 'gpt-4o-mini'>('meta-llama-3-8b-instruct')
   const [enhancedPromptHistory, setEnhancedPromptHistory] = useState<string[]>([])
   const [enhancementFallback, setEnhancementFallback] = useState<string | null>(null)
+  const [enhancePromptUsage, setEnhancePromptUsage] = useState(0)
+  const [enhancePromptResetsIn, setEnhancePromptResetsIn] = useState("")
+  const [enhancePromptLimitReached, setEnhancePromptLimitReached] = useState(false)
 
   useEffect(() => {
     if (!isSimulationMode) {
       getGeneratorUsage().then(({ usageCount, resetsIn }) => {
         setDailyUsage(usageCount);
         setResetsIn(resetsIn);
+      }).catch((error) => {
+        console.error(error);
+        if (error.message === "User not authenticated") {
+          setIsAuthenticated(false);
+        }
+      });
+    }
+  }, [isSimulationMode]);
+
+  useEffect(() => {
+    if (!isSimulationMode) {
+      getEnhancePromptUsage().then(({ usageCount, resetsIn }) => {
+        setEnhancePromptUsage(usageCount);
+        setEnhancePromptResetsIn(resetsIn);
+        setEnhancePromptLimitReached(usageCount >= ENHANCE_PROMPT_DAILY_LIMIT);
       }).catch((error) => {
         console.error(error);
         if (error.message === "User not authenticated") {
@@ -111,6 +129,20 @@ export default function FluxAIImageGenerator() {
       let usedEnhancementModel: 'meta-llama-3-8b-instruct' | 'gpt-4o-mini' | null = null;
 
       if (isEnhancePromptEnabled) {
+        if (!isSimulationMode) {
+          const { canProceed, usageCount } = await canEnhancePrompt();
+          if (!canProceed) {
+            setError(`You've reached your daily limit for prompt enhancements. You can enhance ${ENHANCE_PROMPT_DAILY_LIMIT - usageCount} more prompt${usageCount !== ENHANCE_PROMPT_DAILY_LIMIT - 1 ? 's' : ''} today.`);
+            toast({
+              title: "Daily Limit Reached",
+              description: `You've reached your daily limit for prompt enhancements. Please try again tomorrow or upgrade your plan.`,
+              variant: "destructive",
+            });
+            setIsLoading(false);
+            return;
+          }
+        }
+
         console.log(`Enhancing prompt using ${enhancementModel}...`);
         try {
           let enhancementResult;
@@ -126,6 +158,11 @@ export default function FluxAIImageGenerator() {
             usedEnhancementModel = enhancementResult.usedModel;
             setEnhancedPromptHistory(prev => [...prev, enhancedPrompt]);
             console.log("Prompt enhancement successful:", enhancedPrompt);
+
+            if (!isSimulationMode) {
+              await incrementEnhancePromptUsage();
+              setEnhancePromptUsage(prev => prev + 1);
+            }
 
             if (enhancementSuccessful) {
               if (enhancementResult.usedModel === 'gpt-4o-mini' && enhancementModel === 'meta-llama-3-8b-instruct') {
@@ -489,6 +526,11 @@ export default function FluxAIImageGenerator() {
     setIsEnhancePromptEnabled(checked);
     if (checked) {
       setEnhancementModel('meta-llama-3-8b-instruct'); // Set default to meta-llama when enabling
+      if (enhancePromptUsage >= ENHANCE_PROMPT_DAILY_LIMIT) {
+        setEnhancePromptLimitReached(true);
+      }
+    } else {
+      setEnhancePromptLimitReached(false);
     }
   };
 
@@ -511,14 +553,16 @@ export default function FluxAIImageGenerator() {
               {isSimulationMode ? (
                 <span className="text-sm font-medium">Simulation Mode</span>
               ) : (
-                <span className="text-sm font-medium">{dailyUsage} / {GENERATOR_DAILY_LIMIT}</span>
+                <span className="text-sm font-medium">
+                  {dailyUsage} / {GENERATOR_DAILY_LIMIT}
+                </span>
               )}
             </div>
             {!isSimulationMode && (
               <>
                 <Progress value={(dailyUsage / GENERATOR_DAILY_LIMIT) * 100} className="h-2" />
                 <p className="text-xs text-purple-300">
-                  {GENERATOR_DAILY_LIMIT - dailyUsage} generations remaining today. Resets in {resetsIn}.
+                  {GENERATOR_DAILY_LIMIT - dailyUsage} generations remaining. Resets in {resetsIn}.
                 </p>
               </>
             )}
@@ -687,63 +731,71 @@ export default function FluxAIImageGenerator() {
 
                 {/* Enhance Prompt Section with Model Selection */}
                 <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="enhance-prompt"
-                      checked={isEnhancePromptEnabled}
-                      onCheckedChange={handleEnhancePromptToggle}
-                    />
-                    <Label htmlFor="enhance-prompt" className="text-white">Enhance Prompt</Label>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="enhance-prompt"
+                        checked={isEnhancePromptEnabled}
+                        onCheckedChange={handleEnhancePromptToggle}
+                      />
+                      <Label htmlFor="enhance-prompt" className="text-white">Enhance Prompt</Label>
 
-                    {/* Model Selection Buttons */}
-                    <div className="flex space-x-2">
+                      {/* Model Selection Buttons */}
+                      <div className="flex space-x-2">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => handleModelSelection('meta-llama-3-8b-instruct')}
+                                className={`p-2 rounded ${enhancementModel === 'meta-llama-3-8b-instruct' && isEnhancePromptEnabled ? 'bg-purple-600' : 'bg-gray-700'}`}
+                                aria-label="Meta-Llama Model"
+                              >
+                                <SiMeta className="w-4 h-4 text-white" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="bg-purple-900 text-white border-purple-500">
+                              <p>Use Meta-Llama 3 (8B) for prompt enhancement</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => handleModelSelection('gpt-4o-mini')}
+                                className={`p-2 rounded ${enhancementModel === 'gpt-4o-mini' && isEnhancePromptEnabled ? 'bg-purple-600' : 'bg-gray-700'}`}
+                                aria-label="GPT-4o-mini Model"
+                              >
+                                <SiOpenai className="w-4 h-4 text-white" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="bg-purple-900 text-white border-purple-500">
+                              <p>Use GPT-4o-mini (OpenAI) for prompt enhancement</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={() => handleModelSelection('meta-llama-3-8b-instruct')}
-                              className={`p-2 rounded ${enhancementModel === 'meta-llama-3-8b-instruct' && isEnhancePromptEnabled ? 'bg-purple-600' : 'bg-gray-700'}`}
-                              aria-label="Meta-Llama Model"
-                            >
-                              <SiMeta className="w-4 h-4 text-white" />
-                            </button>
+                            <Info className="w-4 h-4 text-purple-400 cursor-help" />
                           </TooltipTrigger>
-                          <TooltipContent side="top" className="bg-purple-900 text-white border-purple-500">
-                            <p>Use Meta-Llama 3 (8B) for prompt enhancement</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={() => handleModelSelection('gpt-4o-mini')}
-                              className={`p-2 rounded ${enhancementModel === 'gpt-4o-mini' && isEnhancePromptEnabled ? 'bg-purple-600' : 'bg-gray-700'}`}
-                              aria-label="GPT-4o-mini Model"
-                            >
-                              <SiOpenai className="w-4 h-4 text-white" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="bg-purple-900 text-white border-purple-500">
-                            <p>Use GPT-4o-mini (OpenAI) for prompt enhancement</p>
+                          <TooltipContent side="right" className="bg-purple-900 text-white border-purple-500">
+                            <p>Use AI to enhance your prompt for better results. Meta-Llama is the default.</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     </div>
-
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="w-4 h-4 text-purple-400 cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent side="right" className="bg-purple-900 text-white border-purple-500">
-                          <p>Use AI to enhance your prompt for better results. Meta-Llama is the default.</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    
+                    {!isSimulationMode && (
+                      <span className="text-sm text-purple-300">
+                        {enhancePromptUsage}/{ENHANCE_PROMPT_DAILY_LIMIT}
+                      </span>
+                    )}
                   </div>
                   
                   {enhancementFallback && (

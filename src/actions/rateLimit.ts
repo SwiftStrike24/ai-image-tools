@@ -6,7 +6,12 @@ import {
   UPSCALER_DAILY_LIMIT,
   GENERATOR_DAILY_LIMIT,
   UPSCALER_KEY_PREFIX,
-  GENERATOR_KEY_PREFIX
+  GENERATOR_KEY_PREFIX,
+  ENHANCE_PROMPT_KEY_PREFIX, // New prefix for prompt enhancement
+  TOTAL_GENERATOR_KEY_PREFIX, // New prefix for total generator usage
+  TOTAL_UPSCALER_KEY_PREFIX, // New prefix for total upscaler usage
+  TOTAL_ENHANCE_PROMPT_KEY_PREFIX,
+  ENHANCE_PROMPT_DAILY_LIMIT // Add this import
 } from "@/constants/rateLimits";
 
 function isNewDay(lastUsageDate: string | null): boolean {
@@ -177,6 +182,82 @@ export async function getGeneratorUsage(): Promise<{ usageCount: number; resetsI
 
   const resetsIn = getTimeUntilMidnight();
   return { usageCount: currentUsage, resetsIn, totalGenerated: total };
+}
+
+// New function to check if prompt enhancement is allowed
+export async function canEnhancePrompt(): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
+  const { userId } = auth();
+  
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  const key = `${ENHANCE_PROMPT_KEY_PREFIX}${userId}`;
+  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  
+  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+
+  if (isNewDay(lastUsageDate as string | null)) {
+    currentUsage = 0;
+  }
+
+  const resetsIn = getTimeUntilMidnight();
+  
+  if (currentUsage >= ENHANCE_PROMPT_DAILY_LIMIT) {
+    return { canProceed: false, usageCount: currentUsage, resetsIn };
+  }
+
+  return { canProceed: true, usageCount: currentUsage, resetsIn };
+}
+
+// New function to increment prompt enhancement usage
+export async function incrementEnhancePromptUsage(): Promise<void> {
+  const { userId } = auth();
+  
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  const key = `${ENHANCE_PROMPT_KEY_PREFIX}${userId}`;
+  const today = new Date().toUTCString();
+
+  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+
+  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+
+  if (isNewDay(lastUsageDate as string | null)) {
+    currentUsage = 0;
+  }
+
+  currentUsage += 1;
+
+  await kv.mset({
+    [key]: currentUsage,
+    [`${key}:date`]: today,
+    [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + 1
+  });
+}
+
+// New function to get prompt enhancement usage
+export async function getEnhancePromptUsage(): Promise<{ usageCount: number; resetsIn: string; totalEnhanced: number }> {
+  const { userId } = auth();
+  
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  const key = `${ENHANCE_PROMPT_KEY_PREFIX}${userId}`;
+  const [usageCount, lastUsageDate, totalEnhanced] = await kv.mget([key, `${key}:date`, `${key}:total`]);
+
+  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+  let total = typeof totalEnhanced === 'number' ? totalEnhanced : 0;
+
+  if (isNewDay(lastUsageDate as string | null)) {
+    currentUsage = 0;
+  }
+
+  const resetsIn = getTimeUntilMidnight();
+  return { usageCount: currentUsage, resetsIn, totalEnhanced: total };
 }
 
 function getTimeUntilMidnight(): string {
