@@ -19,6 +19,7 @@ import HyperText from "@/components/magicui/hyper-text"
 import BlurFade from "@/components/magicui/blur-fade"
 import AnimatedGradientText from "@/components/magicui/animated-gradient-text"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
+import { PricingComponentComponent } from '@/components/pricing-component'
 
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
@@ -528,28 +529,20 @@ export default function LandingPage() {
               </ShimmerButton>
             </motion.div>
 
-            {/* New Pricing Coming Soon component */}
+            {/* New Pricing Section */}
             <motion.div
               variants={itemVariants}
-              className="mb-16"
+              className="mb-24"
             >
-              <Card className="bg-gradient-to-br from-purple-900 to-indigo-900 border-2 border-purple-500 shadow-lg hover:shadow-purple-500/20 transition-shadow duration-300">
-                <CardContent className="p-6 text-center">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5 }}
-                    className="flex items-center justify-center mb-4"
-                  >
-                    <Sparkles className="w-8 h-8 text-purple-400 mr-2" />
-                    <h3 className="text-2xl font-bold text-white">Pricing Coming Soon</h3>
-                  </motion.div>
-                  <p className="text-purple-200 mb-4">Get ready for flexible plans tailored to your needs</p>
-                  <Badge variant="secondary" className="bg-purple-700 text-white hover:bg-purple-600 transition-colors duration-300">
-                    Stay Tuned
-                  </Badge>
-                </CardContent>
-              </Card>
+              <h2 className="text-4xl font-bold mb-8 text-center">
+                <AnimatedGradientText>
+                  Choose Your Plan
+                </AnimatedGradientText>
+              </h2>
+              <p className="text-xl text-gray-300 text-center mb-12">
+                Unlock the full potential of AI-powered image tools
+              </p>
+              <PricingComponentComponent />
             </motion.div>
 
             <motion.footer
