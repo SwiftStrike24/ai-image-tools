@@ -393,14 +393,14 @@ export default function LandingPage() {
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <nav className="flex flex-col space-y-4">
+              <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-gray-900 text-white border-l border-purple-500">
+                <nav className="flex flex-col space-y-4 mt-8">
                   <Button
                     onClick={() => {
                       scrollToSection(featuresRef)
                       document.body.click() // Close the sheet
                     }}
-                    className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 justify-start"
                   >
                     Features
                   </Button>
@@ -409,7 +409,7 @@ export default function LandingPage() {
                       scrollToSection(beforeAfterRef)
                       document.body.click() // Close the sheet
                     }}
-                    className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 justify-start"
                   >
                     Before/After
                   </Button>
@@ -418,7 +418,7 @@ export default function LandingPage() {
                       scrollToSection(faqRef)
                       document.body.click() // Close the sheet
                     }}
-                    className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 justify-start"
                   >
                     FAQ
                   </Button>
@@ -427,7 +427,7 @@ export default function LandingPage() {
                       scrollToPricing()
                       document.body.click() // Close the sheet
                     }}
-                    className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+                    className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 justify-start"
                   >
                     <CreditCard className="mr-2 h-4 w-4" />
                     Pricing
