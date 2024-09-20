@@ -32,7 +32,7 @@ const plans = [
     ],
     cta: 'Upgrade to Pro',
     popular: true,
-    paymentLink: 'https://buy.stripe.com/test_eVacOG1ra3ls4Za3cc'
+    paymentLink: 'https://buy.stripe.com/test_3cseY93JD8kE3Wo9AA'
   },
   {
     name: 'Premium',
@@ -44,7 +44,7 @@ const plans = [
       'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
     ],
     cta: 'Go Premium',
-    paymentLink: 'https://buy.stripe.com/test_fZeaGyc5O8FM0IUcMN'
+    paymentLink: 'https://buy.stripe.com/test_6oE9DPcg958sboQ9AB'
   },
   {
     name: 'Ultimate',
@@ -56,7 +56,7 @@ const plans = [
       'Exclusive access to GPT-4o for prompt enhancements',
     ],
     cta: 'Go Ultimate',
-    paymentLink: 'https://buy.stripe.com/test_ultimateplan'
+    paymentLink: 'https://buy.stripe.com/test_14kcQ15RL7gA2Sk146'
   },
 ]
 
