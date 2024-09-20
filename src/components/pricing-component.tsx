@@ -42,7 +42,6 @@ const plans = [
       'Upscale options: 2x, 4x, 6x, 8x, 10x',
       'Unlimited prompt enhancements',
       'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
-      'Priority queue for generations',
     ],
     cta: 'Go Premium',
     paymentLink: 'https://buy.stripe.com/test_fZeaGyc5O8FM0IUcMN'
@@ -55,7 +54,6 @@ const plans = [
       'All upscale options available',
       'Unlimited prompt enhancements',
       'Exclusive access to GPT-4o for prompt enhancements',
-      'Priority support and fastest generation times',
     ],
     cta: 'Go Ultimate',
     paymentLink: 'https://buy.stripe.com/test_ultimateplan'
@@ -63,11 +61,11 @@ const plans = [
 ]
 
 const featureComparison = [
-  { name: 'Upscales per month', free: '300', pro: '1000', premium: '2000' },
-  { name: 'Generations per month', free: '300', pro: '1000', premium: '2000' },
-  { name: 'Max upscale option', free: '4x', pro: '8x', premium: '10x' },
-  { name: 'Prompt enhancements', free: '5/day', pro: 'Unlimited', premium: 'Unlimited' },
-  { name: 'AI model choice', free: 'Yes', pro: 'Yes', premium: 'Yes' },
+  { name: 'Upscales per month', free: '300', pro: '1000', premium: '2000', ultimate: '5000' },
+  { name: 'Generations per month', free: '300', pro: '1000', premium: '2000', ultimate: '5000' },
+  { name: 'Max upscale option', free: '4x', pro: '8x', premium: '10x', ultimate: 'All options' },
+  { name: 'Prompt enhancements', free: '5/day', pro: 'Unlimited', premium: 'Unlimited', ultimate: 'Unlimited' },
+  { name: 'AI model choice', free: 'Yes', pro: 'Yes', premium: 'Yes', ultimate: 'Yes + GPT-4o' },
 ]
 
 // Add this custom component for the Stripe Buy Button
@@ -102,7 +100,7 @@ export function PricingComponentComponent() {
           </p>
         </div>
 
-        <div className="mt-12 space-y-4 sm:mt-16 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-6 lg:max-w-4xl lg:mx-auto xl:max-w-none xl:mx-0">
+        <div className="mt-12 space-y-4 sm:mt-16 sm:space-y-0 sm:grid sm:grid-cols-4 sm:gap-4 lg:max-w-7xl lg:mx-auto">
           {plans.map((plan, index) => (
             <motion.div
               key={plan.name}
@@ -112,7 +110,7 @@ export function PricingComponentComponent() {
               className={`${plan.popular ? 'transform scale-105 z-10' : ''}`}
             >
               <MagicCard
-                gradientSize={300}
+                gradientSize={100}
                 gradientColor={plan.popular ? "#8B5CF6" : "#4B5563"}
                 gradientOpacity={0.15}
                 className="h-full rounded-2xl"
@@ -162,6 +160,9 @@ export function PricingComponentComponent() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     Premium
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    Ultimate
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-700">
@@ -178,6 +179,9 @@ export function PricingComponentComponent() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                       {feature.premium}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                      {feature.ultimate}
                     </td>
                   </tr>
                 ))}
@@ -209,52 +213,48 @@ function PlanContent({ plan, isMonthly }: { plan: any; isMonthly: boolean }) {
         WebkitBackdropFilter: 'blur(20px)',
       }}
     >
-      <div className="px-6 py-8 sm:p-10 sm:pb-6">
+      <div className="px-4 py-6 sm:p-6 sm:pb-4">
         <div className="flex justify-between items-center">
-          <h3
-            className="text-2xl font-extrabold text-gray-100 sm:text-3xl"
-          >
+          <h3 className="text-xl font-extrabold text-gray-100 sm:text-2xl">
             {plan.name}
           </h3>
           {plan.popular && (
-            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-purple-600 text-gray-100">
+            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-600 text-gray-100">
               Best Value
             </span>
           )}
         </div>
-        <div className="mt-4 flex items-baseline text-6xl font-extrabold">
+        <div className="mt-2 flex items-baseline text-4xl font-extrabold">
           {plan.price}
-          <span className="ml-1 text-2xl font-medium text-gray-400">
+          <span className="ml-1 text-xl font-medium text-gray-400">
             {isMonthly ? '/mo' : '/yr'}
           </span>
         </div>
       </div>
-      <div className="flex-1 px-6 pt-6 pb-8 sm:p-10 sm:pt-6">
-        <ul className="space-y-4">
+      <div className="flex-1 flex flex-col justify-between px-4 pt-4 pb-6 sm:px-6">
+        <ul className="space-y-2 mb-6">
           {plan.features.map((feature: string, index: number) => (
             <li key={index} className="flex items-start">
               <div className="flex-shrink-0">
-                <CheckIcon className="h-6 w-6 text-purple-400" aria-hidden="true" />
+                <CheckIcon className="h-4 w-4 text-purple-400" aria-hidden="true" />
               </div>
-              <p className="ml-3 text-base text-gray-300">{feature}</p>
+              <p className="ml-2 text-sm text-gray-300">{feature}</p>
             </li>
           ))}
         </ul>
-        <div className="mt-8">
-          <div className="rounded-lg shadow-sm">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleSubscribe}
-              className={`w-full flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-gray-100 ${
-                plan.popular
-                  ? 'bg-purple-600 hover:bg-purple-700'
-                  : 'bg-gray-700 hover:bg-gray-600'
-              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200`}
-            >
-              {plan.cta}
-            </motion.button>
-          </div>
+        <div className="mt-auto">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleSubscribe}
+            className={`w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-100 ${
+              plan.popular
+                ? 'bg-purple-600 hover:bg-purple-700'
+                : 'bg-gray-700 hover:bg-gray-600'
+            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200`}
+          >
+            {plan.cta}
+          </motion.button>
         </div>
       </div>
     </div>
