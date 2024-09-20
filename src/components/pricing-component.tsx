@@ -148,7 +148,7 @@ export function PricingComponentComponent() {
   )
 }
 
-function PlanContent({ plan, isMonthly }) {
+function PlanContent({ plan, isMonthly }: { plan: any; isMonthly: boolean }) {
   return (
     <div 
       className="flex flex-col h-full rounded-2xl"

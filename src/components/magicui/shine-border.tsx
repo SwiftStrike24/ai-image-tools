@@ -33,13 +33,14 @@ export default function ShineBorder({
 }: ShineBorderProps) {
   return (
     <div
-      style={
-        {
-          "--border-radius": `${borderRadius}px`,
-        } as React.CSSProperties
-      }
+      style={{
+        "--border-radius": `${borderRadius}px`,
+        background: 'rgba(30, 30, 30, 0.6)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+      } as React.CSSProperties}
       className={cn(
-        "relative grid min-h-[60px] w-fit min-w-[300px] place-items-center rounded-[--border-radius] bg-white p-3 text-black dark:bg-black dark:text-white",
+        "relative grid min-h-[60px] w-fit min-w-[300px] place-items-center rounded-[--border-radius] p-3 text-gray-100",
         className,
       )}
     >
