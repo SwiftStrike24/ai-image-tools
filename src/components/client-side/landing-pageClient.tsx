@@ -113,7 +113,7 @@ export default function LandingPage() {
 
   const features = [
     { icon: <Wand2 className="w-6 h-6" />, title: "AI Image Generation", description: "Create stunning visuals from text prompts using FLUX.1 model", badge: "FLUX.1" },
-    { icon: <Maximize className="w-6 h-6" />, title: "Image Upscaling", description: "Enhance image quality up to 10x", badge: "2x-10x" },
+    { icon: <Maximize className="w-6 h-6" />, title: "Image Upscaling", description: "Enhance image quality up to 10x with Real-ESRGAN", badge: "Real-ESRGAN" },
     { icon: <Layout className="w-6 h-6" />, title: "Multiple Aspect Ratios", description: "Support for various dimensions", badge: "16:9 • 1:1 • 9:16 • more" },
     { icon: <Download className="w-6 h-6" />, title: "High-Quality Outputs", description: "Generate WebP, JPG, or PNG formats", badge: "HD" },
   ]
@@ -124,16 +124,20 @@ export default function LandingPage() {
       answer: "Our free tier offers 20 image upscales and 20 image generations per day. Each feature has its own counter, giving you plenty of room to experiment with both capabilities."
     },
     {
-      question: "Which AI model is used for image generation?",
-      answer: "We use the cutting-edge FLUX.1 model for image generation, known for its exceptional quality and versatility in creating stunning visuals from text prompts."
+      question: "Which AI models are used for image generation and upscaling?",
+      answer: "We use the cutting-edge FLUX.1 model for image generation, known for its exceptional quality and versatility in creating stunning visuals from text prompts. For image upscaling, we utilize Real-ESRGAN, a state-of-the-art AI model that produces high-quality, artifact-free upscaled images."
     },
     {
       question: "How does image upscaling work?",
-      answer: "Our AI-powered upscaling technology enhances the resolution and quality of your images, making them sharper and more detailed without losing the original essence. We offer multiple upscale options: 2x, 4x, 6x, 8x, and 10x."
+      answer: "Our AI-powered upscaling technology, powered by Real-ESRGAN, enhances the resolution and quality of your images, making them sharper and more detailed without losing the original essence. We offer multiple upscale options: 2x, 4x, 6x, 8x, and 10x."
     },
     {
-      question: "Can I use the generated images commercially?",
-      answer: "Yes, all images generated using our platform are free for commercial use."
+      question: "What makes Real-ESRGAN special for image upscaling?",
+      answer: "Real-ESRGAN is an advanced AI model specifically designed for image upscaling. It excels at removing artifacts, restoring details, and producing natural-looking results. This makes it ideal for enhancing old photos, improving low-resolution images, or preparing visuals for large-format printing."
+    },
+    {
+      question: "Can I use the generated and upscaled images commercially?",
+      answer: "Yes, all images generated and upscaled using our platform are free for commercial use."
     }
   ]
 
