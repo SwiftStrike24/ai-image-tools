@@ -68,6 +68,7 @@ module.exports = {
         "move-up": "moveUp 150s linear infinite",
         "fade-in-out": "fadeInOut 8s ease-in-out infinite",
         "border-beam": "border-beam calc(var(--duration)*1s) infinite linear",
+        "shine-pulse": "shine-pulse var(--shine-pulse-duration) infinite linear",
       },
       keyframes: {
         grid: {
@@ -138,6 +139,17 @@ module.exports = {
         "border-beam": {
           "100%": {
             "offset-distance": "100%",
+          },
+        },
+        "shine-pulse": {
+          "0%": {
+            "background-position": "0% 0%",
+          },
+          "50%": {
+            "background-position": "100% 100%",
+          },
+          to: {
+            "background-position": "0% 0%",
           },
         },
       },

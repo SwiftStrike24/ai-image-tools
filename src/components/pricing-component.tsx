@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { CheckIcon, SparklesIcon } from 'lucide-react'
+import ShineBorder from './magicui/shine-border'
 
 const plans = [
   {
@@ -72,63 +73,22 @@ export function PricingComponentComponent() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
               className={`flex flex-col rounded-2xl overflow-hidden ${
-                plan.popular
-                  ? 'ring-4 ring-purple-500 ring-opacity-50 transform scale-105 z-10'
-                  : ''
+                plan.popular ? 'transform scale-105 z-10' : ''
               }`}
-              style={{
-                background: `rgba(30, 30, 30, ${plan.popular ? '0.8' : '0.6'})`,
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-              }}
             >
-              <div className="px-6 py-8 sm:p-10 sm:pb-6">
-                <div className="flex justify-between items-center">
-                  <h3
-                    className="text-2xl font-extrabold text-gray-100 sm:text-3xl"
-                  >
-                    {plan.name}
-                  </h3>
-                  {plan.popular && (
-                    <span className="px-3 py-1 rounded-full text-sm font-semibold bg-purple-600 text-gray-100">
-                      Best Value
-                    </span>
-                  )}
-                </div>
-                <div className="mt-4 flex items-baseline text-6xl font-extrabold">
-                  {plan.price}
-                  <span className="ml-1 text-2xl font-medium text-gray-400">
-                    {isMonthly ? '/mo' : '/yr'}
-                  </span>
-                </div>
-              </div>
-              <div className="flex-1 px-6 pt-6 pb-8 sm:p-10 sm:pt-6">
-                <ul className="space-y-4">
-                  {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-start">
-                      <div className="flex-shrink-0">
-                        <CheckIcon className="h-6 w-6 text-purple-400" aria-hidden="true" />
-                      </div>
-                      <p className="ml-3 text-base text-gray-300">{feature}</p>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-8">
-                  <div className="rounded-lg shadow-sm">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className={`w-full flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-gray-100 ${
-                        plan.popular
-                          ? 'bg-purple-600 hover:bg-purple-700'
-                          : 'bg-gray-700 hover:bg-gray-600'
-                      } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200`}
-                    >
-                      {plan.cta}
-                    </motion.button>
-                  </div>
-                </div>
-              </div>
+              {plan.popular ? (
+                <ShineBorder
+                  borderRadius={16}
+                  borderWidth={2}
+                  duration={10}
+                  color={["#8B5CF6", "#6366F1", "#EC4899"]}
+                  className="h-full"
+                >
+                  <PlanContent plan={plan} isMonthly={isMonthly} />
+                </ShineBorder>
+              ) : (
+                <PlanContent plan={plan} isMonthly={isMonthly} />
+              )}
             </motion.div>
           ))}
         </div>
@@ -183,6 +143,67 @@ export function PricingComponentComponent() {
             </table>
           </div>
         </motion.div>
+      </div>
+    </div>
+  )
+}
+
+function PlanContent({ plan, isMonthly }) {
+  return (
+    <div 
+      className="flex flex-col h-full rounded-2xl"
+      style={{
+        background: 'rgba(30, 30, 30, 0.6)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+      }}
+    >
+      <div className="px-6 py-8 sm:p-10 sm:pb-6">
+        <div className="flex justify-between items-center">
+          <h3
+            className="text-2xl font-extrabold text-gray-100 sm:text-3xl"
+          >
+            {plan.name}
+          </h3>
+          {plan.popular && (
+            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-purple-600 text-gray-100">
+              Best Value
+            </span>
+          )}
+        </div>
+        <div className="mt-4 flex items-baseline text-6xl font-extrabold">
+          {plan.price}
+          <span className="ml-1 text-2xl font-medium text-gray-400">
+            {isMonthly ? '/mo' : '/yr'}
+          </span>
+        </div>
+      </div>
+      <div className="flex-1 px-6 pt-6 pb-8 sm:p-10 sm:pt-6">
+        <ul className="space-y-4">
+          {plan.features.map((feature, index) => (
+            <li key={index} className="flex items-start">
+              <div className="flex-shrink-0">
+                <CheckIcon className="h-6 w-6 text-purple-400" aria-hidden="true" />
+              </div>
+              <p className="ml-3 text-base text-gray-300">{feature}</p>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-8">
+          <div className="rounded-lg shadow-sm">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`w-full flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-gray-100 ${
+                plan.popular
+                  ? 'bg-purple-600 hover:bg-purple-700'
+                  : 'bg-gray-700 hover:bg-gray-600'
+              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200`}
+            >
+              {plan.cta}
+            </motion.button>
+          </div>
+        </div>
       </div>
     </div>
   )
