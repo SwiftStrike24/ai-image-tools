@@ -31,9 +31,11 @@ import {
 import { canGenerateImages, getGeneratorUsage, incrementGeneratorUsage, canEnhancePrompt, incrementEnhancePromptUsage, getEnhancePromptUsage } from "@/actions/rateLimit"
 import { Progress } from "@/components/ui/progress"
 import { GENERATOR_DAILY_LIMIT, ENHANCE_PROMPT_DAILY_LIMIT } from "@/constants/rateLimits"
-import { SiMeta, SiOpenai } from "react-icons/si" // Import Meta and OpenAI icons from react-icons
+import { SiMeta, SiOpenai } from "react-icons/si"
 import { canGenerateImagesPro, incrementGeneratorUsagePro } from "@/actions/Plans-rateLimit/rateLimit-Pro"
-import { PRO_GENERATOR_MONTHLY_LIMIT, PRO_ENHANCE_PROMPT_MONTHLY_LIMIT } from "@/constants/rateLimits"
+import { canGenerateImagesPremium, incrementGeneratorUsagePremium } from "@/actions/Plans-rateLimit/rateLimit-Premium"
+import { canGenerateImagesUltimate, incrementGeneratorUsageUltimate } from "@/actions/Plans-rateLimit/rateLimit-ultimate"
+import { PRO_GENERATOR_MONTHLY_LIMIT, PREMIUM_GENERATOR_MONTHLY_LIMIT, ULTIMATE_GENERATOR_MONTHLY_LIMIT, PRO_ENHANCE_PROMPT_MONTHLY_LIMIT, PREMIUM_ENHANCE_PROMPT_MONTHLY_LIMIT, ULTIMATE_ENHANCE_PROMPT_MONTHLY_LIMIT } from "@/constants/rateLimits"
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -76,41 +78,46 @@ export default function FluxAIImageGenerator() {
   const [enhancePromptResetsIn, setEnhancePromptResetsIn] = useState("")
   const [enhancePromptLimitReached, setEnhancePromptLimitReached] = useState(false)
   const [isPro, setIsPro] = useState(false)
+  const [isPremium, setIsPremium] = useState(false)
+  const [isUltimate, setIsUltimate] = useState(false)
 
   useEffect(() => {
     if (!isSimulationMode) {
       // Fetch user's subscription status
-      // This is a placeholder - replace with your actual subscription check
       const checkSubscription = async () => {
-        // Simulating an API call to check subscription
-        const response = await fetch('/api/check-subscription');
-        const { isPro } = await response.json();
-        setIsPro(isPro);
+        try {
+          const response = await fetch('/api/check-subscription');
+          const { isPro, isPremium, isUltimate } = await response.json();
+          setIsPro(isPro);
+          setIsPremium(isPremium);
+          setIsUltimate(isUltimate);
+        } catch (error) {
+          console.error('Error checking subscription:', error);
+        }
       };
       checkSubscription();
 
       // Fetch usage based on subscription type
-      if (isPro) {
-        // Fetch Pro usage
-        // Replace with actual Pro usage fetching logic
-      } else {
-        getGeneratorUsage().then(({ usageCount, resetsIn }) => {
+      const fetchUsage = async () => {
+        try {
+          const { usageCount, resetsIn } = await getGeneratorUsage();
           setDailyUsage(usageCount);
           setResetsIn(resetsIn);
-        }).catch((error) => {
+        } catch (error) {
           console.error(error);
-          if (error.message === "User not authenticated") {
+          if (error instanceof Error && error.message === "User not authenticated") {
             setIsAuthenticated(false);
           }
-        });
+        }
+      };
+      fetchUsage();
 
-        getEnhancePromptUsage().then(({ usageCount, resetsIn }) => {
-          setEnhancePromptUsage(usageCount);
-          setEnhancePromptResetsIn(resetsIn);
-        }).catch(console.error);
-      }
+      getEnhancePromptUsage().then(({ usageCount, resetsIn }) => {
+        setEnhancePromptUsage(usageCount);
+        setEnhancePromptResetsIn(resetsIn);
+      }).catch(console.error);
     }
-  }, [isSimulationMode, isPro]);
+  }, [isSimulationMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,7 +128,7 @@ export default function FluxAIImageGenerator() {
 
     if (!currentPrompt?.trim()) {
       setError("Please enter a prompt before generating images.");
-      return; // Remove toast here
+      return;
     }
 
     setIsLoading(true);
@@ -137,7 +144,7 @@ export default function FluxAIImageGenerator() {
         if (!canProceed) {
           setEnhancePromptLimitReached(true);
           setIsLoading(false);
-          return; // Remove toast here
+          return;
         }
 
         try {
@@ -166,15 +173,22 @@ export default function FluxAIImageGenerator() {
       if (!isSimulationMode) {
         let canProceed, usageCount, resetsIn;
 
-        if (isPro) {
+        if (isUltimate) {
+          ({ canProceed, usageCount, resetsIn } = await canGenerateImagesUltimate(numOutputs));
+        } else if (isPremium) {
+          ({ canProceed, usageCount, resetsIn } = await canGenerateImagesPremium(numOutputs));
+        } else if (isPro) {
           ({ canProceed, usageCount, resetsIn } = await canGenerateImagesPro(numOutputs));
         } else {
           ({ canProceed, usageCount, resetsIn } = await canGenerateImages(numOutputs));
         }
 
         if (!canProceed) {
-          const limit = isPro ? PRO_GENERATOR_MONTHLY_LIMIT : GENERATOR_DAILY_LIMIT;
-          setError(`You've reached your ${isPro ? 'monthly' : 'daily'} limit. You can generate ${limit - usageCount} more image${limit - usageCount !== 1 ? 's' : ''} ${isPro ? 'this month' : 'today'}.`);
+          const limit = isUltimate ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
+                        isPremium ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
+                        isPro ? PRO_GENERATOR_MONTHLY_LIMIT : 
+                        GENERATOR_DAILY_LIMIT;
+          setError(`You've reached your ${isUltimate || isPremium || isPro ? 'monthly' : 'daily'} limit. You can generate ${limit - usageCount} more image${limit - usageCount !== 1 ? 's' : ''} ${isUltimate || isPremium || isPro ? 'this month' : 'today'}.`);
           setIsLoading(false);
           return;
         }
@@ -215,7 +229,11 @@ export default function FluxAIImageGenerator() {
       if (results.length > 0) {
         // Increment usage after successful image generation
         if (!isSimulationMode) {
-          if (isPro) {
+          if (isUltimate) {
+            await incrementGeneratorUsageUltimate(numOutputs);
+          } else if (isPremium) {
+            await incrementGeneratorUsagePremium(numOutputs);
+          } else if (isPro) {
             await incrementGeneratorUsagePro(numOutputs);
           } else {
             await incrementGeneratorUsage(numOutputs);
@@ -224,11 +242,7 @@ export default function FluxAIImageGenerator() {
 
           // Only increment enhance prompt usage if enhancement was successful
           if (enhancementSuccessful) {
-            if (isPro) {
-              // Implement Pro version of incrementEnhancePromptUsage if needed
-            } else {
-              await incrementEnhancePromptUsage();
-            }
+            await incrementEnhancePromptUsage();
             setEnhancePromptUsage(prev => prev + 1);
           }
         }
@@ -342,26 +356,6 @@ export default function FluxAIImageGenerator() {
       setTimeout(() => setIsProcessingSeed(false), 500);
     }
   }, [isProcessingSeed, toast, focusedImageIndex, followUpLevel]);
-
-  const clearFocusedImage = useCallback(() => {
-    setFocusedImageIndex(null);
-    setIsFocused(false);
-    
-    if (followUpLevel === 1) {
-      setCurrentSeed(null);
-      setShowSeedInput(false);
-      setFollowUpPrompt('');
-      toast({
-        title: "Seed Cleared",
-        description: "The seed has been cleared. You can now generate new images or refocus.",
-      });
-    } else {
-      toast({
-        title: "Focus Cleared",
-        description: "Image unfocused. The seed and follow-up prompt remain unchanged.",
-      });
-    }
-  }, [toast, followUpLevel]);
 
   const handleNewImage = useCallback(() => {
     setFollowUpPrompt(null);
@@ -523,24 +517,36 @@ export default function FluxAIImageGenerator() {
           <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">
-                {isPro ? 'Monthly Usage (Pro Plan)' : 'Daily Usage (Free Plan)'}
+                {isUltimate ? 'Monthly Usage (Ultimate Plan)' : 
+                 isPremium ? 'Monthly Usage (Premium Plan)' : 
+                 isPro ? 'Monthly Usage (Pro Plan)' : 
+                 'Daily Usage (Free Plan)'}
               </span>
               {isSimulationMode ? (
                 <span className="text-sm font-medium">Simulation Mode</span>
               ) : (
                 <span className="text-sm font-medium">
-                  {dailyUsage} / {isPro ? PRO_GENERATOR_MONTHLY_LIMIT : GENERATOR_DAILY_LIMIT}
+                  {dailyUsage} / {isUltimate ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
+                                  isPremium ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
+                                  isPro ? PRO_GENERATOR_MONTHLY_LIMIT : 
+                                  GENERATOR_DAILY_LIMIT}
                 </span>
               )}
             </div>
             {!isSimulationMode && (
               <>
                 <Progress 
-                  value={(dailyUsage / (isPro ? PRO_GENERATOR_MONTHLY_LIMIT : GENERATOR_DAILY_LIMIT)) * 100} 
+                  value={(dailyUsage / (isUltimate ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
+                                        isPremium ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
+                                        isPro ? PRO_GENERATOR_MONTHLY_LIMIT : 
+                                        GENERATOR_DAILY_LIMIT)) * 100} 
                   className="h-2" 
                 />
                 <p className="text-xs text-purple-300">
-                  {(isPro ? PRO_GENERATOR_MONTHLY_LIMIT : GENERATOR_DAILY_LIMIT) - dailyUsage} generations remaining. 
+                  {(isUltimate ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
+                    isPremium ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
+                    isPro ? PRO_GENERATOR_MONTHLY_LIMIT : 
+                    GENERATOR_DAILY_LIMIT) - dailyUsage} generations remaining. 
                   Resets in {resetsIn}.
                 </p>
               </>
@@ -693,23 +699,6 @@ export default function FluxAIImageGenerator() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="output-quality" className="text-white">Output Quality</Label>
-                  <div className="flex items-center space-x-2">
-                    <Slider
-                      id="output-quality"
-                      min={1}
-                      max={100}
-                      step={1}
-                      value={[outputQuality]}
-                      onValueChange={(value) => setOutputQuality(value[0])}
-                      className="flex-grow"
-                    />
-                    <span className="text-white">{outputQuality}%</span>
-                  </div>
-                </div>
-
-                {/* Enhance Prompt Section with Model Selection */}
-                <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Switch
@@ -772,14 +761,19 @@ export default function FluxAIImageGenerator() {
                     
                     {!isSimulationMode && (
                       <span className="text-sm text-purple-300">
-                        {enhancePromptUsage}/{ENHANCE_PROMPT_DAILY_LIMIT}
+                        {enhancePromptUsage}/{isUltimate ? "∞" : 
+                                            isPremium ? "∞" : 
+                                            isPro ? "∞" : 
+                                            ENHANCE_PROMPT_DAILY_LIMIT}
                       </span>
                     )}
                   </div>
                   
                   {isEnhancePromptEnabled && enhancePromptLimitReached && (
                     <p className="text-red-500 text-sm mt-2">
-                      Daily limit reached. Enhance up to {ENHANCE_PROMPT_DAILY_LIMIT} prompts per day.
+                      {isUltimate || isPremium || isPro ? 'Monthly' : 'Daily'} limit reached. 
+                      {isUltimate || isPremium || isPro ? ' Unlimited enhancements available.' : 
+                       `Enhance up to ${ENHANCE_PROMPT_DAILY_LIMIT} prompts per day.`}
                       <br />
                       Resets in: {enhancePromptResetsIn}
                     </p>
