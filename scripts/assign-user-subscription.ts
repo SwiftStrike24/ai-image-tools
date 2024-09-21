@@ -20,7 +20,7 @@ async function assignUserSubscription() {
     type: 'list',
     name: 'subscriptionType',
     message: 'Select the subscription type:',
-    choices: ['pro', 'premium', 'ultimate'],
+    choices: ['basic', 'pro', 'premium', 'ultimate'],
   });
 
   try {

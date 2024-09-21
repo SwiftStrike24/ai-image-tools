@@ -17,3 +17,13 @@ export const PRO_ENHANCE_PROMPT_MONTHLY_LIMIT = Infinity; // Unlimited
 export const PRO_UPSCALER_KEY_PREFIX = 'pro_upscaler:';
 export const PRO_GENERATOR_KEY_PREFIX = 'pro_generator:';
 export const PRO_ENHANCE_PROMPT_KEY_PREFIX = 'pro_enhance_prompt:';
+
+// Premium plan constants
+export const PREMIUM_UPSCALER_MONTHLY_LIMIT = 2000;
+export const PREMIUM_GENERATOR_MONTHLY_LIMIT = 2000;
+export const PREMIUM_ENHANCE_PROMPT_MONTHLY_LIMIT = Infinity; // Unlimited
+
+// Premium plan key prefixes
+export const PREMIUM_UPSCALER_KEY_PREFIX = 'premium_upscaler:';
+export const PREMIUM_GENERATOR_KEY_PREFIX = 'premium_generator:';
+export const PREMIUM_ENHANCE_PROMPT_KEY_PREFIX = 'premium_enhance_prompt:';

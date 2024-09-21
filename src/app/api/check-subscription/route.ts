@@ -16,8 +16,9 @@ export async function GET() {
     const subscription = await kv.get(subscriptionKey);
 
     const isPro = subscription === "pro";
+    const isPremium = subscription === "premium";
 
-    return NextResponse.json({ isPro });
+    return NextResponse.json({ isPro, isPremium });
   } catch (error) {
     console.error("Error checking subscription:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
