@@ -1,15 +1,10 @@
 import { clerkMiddleware, auth } from "@clerk/nextjs/server";
 import { NextResponse } from 'next/server';
 import type { NextRequest, NextFetchEvent } from 'next/server';
+import { ensureUserSubscription } from "./actions/userOnboarding";
 
-export default function middleware(req: NextRequest) {
+export default async function middleware(req: NextRequest) {
   console.log('Middleware called for path:', req.nextUrl.pathname);
-
-  // Redirect /api/admin/waitlist to /admin/waitlist
-  if (req.nextUrl.pathname === '/api/admin/waitlist') {
-    console.log('Redirecting from /api/admin/waitlist to /admin/waitlist');
-    return NextResponse.redirect(new URL('/admin/waitlist', req.url));
-  }
 
   // Run Clerk middleware
   const clerkResponse = clerkMiddleware()(req, { sourcePage: req.url } as NextFetchEvent);
@@ -20,6 +15,11 @@ export default function middleware(req: NextRequest) {
   }
 
   const { userId } = auth();
+
+  if (userId) {
+    // Ensure user has a subscription (will assign Basic if not exists)
+    await ensureUserSubscription();
+  }
 
   // Redirection logic for admin-protected routes
   if (
