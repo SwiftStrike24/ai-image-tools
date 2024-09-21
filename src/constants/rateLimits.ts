@@ -7,3 +7,13 @@ export const TOTAL_ENHANCE_PROMPT_KEY_PREFIX = 'enhance_prompt_total_usage:'; //
 export const UPSCALER_DAILY_LIMIT = 20;
 export const GENERATOR_DAILY_LIMIT = 20;
 export const ENHANCE_PROMPT_DAILY_LIMIT = 5; // New daily limit for prompt enhancement
+
+// Pro plan constants
+export const PRO_UPSCALER_MONTHLY_LIMIT = 1000;
+export const PRO_GENERATOR_MONTHLY_LIMIT = 1000;
+export const PRO_ENHANCE_PROMPT_MONTHLY_LIMIT = Infinity; // Unlimited
+
+// Pro plan key prefixes
+export const PRO_UPSCALER_KEY_PREFIX = 'pro_upscaler:';
+export const PRO_GENERATOR_KEY_PREFIX = 'pro_generator:';
+export const PRO_ENHANCE_PROMPT_KEY_PREFIX = 'pro_enhance_prompt:';

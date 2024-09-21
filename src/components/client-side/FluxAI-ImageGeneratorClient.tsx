@@ -32,6 +32,8 @@ import { canGenerateImages, getGeneratorUsage, incrementGeneratorUsage, canEnhan
 import { Progress } from "@/components/ui/progress"
 import { GENERATOR_DAILY_LIMIT, ENHANCE_PROMPT_DAILY_LIMIT } from "@/constants/rateLimits"
 import { SiMeta, SiOpenai } from "react-icons/si" // Import Meta and OpenAI icons from react-icons
+import { canGenerateImagesPro, incrementGeneratorUsagePro } from "@/actions/Plans-rateLimit/rateLimit-Pro"
+import { PRO_GENERATOR_MONTHLY_LIMIT, PRO_ENHANCE_PROMPT_MONTHLY_LIMIT } from "@/constants/rateLimits"
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -73,36 +75,42 @@ export default function FluxAIImageGenerator() {
   const [enhancePromptUsage, setEnhancePromptUsage] = useState(0)
   const [enhancePromptResetsIn, setEnhancePromptResetsIn] = useState("")
   const [enhancePromptLimitReached, setEnhancePromptLimitReached] = useState(false)
+  const [isPro, setIsPro] = useState(false)
 
   useEffect(() => {
     if (!isSimulationMode) {
-      getGeneratorUsage().then(({ usageCount, resetsIn }) => {
-        setDailyUsage(usageCount);
-        setResetsIn(resetsIn);
-      }).catch((error) => {
-        console.error(error);
-        if (error.message === "User not authenticated") {
-          setIsAuthenticated(false);
-        }
-      });
-    }
-  }, [isSimulationMode]);
+      // Fetch user's subscription status
+      // This is a placeholder - replace with your actual subscription check
+      const checkSubscription = async () => {
+        // Simulating an API call to check subscription
+        const response = await fetch('/api/check-subscription');
+        const { isPro } = await response.json();
+        setIsPro(isPro);
+      };
+      checkSubscription();
 
-  useEffect(() => {
-    if (!isSimulationMode) {
-      getEnhancePromptUsage().then(({ usageCount, resetsIn }) => {
-        setEnhancePromptUsage(usageCount);
-        setEnhancePromptResetsIn(resetsIn);
-        // Remove this line to prevent setting the limit reached state on load
-        // setEnhancePromptLimitReached(usageCount >= ENHANCE_PROMPT_DAILY_LIMIT);
-      }).catch((error) => {
-        console.error(error);
-        if (error.message === "User not authenticated") {
-          setIsAuthenticated(false);
-        }
-      });
+      // Fetch usage based on subscription type
+      if (isPro) {
+        // Fetch Pro usage
+        // Replace with actual Pro usage fetching logic
+      } else {
+        getGeneratorUsage().then(({ usageCount, resetsIn }) => {
+          setDailyUsage(usageCount);
+          setResetsIn(resetsIn);
+        }).catch((error) => {
+          console.error(error);
+          if (error.message === "User not authenticated") {
+            setIsAuthenticated(false);
+          }
+        });
+
+        getEnhancePromptUsage().then(({ usageCount, resetsIn }) => {
+          setEnhancePromptUsage(usageCount);
+          setEnhancePromptResetsIn(resetsIn);
+        }).catch(console.error);
+      }
     }
-  }, [isSimulationMode]);
+  }, [isSimulationMode, isPro]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,10 +164,17 @@ export default function FluxAIImageGenerator() {
 
       // Check rate limits after enhancing prompt
       if (!isSimulationMode) {
-        const { canProceed, usageCount, resetsIn } = await canGenerateImages(numOutputs);
+        let canProceed, usageCount, resetsIn;
+
+        if (isPro) {
+          ({ canProceed, usageCount, resetsIn } = await canGenerateImagesPro(numOutputs));
+        } else {
+          ({ canProceed, usageCount, resetsIn } = await canGenerateImages(numOutputs));
+        }
+
         if (!canProceed) {
-          const remainingGenerations = GENERATOR_DAILY_LIMIT - usageCount;
-          setError(`You've reached your daily limit. You can generate ${remainingGenerations} more image${remainingGenerations !== 1 ? 's' : ''} today.`);
+          const limit = isPro ? PRO_GENERATOR_MONTHLY_LIMIT : GENERATOR_DAILY_LIMIT;
+          setError(`You've reached your ${isPro ? 'monthly' : 'daily'} limit. You can generate ${limit - usageCount} more image${limit - usageCount !== 1 ? 's' : ''} ${isPro ? 'this month' : 'today'}.`);
           setIsLoading(false);
           return;
         }
@@ -200,12 +215,20 @@ export default function FluxAIImageGenerator() {
       if (results.length > 0) {
         // Increment usage after successful image generation
         if (!isSimulationMode) {
-          await incrementGeneratorUsage(numOutputs);
+          if (isPro) {
+            await incrementGeneratorUsagePro(numOutputs);
+          } else {
+            await incrementGeneratorUsage(numOutputs);
+          }
           setDailyUsage(prev => prev + numOutputs);
 
           // Only increment enhance prompt usage if enhancement was successful
           if (enhancementSuccessful) {
-            await incrementEnhancePromptUsage();
+            if (isPro) {
+              // Implement Pro version of incrementEnhancePromptUsage if needed
+            } else {
+              await incrementEnhancePromptUsage();
+            }
             setEnhancePromptUsage(prev => prev + 1);
           }
         }
@@ -499,20 +522,26 @@ export default function FluxAIImageGenerator() {
           {/* Daily Usage Display - Moved to the top */}
           <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Daily Usage (Free Plan)</span>
+              <span className="text-sm font-medium">
+                {isPro ? 'Monthly Usage (Pro Plan)' : 'Daily Usage (Free Plan)'}
+              </span>
               {isSimulationMode ? (
                 <span className="text-sm font-medium">Simulation Mode</span>
               ) : (
                 <span className="text-sm font-medium">
-                  {dailyUsage} / {GENERATOR_DAILY_LIMIT}
+                  {dailyUsage} / {isPro ? PRO_GENERATOR_MONTHLY_LIMIT : GENERATOR_DAILY_LIMIT}
                 </span>
               )}
             </div>
             {!isSimulationMode && (
               <>
-                <Progress value={(dailyUsage / GENERATOR_DAILY_LIMIT) * 100} className="h-2" />
+                <Progress 
+                  value={(dailyUsage / (isPro ? PRO_GENERATOR_MONTHLY_LIMIT : GENERATOR_DAILY_LIMIT)) * 100} 
+                  className="h-2" 
+                />
                 <p className="text-xs text-purple-300">
-                  {GENERATOR_DAILY_LIMIT - dailyUsage} generations remaining. Resets in {resetsIn}.
+                  {(isPro ? PRO_GENERATOR_MONTHLY_LIMIT : GENERATOR_DAILY_LIMIT) - dailyUsage} generations remaining. 
+                  Resets in {resetsIn}.
                 </p>
               </>
             )}
