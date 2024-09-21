@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
+// NOTE: This file is currently not in use as we're using Stripe payment links directly in the pricing component.
+// However, it's kept for potential future use if we need more customized checkout flows or server-side logic.
+// To use this, you'd need to implement a client-side function to call this API route instead of using payment links.
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
 });
