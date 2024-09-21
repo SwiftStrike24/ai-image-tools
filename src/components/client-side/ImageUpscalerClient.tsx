@@ -75,32 +75,33 @@ function ImageUpscalerComponent() {
   useEffect(() => {
     if (!isSimulationMode) {
       // Fetch user's subscription status
-      // This is a placeholder - replace with your actual subscription check
       const checkSubscription = async () => {
-        // Simulating an API call to check subscription
-        const response = await fetch('/api/check-subscription');
-        const { isPro } = await response.json();
-        setIsPro(isPro);
+        try {
+          const response = await fetch('/api/check-subscription');
+          const { isPro } = await response.json();
+          setIsPro(isPro);
+        } catch (error) {
+          console.error('Error checking subscription:', error);
+        }
       };
       checkSubscription();
 
       // Fetch usage based on subscription type
-      if (isPro) {
-        // Fetch Pro usage
-        // Replace with actual Pro usage fetching logic
-      } else {
-        getUserUsage().then(({ usageCount, resetsIn }) => {
+      const fetchUsage = async () => {
+        try {
+          const { usageCount, resetsIn } = await getUserUsage();
           setDailyUsage(usageCount);
           setResetsIn(resetsIn);
-        }).catch((error) => {
+        } catch (error: unknown) {
           console.error(error);
-          if (error.message === "User not authenticated") {
+          if (error instanceof Error && error.message === "User not authenticated") {
             setIsAuthenticated(false);
           }
-        });
-      }
+        }
+      };
+      fetchUsage();
     }
-  }, [isSimulationMode, isPro]);
+  }, [isSimulationMode]);
 
   const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
