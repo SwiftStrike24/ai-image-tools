@@ -659,14 +659,14 @@ export default function LandingPage() {
             <motion.div
               ref={pricingRef}
               variants={itemVariants}
-              className="mb-24 pt-16"
+              className="mb-24 pt-16 px-4 sm:px-6 lg:px-8"
             >
-              <h2 className="text-4xl font-bold mb-8 text-center">
+              <h2 className="text-3xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center">
                 <AnimatedGradientText>
                   Choose Your Plan
                 </AnimatedGradientText>
               </h2>
-              <p className="text-xl text-gray-300 text-center mb-12">
+              <p className="text-lg sm:text-xl text-gray-300 text-center mb-8 sm:mb-12">
                 Unlock the full potential of AI-powered image tools
               </p>
               <PricingWrapper>

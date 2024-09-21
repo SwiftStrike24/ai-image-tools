@@ -91,14 +91,14 @@ export function PricingComponentComponent() {
   return (
     <div className="bg-transparent text-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mt-12 space-y-4 sm:mt-16 sm:space-y-0 sm:grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 sm:gap-6 lg:max-w-4xl lg:mx-auto xl:max-w-none xl:mx-0">
+        <div className="mt-12 space-y-4 sm:mt-16 sm:space-y-0 grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 sm:gap-6 lg:max-w-4xl lg:mx-auto xl:max-w-none xl:mx-0">
           {plans.map((plan, index) => (
             <motion.div
               key={plan.name}
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className={`${plan.popular ? 'lg:scale-105 lg:z-10' : ''}`}
+              className={`${plan.popular ? 'md:scale-105 md:z-10' : ''}`}
             >
               <MagicCard
                 gradientSize={100}
@@ -196,7 +196,7 @@ function PlanContent({ plan, isMonthly }: { plan: any; isMonthly: boolean }) {
 
   return (
     <div 
-      className="flex flex-col h-full rounded-2xl p-6"
+      className="flex flex-col h-full rounded-2xl p-4 sm:p-6"
       style={{
         background: 'rgba(30, 30, 30, 0.6)',
         backdropFilter: 'blur(20px)',
@@ -204,7 +204,7 @@ function PlanContent({ plan, isMonthly }: { plan: any; isMonthly: boolean }) {
       }}
     >
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-extrabold text-gray-100 sm:text-2xl">
+        <h3 className="text-lg sm:text-xl font-extrabold text-gray-100">
           {plan.name}
         </h3>
         {plan.popular && (
@@ -213,17 +213,17 @@ function PlanContent({ plan, isMonthly }: { plan: any; isMonthly: boolean }) {
           </span>
         )}
       </div>
-      <div className="mb-6 flex items-baseline text-4xl font-extrabold">
+      <div className="mb-4 sm:mb-6 flex items-baseline text-2xl sm:text-4xl font-extrabold">
         {plan.price}
-        <span className="ml-1 text-xl font-medium text-gray-400">
+        <span className="ml-1 text-lg sm:text-xl font-medium text-gray-400">
           {isMonthly ? '/mo' : '/yr'}
         </span>
       </div>
-      <ul className="space-y-4 mb-8 flex-grow">
+      <ul className="space-y-2 sm:space-y-4 mb-6 sm:mb-8 flex-grow">
         {plan.features.map((feature: string, index: number) => (
           <li key={index} className="flex items-start">
-            <CheckIcon className="h-6 w-6 text-purple-400 flex-shrink-0 mr-2" aria-hidden="true" />
-            <span className="text-sm text-gray-300">{feature}</span>
+            <CheckIcon className="h-5 w-5 sm:h-6 sm:w-6 text-purple-400 flex-shrink-0 mr-2" aria-hidden="true" />
+            <span className="text-xs sm:text-sm text-gray-300">{feature}</span>
           </li>
         ))}
       </ul>
