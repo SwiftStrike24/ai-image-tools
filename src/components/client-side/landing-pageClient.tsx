@@ -659,7 +659,7 @@ export default function LandingPage() {
             <motion.div
               ref={pricingRef}
               variants={itemVariants}
-              className="mb-24 pt-16" // Added pt-16 for better scrolling position
+              className="mb-24 pt-16"
             >
               <h2 className="text-4xl font-bold mb-8 text-center">
                 <AnimatedGradientText>
