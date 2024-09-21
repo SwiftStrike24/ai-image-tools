@@ -17,8 +17,9 @@ export async function GET() {
 
     const isPro = subscription === "pro";
     const isPremium = subscription === "premium";
+    const isUltimate = subscription === "ultimate";
 
-    return NextResponse.json({ isPro, isPremium });
+    return NextResponse.json({ isPro, isPremium, isUltimate });
   } catch (error) {
     console.error("Error checking subscription:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

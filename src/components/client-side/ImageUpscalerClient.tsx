@@ -27,6 +27,8 @@ import { checkAndUpdateRateLimitPro } from "@/actions/Plans-rateLimit/rateLimit-
 import { PRO_UPSCALER_MONTHLY_LIMIT } from "@/constants/rateLimits"
 import { checkAndUpdateRateLimitPremium } from "@/actions/Plans-rateLimit/rateLimit-Premium"
 import { PREMIUM_UPSCALER_MONTHLY_LIMIT } from "@/constants/rateLimits"
+import { checkAndUpdateRateLimitUltimate } from "@/actions/Plans-rateLimit/rateLimit-ultimate"
+import { ULTIMATE_UPSCALER_MONTHLY_LIMIT } from "@/constants/rateLimits"
 
 // Constants
 const MAX_FILE_SIZE_MB = 50; // 50MB
@@ -63,6 +65,7 @@ function ImageUpscalerComponent() {
   const [isAuthenticated, setIsAuthenticated] = useState(true)
   const [isPro, setIsPro] = useState(false)
   const [isPremium, setIsPremium] = useState(false)
+  const [isUltimate, setIsUltimate] = useState(false)
 
   useEffect(() => {
     import('@/utils/browserUtils').then((module) => {
@@ -81,9 +84,10 @@ function ImageUpscalerComponent() {
       const checkSubscription = async () => {
         try {
           const response = await fetch('/api/check-subscription');
-          const { isPro, isPremium } = await response.json();
+          const { isPro, isPremium, isUltimate } = await response.json();
           setIsPro(isPro);
           setIsPremium(isPremium);
+          setIsUltimate(isUltimate);
         } catch (error) {
           console.error('Error checking subscription:', error);
         }
@@ -212,7 +216,9 @@ function ImageUpscalerComponent() {
     try {
       let canProceed, usageCount, resetsIn;
 
-      if (isPremium) {
+      if (isUltimate) {
+        ({ canProceed, usageCount, resetsIn } = await checkAndUpdateRateLimitUltimate());
+      } else if (isPremium) {
         ({ canProceed, usageCount, resetsIn } = await checkAndUpdateRateLimitPremium());
       } else if (isPro) {
         ({ canProceed, usageCount, resetsIn } = await checkAndUpdateRateLimitPro());
@@ -221,10 +227,10 @@ function ImageUpscalerComponent() {
       }
 
       if (!canProceed) {
-        const limit = isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT;
+        const limit = isUltimate ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT;
         toast({
-          title: isPremium || isPro ? "Monthly limit reached" : "Daily limit reached",
-          description: `You've reached your ${isPremium || isPro ? 'monthly' : 'daily'} limit of ${limit} upscaled images. Please try again ${isPremium || isPro ? 'next month' : 'tomorrow'} or upgrade your plan.`,
+          title: isUltimate || isPremium || isPro ? "Monthly limit reached" : "Daily limit reached",
+          description: `You've reached your ${isUltimate || isPremium || isPro ? 'monthly' : 'daily'} limit of ${limit} upscaled images. Please try again ${isUltimate || isPremium || isPro ? 'next month' : 'tomorrow'} or upgrade your plan.`,
           variant: "destructive",
         });
         setDailyUsage(usageCount);
@@ -278,7 +284,7 @@ function ImageUpscalerComponent() {
     } finally {
       setIsLoading(false);
     }
-  }, [originalFile, upscaleOption, faceEnhance, isLoading, isSimulationMode, simulateUpscale, toast, isPro, isPremium]);
+  }, [originalFile, upscaleOption, faceEnhance, isLoading, isSimulationMode, simulateUpscale, toast, isPro, isPremium, isUltimate]);
 
   // Function to clear the uploaded image
   const handleClearImage = useCallback(() => {
@@ -413,24 +419,24 @@ function ImageUpscalerComponent() {
           <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">
-                {isPremium ? 'Monthly Usage (Premium Plan)' : isPro ? 'Monthly Usage (Pro Plan)' : 'Daily Usage (Free Plan)'}
+                {isUltimate ? 'Monthly Usage (Ultimate Plan)' : isPremium ? 'Monthly Usage (Premium Plan)' : isPro ? 'Monthly Usage (Pro Plan)' : 'Daily Usage (Free Plan)'}
               </span>
               {isSimulationMode ? (
                 <span className="text-sm font-medium">Simulation Mode</span>
               ) : (
                 <span className="text-sm font-medium">
-                  {dailyUsage} / {isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT}
+                  {dailyUsage} / {isUltimate ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT}
                 </span>
               )}
             </div>
             {!isSimulationMode && (
               <>
                 <Progress 
-                  value={(dailyUsage / (isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT)) * 100} 
+                  value={(dailyUsage / (isUltimate ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT)) * 100} 
                   className="h-2" 
                 />
                 <p className="text-xs text-purple-300">
-                  {(isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT) - dailyUsage} upscales remaining. 
+                  {(isUltimate ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT) - dailyUsage} upscales remaining. 
                   Resets in {resetsIn}.
                 </p>
               </>
@@ -622,18 +628,18 @@ function ImageUpscalerComponent() {
               <div className="relative">
                 <ShinyButton
                   onClick={handleUpscale}
-                  disabled={!uploadedImage || isLoading || dailyUsage >= (isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT)}
+                  disabled={!uploadedImage || isLoading || dailyUsage >= (isUltimate ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT)}
                   className={cn(
                     "w-full py-2 md:py-3 text-base md:text-lg font-semibold",
-                    (!uploadedImage || isLoading || dailyUsage >= (isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT)) && "opacity-50 cursor-not-allowed"
+                    (!uploadedImage || isLoading || dailyUsage >= (isUltimate ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT)) && "opacity-50 cursor-not-allowed"
                   )}
-                  text={isLoading ? "Processing..." : dailyUsage >= (isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT) ? (isPremium || isPro ? "Monthly Limit Reached" : "Daily Limit Reached") : 'Upscale'}
+                  text={isLoading ? "Processing..." : dailyUsage >= (isUltimate ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT) ? (isUltimate || isPremium || isPro ? "Monthly Limit Reached" : "Daily Limit Reached") : 'Upscale'}
                 >
                   {isLoading && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
                 </ShinyButton>
-                {dailyUsage >= (isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT) && (
+                {dailyUsage >= (isUltimate ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT) && (
                   <p className="text-xs text-red-400 mt-2">
-                    You&apos;ve reached your {isPremium || isPro ? 'monthly' : 'daily'} limit. Please try again {isPremium || isPro ? 'next month' : 'tomorrow'} or upgrade your plan.
+                    You&apos;ve reached your {isUltimate || isPremium || isPro ? 'monthly' : 'daily'} limit. Please try again {isUltimate || isPremium || isPro ? 'next month' : 'tomorrow'} or upgrade your plan.
                   </p>
                 )}
               </div>
