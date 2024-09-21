@@ -34,7 +34,7 @@ import { GENERATOR_DAILY_LIMIT, ENHANCE_PROMPT_DAILY_LIMIT } from "@/constants/r
 import { SiMeta, SiOpenai } from "react-icons/si"
 import { canGenerateImagesPro, incrementGeneratorUsagePro } from "@/actions/Plans-rateLimit/rateLimit-Pro"
 import { canGenerateImagesPremium, incrementGeneratorUsagePremium } from "@/actions/Plans-rateLimit/rateLimit-Premium"
-import { canGenerateImagesUltimate, incrementGeneratorUsageUltimate } from "@/actions/Plans-rateLimit/rateLimit-ultimate"
+import { canGenerateImagesUltimate, incrementGeneratorUsageUltimate } from "@/actions/Plans-rateLimit/rateLimit-Ultimate"
 import { PRO_GENERATOR_MONTHLY_LIMIT, PREMIUM_GENERATOR_MONTHLY_LIMIT, ULTIMATE_GENERATOR_MONTHLY_LIMIT, PRO_ENHANCE_PROMPT_MONTHLY_LIMIT, PREMIUM_ENHANCE_PROMPT_MONTHLY_LIMIT, ULTIMATE_ENHANCE_PROMPT_MONTHLY_LIMIT } from "@/constants/rateLimits"
 
 export default function FluxAIImageGenerator() {
