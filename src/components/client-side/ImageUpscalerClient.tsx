@@ -21,14 +21,16 @@ import ShinyButton from "@/components/magicui/shiny-button"
 import { resizeImage } from '@/utils/imageUtils'
 import { Progress } from "@/components/ui/progress"
 import { checkAndUpdateRateLimit, getUserUsage } from "@/actions/rateLimit"
-import { UPSCALER_DAILY_LIMIT } from "@/constants/rateLimits"
-import { BorderBeam } from "@/components/magicui/border-beam"
 import { checkAndUpdateRateLimitPro } from "@/actions/Plans-rateLimit/rateLimit-Pro"
-import { PRO_UPSCALER_MONTHLY_LIMIT } from "@/constants/rateLimits"
 import { checkAndUpdateRateLimitPremium } from "@/actions/Plans-rateLimit/rateLimit-Premium"
-import { PREMIUM_UPSCALER_MONTHLY_LIMIT } from "@/constants/rateLimits"
 import { checkAndUpdateRateLimitUltimate } from "@/actions/Plans-rateLimit/rateLimit-ultimate"
-import { ULTIMATE_UPSCALER_MONTHLY_LIMIT } from "@/constants/rateLimits"
+import { BorderBeam } from "@/components/magicui/border-beam"
+import { 
+  UPSCALER_DAILY_LIMIT, 
+  PRO_UPSCALER_MONTHLY_LIMIT, 
+  PREMIUM_UPSCALER_MONTHLY_LIMIT, 
+  ULTIMATE_UPSCALER_MONTHLY_LIMIT 
+} from "@/constants/rateLimits"
 
 // Constants
 const MAX_FILE_SIZE_MB = 50; // 50MB
