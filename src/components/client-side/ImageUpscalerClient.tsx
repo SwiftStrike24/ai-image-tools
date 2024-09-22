@@ -23,7 +23,7 @@ import { Progress } from "@/components/ui/progress"
 import { checkAndUpdateRateLimit, getUserUsage } from "@/actions/rateLimit"
 import { checkAndUpdateRateLimitPro } from "@/actions/Plans-rateLimit/rateLimit-Pro"
 import { checkAndUpdateRateLimitPremium } from "@/actions/Plans-rateLimit/rateLimit-Premium"
-import { checkAndUpdateRateLimitUltimate } from "@/actions/Plans-rateLimit/rateLimit-ultimate"
+import { checkAndUpdateRateLimitUltimate } from "@/actions/Plans-rateLimit/rateLimit-Ultimate"
 import { BorderBeam } from "@/components/magicui/border-beam"
 import { 
   UPSCALER_DAILY_LIMIT, 

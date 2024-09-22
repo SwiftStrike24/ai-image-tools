@@ -36,6 +36,7 @@ import { canGenerateImagesPro, incrementGeneratorUsagePro } from "@/actions/Plan
 import { canGenerateImagesPremium, incrementGeneratorUsagePremium } from "@/actions/Plans-rateLimit/rateLimit-Premium"
 import { canGenerateImagesUltimate, incrementGeneratorUsageUltimate } from "@/actions/Plans-rateLimit/rateLimit-Ultimate"
 import { PRO_GENERATOR_MONTHLY_LIMIT, PREMIUM_GENERATOR_MONTHLY_LIMIT, ULTIMATE_GENERATOR_MONTHLY_LIMIT, PRO_ENHANCE_PROMPT_MONTHLY_LIMIT, PREMIUM_ENHANCE_PROMPT_MONTHLY_LIMIT, ULTIMATE_ENHANCE_PROMPT_MONTHLY_LIMIT } from "@/constants/rateLimits"
+import { getTimeUntilNextMonth } from '@/utils/dateUtils'
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -100,9 +101,19 @@ export default function FluxAIImageGenerator() {
       // Fetch usage based on subscription type
       const fetchUsage = async () => {
         try {
-          const { usageCount, resetsIn } = await getGeneratorUsage();
-          setDailyUsage(usageCount);
-          setResetsIn(resetsIn);
+          let usageData;
+          if (isUltimate) {
+            usageData = await canGenerateImagesUltimate(1);
+          } else if (isPremium) {
+            usageData = await canGenerateImagesPremium(1);
+          } else if (isPro) {
+            usageData = await canGenerateImagesPro(1);
+          } else {
+            usageData = await getGeneratorUsage();
+          }
+          
+          setDailyUsage(usageData.usageCount);
+          setResetsIn(usageData.resetsIn);
         } catch (error) {
           console.error(error);
           if (error instanceof Error && error.message === "User not authenticated") {
@@ -117,7 +128,7 @@ export default function FluxAIImageGenerator() {
         setEnhancePromptResetsIn(resetsIn);
       }).catch(console.error);
     }
-  }, [isSimulationMode]);
+  }, [isSimulationMode, isPro, isPremium, isUltimate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -821,7 +832,7 @@ export default function FluxAIImageGenerator() {
               )}
               {isFocused && (
                 <ShinyButton
-                  onClick={clearFocusedImage}
+                  onClick={() => setFocusedImageIndex(null)}
                   className="w-full py-2 md:py-3 text-base md:text-lg font-semibold"
                   text="Clear Focus"
                 />

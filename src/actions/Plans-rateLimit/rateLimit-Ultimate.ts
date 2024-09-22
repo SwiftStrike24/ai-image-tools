@@ -10,13 +10,7 @@ import {
   ULTIMATE_GENERATOR_KEY_PREFIX,
   ULTIMATE_ENHANCE_PROMPT_KEY_PREFIX,
 } from "@/constants/rateLimits";
-
-function isNewMonth(lastUsageDate: string | null): boolean {
-  if (!lastUsageDate) return true;
-  const now = new Date();
-  const last = new Date(lastUsageDate);
-  return now.getUTCMonth() !== last.getUTCMonth() || now.getUTCFullYear() !== last.getUTCFullYear();
-}
+import { isNewMonth, getTimeUntilNextMonth } from "@/utils/dateUtils";
 
 export async function canGenerateImagesUltimate(imagesToGenerate: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
   const { userId } = auth();
@@ -122,12 +116,4 @@ export async function incrementEnhancePromptUsageUltimate(): Promise<void> {
     [`${key}:date`]: today,
     [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + 1
   });
-}
-
-function getTimeUntilNextMonth(): string {
-  const now = new Date();
-  const nextMonth = new Date(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
-  const msUntilNextMonth = nextMonth.getTime() - now.getTime();
-  const daysUntilNextMonth = Math.ceil(msUntilNextMonth / (1000 * 60 * 60 * 24));
-  return `${daysUntilNextMonth} days`;
 }
