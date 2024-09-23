@@ -81,140 +81,154 @@ export default function FluxAIImageGenerator() {
   const [isPro, setIsPro] = useState(false)
   const [isPremium, setIsPremium] = useState(false)
   const [isUltimate, setIsUltimate] = useState(false)
+  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(true)
+  const [subscriptionType, setSubscriptionType] = useState<'basic' | 'pro' | 'premium' | 'ultimate'>('basic')
 
   useEffect(() => {
     if (!isSimulationMode) {
       // Fetch user's subscription status
       const checkSubscription = async () => {
         try {
-          const response = await fetch('/api/check-subscription');
-          const { isPro, isPremium, isUltimate } = await response.json();
-          setIsPro(isPro);
-          setIsPremium(isPremium);
-          setIsUltimate(isUltimate);
+          setIsSubscriptionLoading(true)
+          const response = await fetch('/api/check-subscription')
+          const { isPro, isPremium, isUltimate } = await response.json()
+          setIsPro(isPro)
+          setIsPremium(isPremium)
+          setIsUltimate(isUltimate)
+          if (isUltimate) {
+            setSubscriptionType('ultimate')
+          } else if (isPremium) {
+            setSubscriptionType('premium')
+          } else if (isPro) {
+            setSubscriptionType('pro')
+          } else {
+            setSubscriptionType('basic')
+          }
         } catch (error) {
-          console.error('Error checking subscription:', error);
+          console.error('Error checking subscription:', error)
+        } finally {
+          setIsSubscriptionLoading(false)
         }
-      };
-      checkSubscription();
+      }
+      checkSubscription()
 
       // Fetch usage based on subscription type
       const fetchUsage = async () => {
         try {
-          let usageData;
+          let usageData
           if (isUltimate) {
-            usageData = await canGenerateImagesUltimate(1);
+            usageData = await canGenerateImagesUltimate(1)
           } else if (isPremium) {
-            usageData = await canGenerateImagesPremium(1);
+            usageData = await canGenerateImagesPremium(1)
           } else if (isPro) {
-            usageData = await canGenerateImagesPro(1);
+            usageData = await canGenerateImagesPro(1)
           } else {
-            usageData = await getGeneratorUsage();
+            usageData = await getGeneratorUsage()
           }
           
-          setDailyUsage(usageData.usageCount);
-          setResetsIn(usageData.resetsIn);
+          setDailyUsage(usageData.usageCount)
+          setResetsIn(usageData.resetsIn)
         } catch (error) {
-          console.error(error);
+          console.error(error)
           if (error instanceof Error && error.message === "User not authenticated") {
-            setIsAuthenticated(false);
+            setIsAuthenticated(false)
           }
         }
-      };
-      fetchUsage();
+      }
+      fetchUsage()
 
       getEnhancePromptUsage().then(({ usageCount, resetsIn }) => {
-        setEnhancePromptUsage(usageCount);
-        setEnhancePromptResetsIn(resetsIn);
-      }).catch(console.error);
+        setEnhancePromptUsage(usageCount)
+        setEnhancePromptResetsIn(resetsIn)
+      }).catch(console.error)
     }
-  }, [isSimulationMode, isPro, isPremium, isUltimate]);
+  }, [isSimulationMode, isPro, isPremium, isUltimate])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isLoading) return;
+    e.preventDefault()
+    if (isLoading) return
 
-    let currentPrompt = showSeedInput ? followUpPrompt : prompt;
-    const isFollowUp = showSeedInput && followUpPrompt?.trim();
+    let currentPrompt = showSeedInput ? followUpPrompt : prompt
+    const isFollowUp = showSeedInput && followUpPrompt?.trim()
 
     if (!currentPrompt?.trim()) {
-      setError("Please enter a prompt before generating images.");
-      return;
+      setError("Please enter a prompt before generating images.")
+      return
     }
 
-    setIsLoading(true);
-    setError(null);
+    setIsLoading(true)
+    setError(null)
 
     try {
-      let enhancedPrompt = currentPrompt;
-      let enhancementSuccessful = false;
-      let usedEnhancementModel: 'meta-llama-3-8b-instruct' | 'gpt-4o-mini' | null = null;
+      let enhancedPrompt = currentPrompt
+      let enhancementSuccessful = false
+      let usedEnhancementModel: 'meta-llama-3-8b-instruct' | 'gpt-4o-mini' | null = null
 
       if (isEnhancePromptEnabled && !isSimulationMode) {
-        const { canProceed, usageCount } = await canEnhancePrompt();
+        const { canProceed, usageCount } = await canEnhancePrompt()
         if (!canProceed) {
-          setEnhancePromptLimitReached(true);
-          setIsLoading(false);
-          return;
+          setEnhancePromptLimitReached(true)
+          setIsLoading(false)
+          return
         }
 
         try {
-          let enhancementResult;
+          let enhancementResult
           if (enhancementModel === 'meta-llama-3-8b-instruct') {
-            enhancementResult = await enhancePrompt(currentPrompt);
+            enhancementResult = await enhancePrompt(currentPrompt)
           } else if (enhancementModel === 'gpt-4o-mini') {
-            enhancementResult = { enhancedPrompt: await enhancePromptGPT4oMini(currentPrompt), usedModel: 'gpt-4o-mini' as const };
+            enhancementResult = { enhancedPrompt: await enhancePromptGPT4oMini(currentPrompt), usedModel: 'gpt-4o-mini' as const }
           }
 
           if (enhancementResult && enhancementResult.enhancedPrompt !== currentPrompt) {
-            enhancedPrompt = enhancementResult.enhancedPrompt;
-            enhancementSuccessful = true;
-            usedEnhancementModel = enhancementResult.usedModel;
-            setEnhancedPromptHistory(prev => [...prev, enhancedPrompt]);
-            console.log("Prompt enhancement successful:", enhancedPrompt);
+            enhancedPrompt = enhancementResult.enhancedPrompt
+            enhancementSuccessful = true
+            usedEnhancementModel = enhancementResult.usedModel
+            setEnhancedPromptHistory(prev => [...prev, enhancedPrompt])
+            console.log("Prompt enhancement successful:", enhancedPrompt)
           } else {
-            console.warn("Prompt enhancement didn't produce a different result. Using original prompt.");
+            console.warn("Prompt enhancement didn't produce a different result. Using original prompt.")
           }
         } catch (enhanceError) {
-          console.error("Error enhancing prompt:", enhanceError);
+          console.error("Error enhancing prompt:", enhanceError)
         }
       }
 
       // Check rate limits after enhancing prompt
       if (!isSimulationMode) {
-        let canProceed, usageCount, resetsIn;
+        let canProceed, usageCount, resetsIn
 
         if (isUltimate) {
-          ({ canProceed, usageCount, resetsIn } = await canGenerateImagesUltimate(numOutputs));
+          ({ canProceed, usageCount, resetsIn } = await canGenerateImagesUltimate(numOutputs))
         } else if (isPremium) {
-          ({ canProceed, usageCount, resetsIn } = await canGenerateImagesPremium(numOutputs));
+          ({ canProceed, usageCount, resetsIn } = await canGenerateImagesPremium(numOutputs))
         } else if (isPro) {
-          ({ canProceed, usageCount, resetsIn } = await canGenerateImagesPro(numOutputs));
+          ({ canProceed, usageCount, resetsIn } = await canGenerateImagesPro(numOutputs))
         } else {
-          ({ canProceed, usageCount, resetsIn } = await canGenerateImages(numOutputs));
+          ({ canProceed, usageCount, resetsIn } = await canGenerateImages(numOutputs))
         }
 
         if (!canProceed) {
           const limit = isUltimate ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
                         isPremium ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
                         isPro ? PRO_GENERATOR_MONTHLY_LIMIT : 
-                        GENERATOR_DAILY_LIMIT;
-          setError(`You've reached your ${isUltimate || isPremium || isPro ? 'monthly' : 'daily'} limit. You can generate ${limit - usageCount} more image${limit - usageCount !== 1 ? 's' : ''} ${isUltimate || isPremium || isPro ? 'this month' : 'today'}.`);
-          setIsLoading(false);
-          return;
+                        GENERATOR_DAILY_LIMIT
+          setError(`You've reached your ${isUltimate || isPremium || isPro ? 'monthly' : 'daily'} limit. You can generate ${limit - usageCount} more image${limit - usageCount !== 1 ? 's' : ''} ${isUltimate || isPremium || isPro ? 'this month' : 'today'}.`)
+          setIsLoading(false)
+          return
         }
       }
 
-      let finalPrompt = enhancementSuccessful ? enhancedPrompt : currentPrompt;
-      console.log(`Final prompt ${enhancementSuccessful ? 'after enhancement' : 'without enhancement'}: ${finalPrompt}`);
+      let finalPrompt = enhancementSuccessful ? enhancedPrompt : currentPrompt
+      console.log(`Final prompt ${enhancementSuccessful ? 'after enhancement' : 'without enhancement'}: ${finalPrompt}`)
 
       // Update originalPrompt and followUpPrompts
       if (isFollowUp) {
-        setFollowUpPrompts(prev => [...prev, currentPrompt]);
-        finalPrompt = `${originalPrompt} ${enhancedPrompt}`;
+        setFollowUpPrompts(prev => [...prev, currentPrompt])
+        finalPrompt = `${originalPrompt} ${enhancedPrompt}`
       } else {
-        setOriginalPrompt(currentPrompt);
-        setFollowUpPrompts([]);
+        setOriginalPrompt(currentPrompt)
+        setFollowUpPrompts([])
       }
 
       const params: FluxImageParams = {
@@ -227,34 +241,34 @@ export default function FluxAIImageGenerator() {
         disable_safety_checker: true,
         seed: currentSeed !== null ? currentSeed : undefined,
         followUpLevel: isFollowUp ? followUpLevel : 1,
-      };
+      }
 
-      console.log("Params sent to generateFluxImage:", params);
+      console.log("Params sent to generateFluxImage:", params)
 
       const results: FluxImageResult[] = isSimulationMode 
         ? await simulateImageGeneration(params, followUpLevel, simulationId)
-        : await generateFluxImage(params);
+        : await generateFluxImage(params)
 
-      console.log("Results received from generateFluxImage:", results);
+      console.log("Results received from generateFluxImage:", results)
 
       if (results.length > 0) {
         // Increment usage after successful image generation
         if (!isSimulationMode) {
           if (isUltimate) {
-            await incrementGeneratorUsageUltimate(numOutputs);
+            await incrementGeneratorUsageUltimate(numOutputs)
           } else if (isPremium) {
-            await incrementGeneratorUsagePremium(numOutputs);
+            await incrementGeneratorUsagePremium(numOutputs)
           } else if (isPro) {
-            await incrementGeneratorUsagePro(numOutputs);
+            await incrementGeneratorUsagePro(numOutputs)
           } else {
-            await incrementGeneratorUsage(numOutputs);
+            await incrementGeneratorUsage(numOutputs)
           }
-          setDailyUsage(prev => prev + numOutputs);
+          setDailyUsage(prev => prev + numOutputs)
 
           // Only increment enhance prompt usage if enhancement was successful
           if (enhancementSuccessful) {
-            await incrementEnhancePromptUsage();
-            setEnhancePromptUsage(prev => prev + 1);
+            await incrementEnhancePromptUsage()
+            setEnhancePromptUsage(prev => prev + 1)
           }
         }
 
@@ -262,91 +276,91 @@ export default function FluxAIImageGenerator() {
           ...result,
           followUpLevel: isFollowUp ? followUpLevel : 1,
           index,
-        }));
+        }))
 
-        const newSeed = newImageResults[0].seed;
-        setCurrentSeed(newSeed);
+        const newSeed = newImageResults[0].seed
+        setCurrentSeed(newSeed)
 
         const newHistoryEntry: PromptHistoryEntry = { 
           prompt: currentPrompt, // Store only the user-added follow-up prompt
           images: newImageResults,
           followUpLevel: isFollowUp ? followUpLevel : 1,
           seed: newSeed,
-        };
+        }
         
         setPromptHistory(prevHistory => {
-          const newHistory = [...prevHistory.slice(0, followUpLevel - 1), newHistoryEntry];
-          setCurrentPromptIndex(newHistory.length - 1);
-          return newHistory;
-        });
+          const newHistory = [...prevHistory.slice(0, followUpLevel - 1), newHistoryEntry]
+          setCurrentPromptIndex(newHistory.length - 1)
+          return newHistory
+        })
 
-        setImageResults(newImageResults);
-        setImageUrls(newImageResults.map(result => result.imageUrls[0]));
-        setGeneratedAspectRatio(aspectRatio);
-        setFocusedImageIndex(null);
-        setIsFocused(false);
-        setFollowUpLevel(prev => isFollowUp ? prev + 1 : 1);
+        setImageResults(newImageResults)
+        setImageUrls(newImageResults.map(result => result.imageUrls[0]))
+        setGeneratedAspectRatio(aspectRatio)
+        setFocusedImageIndex(null)
+        setIsFocused(false)
+        setFollowUpLevel(prev => isFollowUp ? prev + 1 : 1)
         
         // Reset followUpPrompt but keep showSeedInput true for follow-ups
-        setFollowUpPrompt('');
-        setShowSeedInput(isFollowUp ? true : false);
+        setFollowUpPrompt('')
+        setShowSeedInput(isFollowUp ? true : false)
 
         if (enhancementSuccessful) {
           toast({
             title: "Prompt Enhanced",
             description: `Enhanced using ${usedEnhancementModel === 'meta-llama-3-8b-instruct' ? 'Meta-Llama 3' : 'GPT-4o-mini'}.`,
             variant: "default",
-          });
+          })
         }
       } else {
-        throw new Error('No images were generated. Please try again.');
+        throw new Error('No images were generated. Please try again.')
       }
 
       if (isSimulationMode) {
-        setSimulationId(uuidv4());
+        setSimulationId(uuidv4())
       }
     } catch (error) {
-      console.error('Image generation error:', error);
-      setError(error instanceof Error ? error.message : "Failed to generate image(s). Please try again.");
+      console.error('Image generation error:', error)
+      setError(error instanceof Error ? error.message : "Failed to generate image(s). Please try again.")
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const handleCopySeed = useCallback((seed: number, selectedImage: FluxImageResult, index: number) => {
-    if (isProcessingSeed) return;
-    setIsProcessingSeed(true);
+    if (isProcessingSeed) return
+    setIsProcessingSeed(true)
 
     try {
       if (focusedImageIndex === index) {
         // This is the unfocus action
-        setFocusedImageIndex(null);
-        setIsFocused(false);
+        setFocusedImageIndex(null)
+        setIsFocused(false)
         
         if (followUpLevel === 1) {
           // Clear the seed and form only at level 1
-          setCurrentSeed(null);
-          setShowSeedInput(false);
-          setFollowUpPrompt('');
+          setCurrentSeed(null)
+          setShowSeedInput(false)
+          setFollowUpPrompt('')
           toast({
             title: "Seed Cleared",
             description: "The seed has been cleared. You can now generate new images or refocus.",
-          });
+          })
         } else {
           // For level 2 and beyond, just update UI
           toast({
             title: "Focus Cleared",
             description: "Image unfocused. The seed and follow-up prompt remain unchanged.",
-          });
+          })
         }
       } else {
         // Focus action
-        setFocusedImageIndex(index);
-        setIsFocused(true);
+        setFocusedImageIndex(index)
+        setIsFocused(true)
         
         if (followUpLevel === 1) {
-          setCurrentSeed(seed);
-          setShowSeedInput(true);
+          setCurrentSeed(seed)
+          setShowSeedInput(true)
         }
         
         toast({
@@ -354,41 +368,41 @@ export default function FluxAIImageGenerator() {
           description: followUpLevel === 1 
             ? "You can now enter a follow-up prompt based on this image."
             : "Image focused. The seed and follow-up prompt remain unchanged.",
-        });
+        })
       }
     } catch (error) {
-      console.error("Error in handleCopySeed:", error);
+      console.error("Error in handleCopySeed:", error)
       toast({
         title: "Error",
         description: "An error occurred while managing image focus. Please try again.",
         variant: "destructive",
-      });
+      })
     } finally {
-      setTimeout(() => setIsProcessingSeed(false), 500);
+      setTimeout(() => setIsProcessingSeed(false), 500)
     }
-  }, [isProcessingSeed, toast, focusedImageIndex, followUpLevel]);
+  }, [isProcessingSeed, toast, focusedImageIndex, followUpLevel])
 
   const handleNewImage = useCallback(() => {
-    setFollowUpPrompt(null);
-    setCurrentSeed(null);
-    setShowSeedInput(false);
-    setImageUrls([]);
-    setError(null);
-    setResetKey(prev => prev + 1);
-    setImageResults([]);
-    setPrompt('');
-    setPromptHistory([]);
-    setCurrentPromptIndex(-1);
-    setFocusedImageIndex(null);
-    setIsFocused(false);
-    setFollowUpLevel(0);
-    setOriginalPrompt('');
-    setFollowUpPrompts([]);
+    setFollowUpPrompt(null)
+    setCurrentSeed(null)
+    setShowSeedInput(false)
+    setImageUrls([])
+    setError(null)
+    setResetKey(prev => prev + 1)
+    setImageResults([])
+    setPrompt('')
+    setPromptHistory([])
+    setCurrentPromptIndex(-1)
+    setFocusedImageIndex(null)
+    setIsFocused(false)
+    setFollowUpLevel(0)
+    setOriginalPrompt('')
+    setFollowUpPrompts([])
     toast({
       title: "Reset Complete",
       description: "Ready for a new image generation.",
-    });
-  }, [toast]);
+    })
+  }, [toast])
 
   useEffect(() => {
     if (error) {
@@ -397,9 +411,9 @@ export default function FluxAIImageGenerator() {
         description: error,
         variant: "destructive",
         duration: 5000,
-      });
+      })
     }
-  }, [error, toast]);
+  }, [error, toast])
 
   const handleDownload = useCallback(async (url: string, index: number) => {
     setDownloadingIndex(index)
@@ -442,80 +456,80 @@ export default function FluxAIImageGenerator() {
   }, [])
 
   const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
+    const newValue = e.target.value
     if (newValue.length <= 1000) {
       if (showSeedInput) {
-        setFollowUpPrompt(newValue);
+        setFollowUpPrompt(newValue)
       } else {
-        setPrompt(newValue);
+        setPrompt(newValue)
       }
-      if (error) setError(null);
+      if (error) setError(null)
     } else {
       toast({
         title: "Prompt Too Long",
         description: "The prompt cannot exceed 1000 characters.",
         variant: "destructive",
-      });
+      })
     }
-  };
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault(); // Prevent default to avoid line break
-      handleSubmit(e as unknown as React.FormEvent);
+      e.preventDefault() // Prevent default to avoid line break
+      handleSubmit(e as unknown as React.FormEvent)
     }
-  };
+  }
 
   const goToPreviousFollowUp = useCallback(() => {
-    if (followUpLevel <= 1) return; // Don't go back if we're at the initial level
+    if (followUpLevel <= 1) return // Don't go back if we're at the initial level
 
-    const newLevel = followUpLevel - 1;
-    const previousEntry = promptHistory[newLevel - 1]; // Get the previous entry
+    const newLevel = followUpLevel - 1
+    const previousEntry = promptHistory[newLevel - 1] // Get the previous entry
 
     if (!previousEntry) {
-      console.error("Entry not found in prompt history");
-      return;
+      console.error("Entry not found in prompt history")
+      return
     }
 
-    setFollowUpLevel(newLevel);
-    setImageResults(previousEntry.images);
-    setImageUrls(previousEntry.images.map(result => result.imageUrls[0]));
-    setCurrentSeed(previousEntry.seed);
+    setFollowUpLevel(newLevel)
+    setImageResults(previousEntry.images)
+    setImageUrls(previousEntry.images.map(result => result.imageUrls[0]))
+    setCurrentSeed(previousEntry.seed)
 
     // Keep the original prompt unchanged
     // Update follow-up prompts
-    setFollowUpPrompts(prevFollowUps => prevFollowUps.slice(0, newLevel - 1));
+    setFollowUpPrompts(prevFollowUps => prevFollowUps.slice(0, newLevel - 1))
 
     // Set only the user-added follow-up prompt
-    setFollowUpPrompt(previousEntry.prompt);
+    setFollowUpPrompt(previousEntry.prompt)
 
-    setShowSeedInput(true);
+    setShowSeedInput(true)
     
     // Trim the prompt history to the current level
-    setPromptHistory(prevHistory => prevHistory.slice(0, newLevel));
-    setCurrentPromptIndex(newLevel - 1);
-    setFocusedImageIndex(null);
-    setIsFocused(false);
+    setPromptHistory(prevHistory => prevHistory.slice(0, newLevel))
+    setCurrentPromptIndex(newLevel - 1)
+    setFocusedImageIndex(null)
+    setIsFocused(false)
 
     toast({
       title: "Previous Follow-up Loaded",
       description: `Returned to Follow-up Level: ${newLevel}`,
-    });
-  }, [followUpLevel, promptHistory, toast]);
+    })
+  }, [followUpLevel, promptHistory, toast])
 
   const handleEnhancePromptToggle = (checked: boolean) => {
-    setIsEnhancePromptEnabled(checked);
+    setIsEnhancePromptEnabled(checked)
     if (checked && enhancePromptUsage >= ENHANCE_PROMPT_DAILY_LIMIT) {
-      setEnhancePromptLimitReached(true);
+      setEnhancePromptLimitReached(true)
     } else {
-      setEnhancePromptLimitReached(false);
+      setEnhancePromptLimitReached(false)
     }
-  };
+  }
 
   const handleModelSelection = (model: 'meta-llama-3-8b-instruct' | 'gpt-4o-mini') => {
-    setEnhancementModel(model);
-    setIsEnhancePromptEnabled(true);
-  };
+    setEnhancementModel(model)
+    setIsEnhancePromptEnabled(true)
+  }
 
   return (
     <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
