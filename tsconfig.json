@@ -9,7 +9,8 @@
     "lib": [
       "dom",
       "dom.iterable",
-      "esnext"
+      "esnext",
+      "es2015"
     ],
     "allowJs": true,
     "noEmit": true,
@@ -28,8 +29,11 @@
       "@/*": ["./src/*"]
     },
     "types": [
-      "@clerk/clerk-sdk-node"
-    ]
+      "@clerk/clerk-sdk-node",
+      "node"
+    ],
+    "sourceMap": true,
+    "outDir": "dist"
   },
   "include": [
     "next-env.d.ts",

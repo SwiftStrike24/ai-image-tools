@@ -319,6 +319,9 @@ export default function LandingPage() {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  const ImageGenVideoUrl = "https://2k0gowvr1yoiaado.public.blob.vercel-storage.com/landingPage-HowTo/Howto-ImageGen-pKsOyDgJ4oR0CjvEEHdPQa1yj9oEFc.mp4"
+  const UpscaleVideoUrl = "https://2k0gowvr1yoiaado.public.blob.vercel-storage.com/landingPage-HowTo/Howto-Upscale-2chZeXRFFoBIXXpEqWxtrmXbj7VpaB.mp4"
+
   const [isVideoReady, setIsVideoReady] = useState(false)
   const [hasVideoError, setHasVideoError] = useState(false)
   const { ref: videoRef, inView: videoInView } = useInView({
@@ -656,7 +659,7 @@ export default function LandingPage() {
                     </AnimatePresence>
                     {videoInView && !hasVideoError && (
                       <ReactPlayer
-                        url="/videos/landingPage-HowTo/Howto-ImageGen.mp4"
+                        url={ImageGenVideoUrl}
                         playing
                         loop
                         muted
@@ -787,7 +790,7 @@ export default function LandingPage() {
                     </AnimatePresence>
                     {videoInView && !hasVideoError && (
                       <ReactPlayer
-                        url="/videos/landingPage-HowTo/Howto-Upscale.mp4"
+                        url={UpscaleVideoUrl}
                         playing
                         loop
                         muted
