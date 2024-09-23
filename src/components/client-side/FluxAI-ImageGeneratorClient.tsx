@@ -519,8 +519,12 @@ export default function FluxAIImageGenerator() {
 
   const handleEnhancePromptToggle = (checked: boolean) => {
     setIsEnhancePromptEnabled(checked)
-    if (checked && enhancePromptUsage >= ENHANCE_PROMPT_DAILY_LIMIT) {
-      setEnhancePromptLimitReached(true)
+    if (checked) {
+      const limit = isUltimate ? ULTIMATE_ENHANCE_PROMPT_MONTHLY_LIMIT :
+                    isPremium ? PREMIUM_ENHANCE_PROMPT_MONTHLY_LIMIT :
+                    isPro ? PRO_ENHANCE_PROMPT_MONTHLY_LIMIT :
+                    ENHANCE_PROMPT_DAILY_LIMIT
+      setEnhancePromptLimitReached(enhancePromptUsage >= limit)
     } else {
       setEnhancePromptLimitReached(false)
     }

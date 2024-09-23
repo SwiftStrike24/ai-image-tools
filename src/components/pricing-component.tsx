@@ -61,10 +61,10 @@ const plans = [
 ]
 
 const featureComparison = [
-  { name: 'Upscales per month', free: '150', pro: '1000', premium: '2000', ultimate: '4000' },
-  { name: 'Generations per month', free: '150', pro: '1000', premium: '2000', ultimate: '4000' },
+  { name: 'Upscales/month', free: '150', pro: '1000', premium: '2000', ultimate: '4000' },
+  { name: 'Generations/month', free: '150', pro: '1000', premium: '2000', ultimate: '4000' },
   { name: 'Max upscale option', free: '4x', pro: '8x', premium: '10x', ultimate: 'All options' },
-  { name: 'Prompt enhancements', free: '5/day', pro: 'Unlimited', premium: 'Unlimited', ultimate: 'Unlimited' },
+  { name: 'Prompt enhancements/month', free: '150', pro: 'Unlimited', premium: 'Unlimited', ultimate: 'Unlimited' },
   { name: 'AI model choice', free: 'Yes', pro: 'Yes', premium: 'Yes', ultimate: 'Yes + GPT-4o' },
 ]
 

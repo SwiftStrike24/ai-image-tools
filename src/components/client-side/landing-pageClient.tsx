@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useRef, useEffect } from 'react'
-import { motion, useAnimation, AnimatePresence, useInView } from 'framer-motion'
+import { motion, useAnimation, AnimatePresence } from 'framer-motion'
+import { useInView } from 'react-intersection-observer'
 import { Input } from "@/components/ui/input"
 import { ArrowRight, Wand2, Maximize, Layout, Download, Sparkles, CreditCard, Menu, UserCheck } from 'lucide-react'
 import Image from 'next/image'
@@ -23,6 +24,10 @@ import { PricingComponentComponent } from '@/components/pricing-component'
 import { styled } from '@stitches/react';
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import Link from 'next/link'
+import dynamic from 'next/dynamic'
+
+const ReactPlayer = dynamic(() => import('react-player/lazy'), { ssr: false })
 
 const PricingWrapper = styled('div', {
   '& > div': {
@@ -307,10 +312,19 @@ export default function LandingPage() {
   const featuresRef = useRef<HTMLDivElement>(null)
   const beforeAfterRef = useRef<HTMLDivElement>(null)
   const faqRef = useRef<HTMLDivElement>(null)
+  const howItWorksRef = useRef<HTMLDivElement>(null)
+  const upscalingRef = useRef<HTMLDivElement>(null)
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
+
+  const [isVideoReady, setIsVideoReady] = useState(false)
+  const [hasVideoError, setHasVideoError] = useState(false)
+  const { ref: videoRef, inView: videoInView } = useInView({
+    triggerOnce: true,
+    threshold: 0.1,
+  })
 
   return (
     <AnimatePresence>
@@ -341,7 +355,7 @@ export default function LandingPage() {
             </script>
           </Head>
           <motion.nav
-            className="p-4 flex justify-between items-center"
+            className="p-4 flex justify-between items-center fixed w-full bg-black bg-opacity-50 backdrop-blur-md z-50"
             variants={itemVariants}
           >
             <motion.div
@@ -362,7 +376,7 @@ export default function LandingPage() {
               </motion.div>
             </motion.div>
             
-            {/* Desktop navigation */}
+            {/* Update Desktop navigation */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -376,10 +390,22 @@ export default function LandingPage() {
                 Features
               </Button>
               <Button
+                onClick={() => scrollToSection(howItWorksRef)}
+                className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                AI Image Generation
+              </Button>
+              <Button
                 onClick={() => scrollToSection(beforeAfterRef)}
                 className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 Before/After
+              </Button>
+              <Button
+                onClick={() => scrollToSection(upscalingRef)}
+                className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                AI Image Upscaling
               </Button>
               <Button
                 onClick={() => scrollToSection(faqRef)}
@@ -396,7 +422,7 @@ export default function LandingPage() {
               </Button>
             </motion.div>
 
-            {/* Mobile navigation */}
+            {/* Update Mobile navigation */}
             <Sheet>
               <SheetTrigger asChild>
                 <Button className="md:hidden bg-black hover:bg-gray-900 text-white">
@@ -416,12 +442,30 @@ export default function LandingPage() {
                   </Button>
                   <Button
                     onClick={() => {
+                      scrollToSection(howItWorksRef)
+                      document.body.click() // Close the sheet
+                    }}
+                    className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 justify-start"
+                  >
+                    AI Image Generation
+                  </Button>
+                  <Button
+                    onClick={() => {
                       scrollToSection(beforeAfterRef)
                       document.body.click() // Close the sheet
                     }}
                     className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 justify-start"
                   >
                     Before/After
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      scrollToSection(upscalingRef)
+                      document.body.click() // Close the sheet
+                    }}
+                    className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 justify-start"
+                  >
+                    AI Image Upscaling
                   </Button>
                   <Button
                     onClick={() => {
@@ -447,7 +491,7 @@ export default function LandingPage() {
             </Sheet>
           </motion.nav>
           
-          <main className="container mx-auto px-4 py-16">
+          <main className="container mx-auto px-4 py-16 pt-24">
             <BlurFade>
               <div className="flex justify-center items-center">
                 <AnimatedGradientText className="text-4xl md:text-6xl font-bold mb-4 text-center">
@@ -570,6 +614,104 @@ export default function LandingPage() {
               ))}
             </motion.div>
 
+            {/* Updated How It Works section for Image Generator */}
+            <motion.section
+              ref={howItWorksRef}
+              initial="hidden"
+              animate={controls}
+              variants={containerVariants}
+              className="py-20"
+            >
+              <div className="container mx-auto px-4">
+                <motion.h3 variants={itemVariants} className="text-3xl font-bold mb-10 text-center">
+                  How AI Image Generation Works
+                </motion.h3>
+                <div className="flex flex-col md:flex-row items-center justify-center space-y-8 md:space-y-0 md:space-x-8">
+                  <motion.div 
+                    ref={videoRef}
+                    variants={itemVariants} 
+                    className="w-full md:w-1/2 relative aspect-video"
+                  >
+                    <AnimatePresence>
+                      {!isVideoReady && (
+                        <motion.div
+                          initial={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.5 }}
+                          className="absolute inset-0"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg" />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.5 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
+                              className="text-white text-2xl font-bold bg-black bg-opacity-50 px-6 py-3 rounded-full"
+                            >
+                              Loading Video...
+                            </motion.div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    {videoInView && !hasVideoError && (
+                      <ReactPlayer
+                        url="/videos/landingPage-HowTo/Howto-ImageGen.mp4"
+                        playing
+                        loop
+                        muted
+                        playsinline
+                        width="100%"
+                        height="100%"
+                        onReady={() => setIsVideoReady(true)}
+                        onError={() => setHasVideoError(true)}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          opacity: isVideoReady ? 1 : 0,
+                          transition: 'opacity 0.5s ease-in-out',
+                        }}
+                        config={{
+                          file: {
+                            attributes: {
+                              crossOrigin: "anonymous",
+                              preload: "auto",
+                            },
+                            forceVideo: true,
+                            forceAudio: false,
+                          },
+                        }}
+                      />
+                    )}
+                    {hasVideoError && (
+                      <div className="absolute inset-0 flex items-center justify-center text-white bg-black bg-opacity-50 rounded-lg">
+                        <p>Sorry, there was an error loading the video. Please try again later.</p>
+                      </div>
+                    )}
+                  </motion.div>
+                  <motion.div variants={itemVariants} className="w-full md:w-1/2 space-y-4">
+                    <h4 className="text-2xl font-semibold">Create AI-Powered Images in 4 Steps</h4>
+                    <ol className="list-decimal list-inside space-y-2">
+                      <li>Enter your creative text prompt</li>
+                      <li>Choose image settings (aspect ratio, number of images)</li>
+                      <li>Optionally enhance your prompt with AI</li>
+                      <li>Generate and download your AI masterpiece</li>
+                    </ol>
+                    <p className="text-sm text-gray-300 mt-4">
+                      Powered by FLUX.1, advanced AI model that transforms your ideas into stunning visuals.
+                    </p>
+                    <ShimmerButton 
+                      onClick={scrollToWaitlist}
+                      className="mt-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold"
+                    >
+                      <span className="text-white">Join Waitlist for Image Generator</span>
+                    </ShimmerButton>
+                  </motion.div>
+                </div>
+              </div>
+            </motion.section>
+
             <motion.div
               ref={beforeAfterRef}
               variants={itemVariants}
@@ -603,6 +745,103 @@ export default function LandingPage() {
                 <CarouselNext className="bg-purple-600 hover:bg-purple-700 text-white" />
               </Carousel>
             </motion.div>
+
+            {/* New section for How AI Image Upscaling Works */}
+            <motion.section
+              ref={upscalingRef}
+              initial="hidden"
+              animate={controls}
+              variants={containerVariants}
+              className="py-20"
+            >
+              <div className="container mx-auto px-4">
+                <motion.h3 variants={itemVariants} className="text-3xl font-bold mb-10 text-center">
+                  How AI Image Upscaling Works
+                </motion.h3>
+                <div className="flex flex-col md:flex-row items-center justify-center space-y-8 md:space-y-0 md:space-x-8">
+                  <motion.div 
+                    variants={itemVariants} 
+                    className="w-full md:w-1/2 relative aspect-video"
+                  >
+                    <AnimatePresence>
+                      {!isVideoReady && (
+                        <motion.div
+                          initial={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.5 }}
+                          className="absolute inset-0"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg" />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.5 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
+                              className="text-white text-2xl font-bold bg-black bg-opacity-50 px-6 py-3 rounded-full"
+                            >
+                              Loading Video...
+                            </motion.div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    {videoInView && !hasVideoError && (
+                      <ReactPlayer
+                        url="/videos/landingPage-HowTo/Howto-Upscale.mp4"
+                        playing
+                        loop
+                        muted
+                        playsinline
+                        width="100%"
+                        height="100%"
+                        onReady={() => setIsVideoReady(true)}
+                        onError={() => setHasVideoError(true)}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          opacity: isVideoReady ? 1 : 0,
+                          transition: 'opacity 0.5s ease-in-out',
+                        }}
+                        config={{
+                          file: {
+                            attributes: {
+                              crossOrigin: "anonymous",
+                              preload: "auto",
+                            },
+                            forceVideo: true,
+                            forceAudio: false,
+                          },
+                        }}
+                      />
+                    )}
+                    {hasVideoError && (
+                      <div className="absolute inset-0 flex items-center justify-center text-white bg-black bg-opacity-50 rounded-lg">
+                        <p>Sorry, there was an error loading the video. Please try again later.</p>
+                      </div>
+                    )}
+                  </motion.div>
+                  <motion.div variants={itemVariants} className="w-full md:w-1/2 space-y-4">
+                    <h4 className="text-2xl font-semibold">Enhance Your Images in 4 Steps</h4>
+                    <ol className="list-decimal list-inside space-y-2">
+                      <li>Upload your image</li>
+                      <li>Choose upscaling settings (2x, 4x, 6x, 8x, or 10x)</li>
+                      <li>Apply optional face enhancement with GFPGAN</li>
+                      <li>Download your high-resolution masterpiece</li>
+                    </ol>
+                    <p className="text-sm text-gray-300 mt-4">
+                      Powered by Real-ESRGAN, an advanced AI model that enhances image quality and resolution.
+                    </p>
+                    <ShimmerButton 
+                      onClick={scrollToWaitlist}
+                      className="mt-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold"
+                    >
+                      <span className="text-white">Join Waitlist for Image Upscaler</span>
+                    </ShimmerButton>
+                  </motion.div>
+                </div>
+              </div>
+            </motion.section>
 
             <motion.div
               ref={faqRef}

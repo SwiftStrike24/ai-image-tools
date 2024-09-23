@@ -11,15 +11,17 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'replicate.delivery',
       },
+      {
+        protocol: 'https',
+        hostname: 'fluxscaleai.com',
+      },
       // Add any other remote patterns as needed
     ],
-    // Removed 'domains' as it's deprecated
   },
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb'
     },
-    // Removed 'appDir: true' as it's now stable
   },
   transpilePackages: ['@clerk/clerk-sdk-node'],
   async headers() {

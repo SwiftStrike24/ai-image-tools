@@ -21,9 +21,9 @@ import ShinyButton from "@/components/magicui/shiny-button"
 import { resizeImage } from '@/utils/imageUtils'
 import { Progress } from "@/components/ui/progress"
 import { checkAndUpdateRateLimit, getUserUsage } from "@/actions/rateLimit"
-import { checkAndUpdateRateLimitPro } from "@/actions/Plans-rateLimit/rateLimit-Pro"
-import { checkAndUpdateRateLimitPremium } from "@/actions/Plans-rateLimit/rateLimit-Premium"
-import { checkAndUpdateRateLimitUltimate } from "@/actions/Plans-rateLimit/rateLimit-Ultimate"
+import { checkAndUpdateRateLimitPro, getUserUsagePro } from "@/actions/Plans-rateLimit/rateLimit-Pro"
+import { checkAndUpdateRateLimitPremium, getUserUsagePremium } from "@/actions/Plans-rateLimit/rateLimit-Premium"
+import { checkAndUpdateRateLimitUltimate, getUserUsageUltimate } from "@/actions/Plans-rateLimit/rateLimit-Ultimate"
 import { BorderBeam } from "@/components/magicui/border-beam"
 import { 
   UPSCALER_DAILY_LIMIT, 
@@ -31,6 +31,7 @@ import {
   PREMIUM_UPSCALER_MONTHLY_LIMIT, 
   ULTIMATE_UPSCALER_MONTHLY_LIMIT 
 } from "@/constants/rateLimits"
+import { getTimeUntilNextMonth } from '@/utils/dateUtils'
 
 // Constants
 const MAX_FILE_SIZE_MB = 50; // 50MB
@@ -68,6 +69,8 @@ function ImageUpscalerComponent() {
   const [isPro, setIsPro] = useState(false)
   const [isPremium, setIsPremium] = useState(false)
   const [isUltimate, setIsUltimate] = useState(false)
+  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(true)
+  const [subscriptionType, setSubscriptionType] = useState<'basic' | 'pro' | 'premium' | 'ultimate'>('basic')
 
   useEffect(() => {
     import('@/utils/browserUtils').then((module) => {
@@ -85,33 +88,55 @@ function ImageUpscalerComponent() {
       // Fetch user's subscription status
       const checkSubscription = async () => {
         try {
-          const response = await fetch('/api/check-subscription');
-          const { isPro, isPremium, isUltimate } = await response.json();
-          setIsPro(isPro);
-          setIsPremium(isPremium);
-          setIsUltimate(isUltimate);
+          setIsSubscriptionLoading(true)
+          const response = await fetch('/api/check-subscription')
+          const { isPro, isPremium, isUltimate } = await response.json()
+          setIsPro(isPro)
+          setIsPremium(isPremium)
+          setIsUltimate(isUltimate)
+          if (isUltimate) {
+            setSubscriptionType('ultimate')
+          } else if (isPremium) {
+            setSubscriptionType('premium')
+          } else if (isPro) {
+            setSubscriptionType('pro')
+          } else {
+            setSubscriptionType('basic')
+          }
         } catch (error) {
-          console.error('Error checking subscription:', error);
+          console.error('Error checking subscription:', error)
+        } finally {
+          setIsSubscriptionLoading(false)
         }
-      };
-      checkSubscription();
+      }
+      checkSubscription()
 
       // Fetch usage based on subscription type
       const fetchUsage = async () => {
         try {
-          const { usageCount, resetsIn } = await getUserUsage();
-          setDailyUsage(usageCount);
-          setResetsIn(resetsIn);
-        } catch (error: unknown) {
-          console.error(error);
+          let usageData
+          if (isUltimate) {
+            usageData = await getUserUsageUltimate()
+          } else if (isPremium) {
+            usageData = await getUserUsagePremium()
+          } else if (isPro) {
+            usageData = await getUserUsagePro()
+          } else {
+            usageData = await getUserUsage()
+          }
+          
+          setDailyUsage(usageData.usageCount)
+          setResetsIn(usageData.resetsIn)
+        } catch (error) {
+          console.error(error)
           if (error instanceof Error && error.message === "User not authenticated") {
-            setIsAuthenticated(false);
+            setIsAuthenticated(false)
           }
         }
-      };
-      fetchUsage();
+      }
+      fetchUsage()
     }
-  }, [isSimulationMode]);
+  }, [isSimulationMode, isPro, isPremium, isUltimate])
 
   const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -218,18 +243,22 @@ function ImageUpscalerComponent() {
     try {
       let canProceed, usageCount, resetsIn;
 
+      // Check if the user can proceed without incrementing the counter
       if (isUltimate) {
-        ({ canProceed, usageCount, resetsIn } = await checkAndUpdateRateLimitUltimate());
+        ({ canProceed, usageCount, resetsIn } = await checkAndUpdateRateLimitUltimate(false));
       } else if (isPremium) {
-        ({ canProceed, usageCount, resetsIn } = await checkAndUpdateRateLimitPremium());
+        ({ canProceed, usageCount, resetsIn } = await checkAndUpdateRateLimitPremium(false));
       } else if (isPro) {
-        ({ canProceed, usageCount, resetsIn } = await checkAndUpdateRateLimitPro());
+        ({ canProceed, usageCount, resetsIn } = await checkAndUpdateRateLimitPro(false));
       } else {
-        ({ canProceed, usageCount, resetsIn } = await checkAndUpdateRateLimit());
+        ({ canProceed, usageCount, resetsIn } = await checkAndUpdateRateLimit(false));
       }
 
       if (!canProceed) {
-        const limit = isUltimate ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : isPro ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT;
+        const limit = isUltimate ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : 
+                    isPremium ? PREMIUM_UPSCALER_MONTHLY_LIMIT : 
+                    isPro ? PRO_UPSCALER_MONTHLY_LIMIT : 
+                    UPSCALER_DAILY_LIMIT;
         toast({
           title: isUltimate || isPremium || isPro ? "Monthly limit reached" : "Daily limit reached",
           description: `You've reached your ${isUltimate || isPremium || isPro ? 'monthly' : 'daily'} limit of ${limit} upscaled images. Please try again ${isUltimate || isPremium || isPro ? 'next month' : 'tomorrow'} or upgrade your plan.`,
@@ -263,8 +292,20 @@ function ImageUpscalerComponent() {
       console.log("Received upscaled image URL:", upscaledImageUrl);
 
       setUpscaledImage(upscaledImageUrl);
+
+      // Only increment the usage counter after successful upscaling
+      if (isUltimate) {
+        await checkAndUpdateRateLimitUltimate(true);
+      } else if (isPremium) {
+        await checkAndUpdateRateLimitPremium(true);
+      } else if (isPro) {
+        await checkAndUpdateRateLimitPro(true);
+      } else {
+        await checkAndUpdateRateLimit(true);
+      }
+
       setRequestCount(prevCount => prevCount + 1);
-      setDailyUsage(prev => prev + 1); // Increment only on success
+      setDailyUsage(prev => prev + 1);
       setLastRequestTime(Date.now());
 
       toast({
