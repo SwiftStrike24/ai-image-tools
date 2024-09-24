@@ -1,6 +1,6 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { kv } from "@vercel/kv";
 import {
   UPSCALER_DAILY_LIMIT,
@@ -18,13 +18,36 @@ const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
 
 async function getUserSubscription(userId: string): Promise<string> {
   const subscriptionKey = `${SUBSCRIPTION_KEY_PREFIX}${userId}`;
-  const subscription = await kv.get(subscriptionKey);
+  let subscription;
+  try {
+    subscription = await kv.get(subscriptionKey);
+  } catch (kvError) {
+    console.error("Error accessing Vercel KV for subscription:", kvError);
+    // Fallback to a default subscription or another data source
+    subscription = "basic"; // You might want to adjust this based on your needs
+  }
   return subscription as string || "basic";
+}
+
+async function getUserId(): Promise<string | null> {
+  try {
+    const authResult = auth();
+    return authResult.userId;
+  } catch (error) {
+    console.error("Error getting userId from auth():", error);
+    try {
+      const user = await currentUser();
+      return user?.id || null;
+    } catch (fallbackError) {
+      console.error("Error getting userId from currentUser():", fallbackError);
+      return null;
+    }
+  }
 }
 
 // Modify the existing functions to check subscription
 export async function canGenerateImages(imagesToGenerate: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
-  const { userId } = auth();
+  const userId = await getUserId();
   
   if (!userId) {
     throw new Error("User not authenticated");
@@ -32,7 +55,16 @@ export async function canGenerateImages(imagesToGenerate: number): Promise<{ can
 
   const subscription = await getUserSubscription(userId);
   const key = `${GENERATOR_KEY_PREFIX}${userId}`;
-  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  let usageCount, lastUsageDate;
+  
+  try {
+    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  } catch (kvError) {
+    console.error("Error accessing Vercel KV for usage:", kvError);
+    // Fallback to default values
+    usageCount = 0;
+    lastUsageDate = null;
+  }
   
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
   let limit = subscription === "pro" ? PRO_GENERATOR_MONTHLY_LIMIT : GENERATOR_DAILY_LIMIT;
@@ -52,7 +84,7 @@ export async function canGenerateImages(imagesToGenerate: number): Promise<{ can
 
 // Separate function to increment generator usage after successful generation
 export async function incrementGeneratorUsage(imagesToGenerate: number): Promise<void> {
-  const { userId } = auth();
+  const userId = await getUserId();
   
   if (!userId) {
     throw new Error("User not authenticated");
@@ -61,7 +93,16 @@ export async function incrementGeneratorUsage(imagesToGenerate: number): Promise
   const key = `${GENERATOR_KEY_PREFIX}${userId}`;
   const today = new Date().toUTCString();
 
-  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  let usageCount, lastUsageDate;
+
+  try {
+    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  } catch (kvError) {
+    console.error("Error accessing Vercel KV for usage:", kvError);
+    // Fallback to default values
+    usageCount = 0;
+    lastUsageDate = null;
+  }
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
 
@@ -78,27 +119,60 @@ export async function incrementGeneratorUsage(imagesToGenerate: number): Promise
   });
 }
 
-export async function checkAndUpdateRateLimit(): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
-  const { userId } = auth();
+export async function checkRateLimit(): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
+  const userId = await getUserId();
   
   if (!userId) {
     throw new Error("User not authenticated");
   }
 
-  const subscription = await getUserSubscription(userId);
   const key = `${UPSCALER_KEY_PREFIX}${userId}`;
-  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  let usageCount, lastUsageDate;
+
+  try {
+    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  } catch (kvError) {
+    console.error("Error accessing Vercel KV for usage:", kvError);
+    // Fallback to default values
+    usageCount = 0;
+    lastUsageDate = null;
+  }
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
-  let limit = subscription === "pro" ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT;
 
-  if (isNewPeriod(lastUsageDate as string | null, subscription)) {
+  if (isNewDay(lastUsageDate as string | null)) {
     currentUsage = 0;
   }
 
-  if (currentUsage >= limit) {
-    const resetsIn = getTimeUntilReset(subscription);
-    return { canProceed: false, usageCount: currentUsage, resetsIn };
+  const canProceed = currentUsage < UPSCALER_DAILY_LIMIT;
+  const resetsIn = getTimeUntilReset('basic');
+
+  return { canProceed, usageCount: currentUsage, resetsIn };
+}
+
+export async function incrementRateLimit(): Promise<{ usageCount: number; resetsIn: string }> {
+  const userId = await getUserId();
+  
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  const key = `${UPSCALER_KEY_PREFIX}${userId}`;
+  let usageCount, lastUsageDate;
+
+  try {
+    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  } catch (kvError) {
+    console.error("Error accessing Vercel KV for usage:", kvError);
+    // Fallback to default values
+    usageCount = 0;
+    lastUsageDate = null;
+  }
+
+  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+
+  if (isNewDay(lastUsageDate as string | null)) {
+    currentUsage = 0;
   }
 
   currentUsage += 1;
@@ -109,12 +183,12 @@ export async function checkAndUpdateRateLimit(): Promise<{ canProceed: boolean; 
     [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + 1
   });
 
-  const resetsIn = getTimeUntilReset(subscription);
-  return { canProceed: true, usageCount: currentUsage, resetsIn };
+  const resetsIn = getTimeUntilReset('basic');
+  return { usageCount: currentUsage, resetsIn };
 }
 
 export async function getUserUsage(): Promise<{ usageCount: number; resetsIn: string }> {
-  const { userId } = auth();
+  const userId = await getUserId();
   
   if (!userId) {
     throw new Error("User not authenticated");
@@ -122,7 +196,16 @@ export async function getUserUsage(): Promise<{ usageCount: number; resetsIn: st
 
   const subscription = await getUserSubscription(userId);
   const key = `${UPSCALER_KEY_PREFIX}${userId}`;
-  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  let usageCount, lastUsageDate;
+
+  try {
+    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  } catch (kvError) {
+    console.error("Error accessing Vercel KV for usage:", kvError);
+    // Fallback to default values
+    usageCount = 0;
+    lastUsageDate = null;
+  }
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
 
@@ -136,7 +219,7 @@ export async function getUserUsage(): Promise<{ usageCount: number; resetsIn: st
 }
 
 export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
-  const { userId } = auth();
+  const userId = await getUserId();
   
   if (!userId) {
     throw new Error("User not authenticated");
@@ -144,7 +227,16 @@ export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Pr
 
   const subscription = await getUserSubscription(userId);
   const key = `${GENERATOR_KEY_PREFIX}${userId}`;
-  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  let usageCount, lastUsageDate;
+  
+  try {
+    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  } catch (kvError) {
+    console.error("Error accessing Vercel KV for usage:", kvError);
+    // Fallback to default values
+    usageCount = 0;
+    lastUsageDate = null;
+  }
   
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
   let limit = subscription === "pro" ? PRO_GENERATOR_MONTHLY_LIMIT : GENERATOR_DAILY_LIMIT;
@@ -171,7 +263,7 @@ export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Pr
 }
 
 export async function getGeneratorUsage(): Promise<{ usageCount: number; resetsIn: string; totalGenerated: number }> {
-  const { userId } = auth();
+  const userId = await getUserId();
   
   if (!userId) {
     throw new Error("User not authenticated");
@@ -179,7 +271,17 @@ export async function getGeneratorUsage(): Promise<{ usageCount: number; resetsI
 
   const subscription = await getUserSubscription(userId);
   const key = `${GENERATOR_KEY_PREFIX}${userId}`;
-  const [usageCount, lastUsageDate, totalGenerated] = await kv.mget([key, `${key}:date`, `${key}:total`]);
+  let usageCount, lastUsageDate, totalGenerated;
+
+  try {
+    [usageCount, lastUsageDate, totalGenerated] = await kv.mget([key, `${key}:date`, `${key}:total`]);
+  } catch (kvError) {
+    console.error("Error accessing Vercel KV for usage:", kvError);
+    // Fallback to default values
+    usageCount = 0;
+    lastUsageDate = null;
+    totalGenerated = 0;
+  }
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
   let total = typeof totalGenerated === 'number' ? totalGenerated : 0;
@@ -194,7 +296,7 @@ export async function getGeneratorUsage(): Promise<{ usageCount: number; resetsI
 
 // New function to check if prompt enhancement is allowed
 export async function canEnhancePrompt(): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
-  const { userId } = auth();
+  const userId = await getUserId();
   
   if (!userId) {
     throw new Error("User not authenticated");
@@ -202,7 +304,16 @@ export async function canEnhancePrompt(): Promise<{ canProceed: boolean; usageCo
 
   const subscription = await getUserSubscription(userId);
   const key = `${ENHANCE_PROMPT_KEY_PREFIX}${userId}`;
-  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  let usageCount, lastUsageDate;
+  
+  try {
+    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  } catch (kvError) {
+    console.error("Error accessing Vercel KV for usage:", kvError);
+    // Fallback to default values
+    usageCount = 0;
+    lastUsageDate = null;
+  }
   
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
   let limit = subscription === "pro" ? PRO_ENHANCE_PROMPT_MONTHLY_LIMIT : ENHANCE_PROMPT_DAILY_LIMIT;
@@ -222,7 +333,7 @@ export async function canEnhancePrompt(): Promise<{ canProceed: boolean; usageCo
 
 // New function to increment prompt enhancement usage
 export async function incrementEnhancePromptUsage(): Promise<void> {
-  const { userId } = auth();
+  const userId = await getUserId();
   
   if (!userId) {
     throw new Error("User not authenticated");
@@ -231,7 +342,16 @@ export async function incrementEnhancePromptUsage(): Promise<void> {
   const key = `${ENHANCE_PROMPT_KEY_PREFIX}${userId}`;
   const today = new Date().toUTCString();
 
-  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  let usageCount, lastUsageDate;
+
+  try {
+    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  } catch (kvError) {
+    console.error("Error accessing Vercel KV for usage:", kvError);
+    // Fallback to default values
+    usageCount = 0;
+    lastUsageDate = null;
+  }
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
 
@@ -250,7 +370,7 @@ export async function incrementEnhancePromptUsage(): Promise<void> {
 
 // New function to get prompt enhancement usage
 export async function getEnhancePromptUsage(): Promise<{ usageCount: number; resetsIn: string; totalEnhanced: number }> {
-  const { userId } = auth();
+  const userId = await getUserId();
   
   if (!userId) {
     throw new Error("User not authenticated");
@@ -258,7 +378,17 @@ export async function getEnhancePromptUsage(): Promise<{ usageCount: number; res
 
   const subscription = await getUserSubscription(userId);
   const key = `${ENHANCE_PROMPT_KEY_PREFIX}${userId}`;
-  const [usageCount, lastUsageDate, totalEnhanced] = await kv.mget([key, `${key}:date`, `${key}:total`]);
+  let usageCount, lastUsageDate, totalEnhanced;
+
+  try {
+    [usageCount, lastUsageDate, totalEnhanced] = await kv.mget([key, `${key}:date`, `${key}:total`]);
+  } catch (kvError) {
+    console.error("Error accessing Vercel KV for usage:", kvError);
+    // Fallback to default values
+    usageCount = 0;
+    lastUsageDate = null;
+    totalEnhanced = 0;
+  }
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
   let total = typeof totalEnhanced === 'number' ? totalEnhanced : 0;

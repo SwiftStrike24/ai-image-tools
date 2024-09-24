@@ -32,7 +32,7 @@ const plans = [
     ],
     cta: 'Upgrade to Pro',
     popular: true,
-    paymentLink: 'https://buy.stripe.com/test_3cseY93JD8kE3Wo9AA'
+    // paymentLink: 'https://buy.stripe.com/test_3cseY93JD8kE3Wo9AA'
   },
   {
     name: 'Premium',
@@ -44,7 +44,7 @@ const plans = [
       'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
     ],
     cta: 'Go Premium',
-    paymentLink: 'https://buy.stripe.com/test_6oE9DPcg958sboQ9AB'
+    // paymentLink: 'https://buy.stripe.com/test_6oE9DPcg958sboQ9AB'
   },
   {
     name: 'Ultimate',
@@ -56,7 +56,7 @@ const plans = [
       'Exclusive access to GPT-4o for prompt enhancements',
     ],
     cta: 'Go Ultimate',
-    paymentLink: 'https://buy.stripe.com/test_14kcQ15RL7gA2Sk146'
+    // paymentLink: 'https://buy.stripe.com/test_14kcQ15RL7gA2Sk146'
   },
 ]
 
@@ -85,7 +85,7 @@ const StripeBuyButton = ({ buyButtonId, publishableKey }: { buyButtonId: string;
   )
 }
 
-export function PricingComponentComponent() {
+export function PricingComponentComponent({ scrollToWaitlist }: { scrollToWaitlist: () => void }) {
   const [isMonthly, setIsMonthly] = useState(true)
 
   return (
@@ -114,10 +114,10 @@ export function PricingComponentComponent() {
                     color={["#8B5CF6", "#6366F1", "#EC4899"]}
                     className="h-full"
                   >
-                    <PlanContent plan={plan} isMonthly={isMonthly} />
+                    <PlanContent plan={plan} isMonthly={isMonthly} scrollToWaitlist={scrollToWaitlist} />
                   </ShineBorder>
                 ) : (
-                  <PlanContent plan={plan} isMonthly={isMonthly} />
+                  <PlanContent plan={plan} isMonthly={isMonthly} scrollToWaitlist={scrollToWaitlist} />
                 )}
               </MagicCard>
             </motion.div>
@@ -185,13 +185,14 @@ export function PricingComponentComponent() {
   )
 }
 
-function PlanContent({ plan, isMonthly }: { plan: any; isMonthly: boolean }) {
+function PlanContent({ plan, isMonthly, scrollToWaitlist }: { plan: any; isMonthly: boolean; scrollToWaitlist: () => void }) {
   const handleSubscribe = () => {
-    if (plan.paymentLink) {
-      window.location.href = plan.paymentLink;
-    } else {
-      console.log(`${plan.name} plan selected`);
-    }
+    // if (plan.paymentLink) {
+    //   window.location.href = plan.paymentLink;
+    // } else {
+    //   console.log(`${plan.name} plan selected`);
+    // }
+    scrollToWaitlist();
   };
 
   return (

@@ -249,8 +249,10 @@ export default function LandingPage() {
   }
 
   const controls = useAnimation()
-  const ref = useRef(null)
-  const inView = useInView(ref)
+  const { ref, inView } = useInView({
+    triggerOnce: true,
+    threshold: 0.1,
+  })
 
   useEffect(() => {
     if (inView) {
@@ -319,8 +321,13 @@ export default function LandingPage() {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  const ImageGenVideoUrl = "https://2k0gowvr1yoiaado.public.blob.vercel-storage.com/landingPage-HowTo/Howto-ImageGen-pKsOyDgJ4oR0CjvEEHdPQa1yj9oEFc.mp4"
-  const UpscaleVideoUrl = "https://2k0gowvr1yoiaado.public.blob.vercel-storage.com/landingPage-HowTo/Howto-Upscale-2chZeXRFFoBIXXpEqWxtrmXbj7VpaB.mp4"
+  // vercel storage"
+  // const ImageGenVideoUrl = "https://2k0gowvr1yoiaado.public.blob.vercel-storage.com/landingPage-HowTo/Howto-ImageGen-pKsOyDgJ4oR0CjvEEHdPQa1yj9oEFc.mp4"
+  // const UpscaleVideoUrl = "https://2k0gowvr1yoiaado.public.blob.vercel-storage.com/landingPage-HowTo/Howto-Upscale-2chZeXRFFoBIXXpEqWxtrmXbj7VpaB.mp4"
+
+  // local storage
+  const ImageGenVideoUrl = "/videos/landingPage-HowTo/Howto-ImageGen.mp4"
+  const UpscaleVideoUrl = "/videos/landingPage-HowTo/Howto-Upscale.mp4"
 
   const [isVideoReady, setIsVideoReady] = useState(false)
   const [hasVideoError, setHasVideoError] = useState(false)
@@ -912,7 +919,7 @@ export default function LandingPage() {
                 Unlock the full potential of AI-powered image tools
               </p>
               <PricingWrapper>
-                <PricingComponentComponent />
+                <PricingComponentComponent scrollToWaitlist={scrollToWaitlist} />
               </PricingWrapper>
             </motion.div>
 

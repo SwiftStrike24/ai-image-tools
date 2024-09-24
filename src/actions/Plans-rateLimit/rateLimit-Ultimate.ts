@@ -10,7 +10,7 @@ import {
   ULTIMATE_GENERATOR_KEY_PREFIX,
   ULTIMATE_ENHANCE_PROMPT_KEY_PREFIX,
 } from "@/constants/rateLimits";
-import { isNewMonth, getTimeUntilNextMonth } from "@/utils/dateUtils";
+import { isNewMonth, getTimeUntilEndOfMonth } from "@/utils/dateUtils";
 
 export async function canGenerateImagesUltimate(imagesToGenerate: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
   const { userId } = auth();
@@ -28,7 +28,7 @@ export async function canGenerateImagesUltimate(imagesToGenerate: number): Promi
     currentUsage = 0;
   }
 
-  const resetsIn = getTimeUntilNextMonth();
+  const resetsIn = getTimeUntilEndOfMonth();
   
   if (currentUsage + imagesToGenerate > ULTIMATE_GENERATOR_MONTHLY_LIMIT) {
     return { canProceed: false, usageCount: currentUsage, resetsIn };
@@ -81,7 +81,7 @@ export async function checkAndUpdateRateLimitUltimate(increment: boolean = true)
   }
 
   if (currentUsage >= ULTIMATE_UPSCALER_MONTHLY_LIMIT) {
-    const resetsIn = getTimeUntilNextMonth();
+    const resetsIn = getTimeUntilEndOfMonth();
     return { canProceed: false, usageCount: currentUsage, resetsIn };
   }
 
@@ -95,7 +95,7 @@ export async function checkAndUpdateRateLimitUltimate(increment: boolean = true)
     });
   }
 
-  const resetsIn = getTimeUntilNextMonth();
+  const resetsIn = getTimeUntilEndOfMonth();
   return { canProceed: true, usageCount: currentUsage, resetsIn };
 }
 
@@ -136,6 +136,6 @@ export async function getUserUsageUltimate(): Promise<{ usageCount: number; rese
     currentUsage = 0;
   }
 
-  const resetsIn = getTimeUntilNextMonth();
+  const resetsIn = getTimeUntilEndOfMonth();
   return { usageCount: currentUsage, resetsIn };
 }

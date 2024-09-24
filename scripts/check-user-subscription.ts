@@ -11,6 +11,17 @@ interface SubscriptionSummary {
   [key: string]: number;
 }
 
+async function getUserSubscription(userId: string): Promise<string> {
+  try {
+    const subscriptionKey = `${SUBSCRIPTION_KEY_PREFIX}${userId}`;
+    const subscription = await kv.get(subscriptionKey);
+    return subscription as string || "basic";
+  } catch (error) {
+    // Silently fallback to "basic" subscription on error
+    return "basic";
+  }
+}
+
 async function checkAllUserSubscriptions() {
   try {
     // Fetch all users from Clerk
@@ -36,9 +47,7 @@ async function checkAllUserSubscriptions() {
       const username = user.username || `${user.firstName} ${user.lastName}`.trim() || 'Unknown';
       const email = user.emailAddresses[0]?.emailAddress || 'Unknown';
 
-      // Check subscription in Vercel KV
-      const subscriptionKey = `${SUBSCRIPTION_KEY_PREFIX}${userId}`;
-      const subscription = (await kv.get(subscriptionKey) as string) || 'basic';
+      const subscription = await getUserSubscription(userId);
 
       console.log(`${userId.padEnd(32)} | ${username.padEnd(18)} | ${email.padEnd(30)} | ${subscription}`);
 
