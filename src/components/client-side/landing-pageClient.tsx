@@ -304,6 +304,7 @@ export default function LandingPage() {
   useEffect(() => {
     // Set up the before and after image pairs
     setBeforeAfterImages([
+      { before: '/images/landing-page/before-after-images/before-image5.webp', after: '/images/landing-page/before-after-images/after-image5.jpg' },
       { before: '/images/landing-page/before-after-images/before-image2.webp', after: '/images/landing-page/before-after-images/after-image2.jpg' },
       { before: '/images/landing-page/before-after-images/before-image.jpg', after: '/images/landing-page/before-after-images/after-image.jpg' },
       { before: '/images/landing-page/before-after-images/before-image3.webp', after: '/images/landing-page/before-after-images/after-image3.jpg' },
