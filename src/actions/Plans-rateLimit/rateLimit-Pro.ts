@@ -10,7 +10,7 @@ import {
   PRO_GENERATOR_KEY_PREFIX,
   PRO_ENHANCE_PROMPT_KEY_PREFIX,
 } from "@/constants/rateLimits";
-import { isNewMonth, getTimeUntilNextMonth } from "@/utils/dateUtils";
+import { isNewPeriod, getTimeUntilReset } from "@/utils/dateUtils";
 
 export async function canGenerateImagesPro(imagesToGenerate: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
   const { userId } = auth();
@@ -24,11 +24,11 @@ export async function canGenerateImagesPro(imagesToGenerate: number): Promise<{ 
   
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
 
-  if (isNewMonth(lastUsageDate as string | null)) {
+  if (isNewPeriod(lastUsageDate as string | null, true)) {
     currentUsage = 0;
   }
 
-  const resetsIn = getTimeUntilNextMonth();
+  const resetsIn = getTimeUntilReset(true);
   
   if (currentUsage + imagesToGenerate > PRO_GENERATOR_MONTHLY_LIMIT) {
     return { canProceed: false, usageCount: currentUsage, resetsIn };
@@ -51,7 +51,7 @@ export async function incrementGeneratorUsagePro(imagesToGenerate: number): Prom
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
 
-  if (isNewMonth(lastUsageDate as string | null)) {
+  if (isNewPeriod(lastUsageDate as string | null, true)) {
     currentUsage = 0;
   }
 
@@ -76,12 +76,11 @@ export async function checkAndUpdateRateLimitPro(): Promise<{ canProceed: boolea
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
 
-  if (isNewMonth(lastUsageDate as string | null)) {
+  if (isNewPeriod(lastUsageDate as string | null, true)) {
     currentUsage = 0;
   }
-
   if (currentUsage >= PRO_UPSCALER_MONTHLY_LIMIT) {
-    const resetsIn = getTimeUntilNextMonth();
+    const resetsIn = getTimeUntilReset(true);
     return { canProceed: false, usageCount: currentUsage, resetsIn };
   }
 
@@ -93,7 +92,7 @@ export async function checkAndUpdateRateLimitPro(): Promise<{ canProceed: boolea
     [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + 1
   });
 
-  const resetsIn = getTimeUntilNextMonth();
+  const resetsIn = getTimeUntilReset(true);
   return { canProceed: true, usageCount: currentUsage, resetsIn };
 }
 

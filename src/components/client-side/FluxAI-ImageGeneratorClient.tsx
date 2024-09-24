@@ -36,7 +36,7 @@ import { canGenerateImagesPro, incrementGeneratorUsagePro } from "@/actions/Plan
 import { canGenerateImagesPremium, incrementGeneratorUsagePremium } from "@/actions/Plans-rateLimit/rateLimit-Premium"
 import { canGenerateImagesUltimate, incrementGeneratorUsageUltimate } from "@/actions/Plans-rateLimit/rateLimit-Ultimate"
 import { PRO_GENERATOR_MONTHLY_LIMIT, PREMIUM_GENERATOR_MONTHLY_LIMIT, ULTIMATE_GENERATOR_MONTHLY_LIMIT, PRO_ENHANCE_PROMPT_MONTHLY_LIMIT, PREMIUM_ENHANCE_PROMPT_MONTHLY_LIMIT, ULTIMATE_ENHANCE_PROMPT_MONTHLY_LIMIT } from "@/constants/rateLimits"
-import { getTimeUntilNextMonth } from '@/utils/dateUtils'
+import { useSubscription } from '@/hooks/useSubscription'
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -69,8 +69,6 @@ export default function FluxAIImageGenerator() {
   const [originalPrompt, setOriginalPrompt] = useState('')
   const [followUpPrompts, setFollowUpPrompts] = useState<string[]>([])
   const [currentSeed, setCurrentSeed] = useState<number | null>(null)
-  const [dailyUsage, setDailyUsage] = useState(0)
-  const [resetsIn, setResetsIn] = useState("")
   const [isAuthenticated, setIsAuthenticated] = useState(true)
   const [enhancementModel, setEnhancementModel] = useState<'meta-llama-3-8b-instruct' | 'gpt-4o-mini'>('meta-llama-3-8b-instruct')
   const [enhancedPromptHistory, setEnhancedPromptHistory] = useState<string[]>([])
@@ -78,88 +76,55 @@ export default function FluxAIImageGenerator() {
   const [enhancePromptUsage, setEnhancePromptUsage] = useState(0)
   const [enhancePromptResetsIn, setEnhancePromptResetsIn] = useState("")
   const [enhancePromptLimitReached, setEnhancePromptLimitReached] = useState(false)
-  const [isPro, setIsPro] = useState(false)
-  const [isPremium, setIsPremium] = useState(false)
-  const [isUltimate, setIsUltimate] = useState(false)
-  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(true)
-  const [subscriptionType, setSubscriptionType] = useState<'basic' | 'pro' | 'premium' | 'ultimate'>('basic')
+  const { 
+    subscriptionType, 
+    usage,
+    resetsIn, 
+    isLoading: isSubscriptionLoading, 
+    checkAndUpdateLimit,
+    fetchUsage
+  } = useSubscription();
+
+  const [usageCount, setUsageCount] = useState(usage || 0);
 
   useEffect(() => {
     if (!isSimulationMode) {
-      // Fetch user's subscription status
-      const checkSubscription = async () => {
-        try {
-          setIsSubscriptionLoading(true)
-          const response = await fetch('/api/check-subscription')
-          const { isPro, isPremium, isUltimate } = await response.json()
-          setIsPro(isPro)
-          setIsPremium(isPremium)
-          setIsUltimate(isUltimate)
-          if (isUltimate) {
-            setSubscriptionType('ultimate')
-          } else if (isPremium) {
-            setSubscriptionType('premium')
-          } else if (isPro) {
-            setSubscriptionType('pro')
-          } else {
-            setSubscriptionType('basic')
-          }
-        } catch (error) {
-          console.error('Error checking subscription:', error)
-        } finally {
-          setIsSubscriptionLoading(false)
-        }
-      }
-      checkSubscription()
-
-      // Fetch usage based on subscription type
-      const fetchUsage = async () => {
-        try {
-          let usageData
-          if (isUltimate) {
-            usageData = await canGenerateImagesUltimate(1)
-          } else if (isPremium) {
-            usageData = await canGenerateImagesPremium(1)
-          } else if (isPro) {
-            usageData = await canGenerateImagesPro(1)
-          } else {
-            usageData = await getGeneratorUsage()
-          }
-          
-          setDailyUsage(usageData.usageCount)
-          setResetsIn(usageData.resetsIn)
-        } catch (error) {
-          console.error(error)
-          if (error instanceof Error && error.message === "User not authenticated") {
-            setIsAuthenticated(false)
-          }
-        }
-      }
-      fetchUsage()
+      fetchUsage();
 
       getEnhancePromptUsage().then(({ usageCount, resetsIn }) => {
         setEnhancePromptUsage(usageCount)
         setEnhancePromptResetsIn(resetsIn)
       }).catch(console.error)
     }
-  }, [isSimulationMode, isPro, isPremium, isUltimate])
+  }, [isSimulationMode, fetchUsage])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (isLoading) return
-
-    let currentPrompt = showSeedInput ? followUpPrompt : prompt
-    const isFollowUp = showSeedInput && followUpPrompt?.trim()
-
-    if (!currentPrompt?.trim()) {
-      setError("Please enter a prompt before generating images.")
-      return
-    }
-
-    setIsLoading(true)
     setError(null)
+    setIsLoading(true)
 
     try {
+      if (!isSimulationMode) {
+        const canProceed = await checkAndUpdateLimit(numOutputs);
+        if (!canProceed) {
+          const limit = subscriptionType === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
+                        subscriptionType === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
+                        subscriptionType === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT : 
+                        GENERATOR_DAILY_LIMIT;
+          setError(`You've reached your ${subscriptionType !== 'basic' ? 'monthly' : 'daily'} limit. You can generate ${limit - usage} more image${limit - usage !== 1 ? 's' : ''} ${subscriptionType !== 'basic' ? 'this month' : 'today'}.`);
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      let currentPrompt = showSeedInput ? followUpPrompt : prompt
+      const isFollowUp = showSeedInput && followUpPrompt?.trim()
+
+      if (!currentPrompt?.trim()) {
+        setError("Please enter a prompt before generating images.")
+        return
+      }
+
       let enhancedPrompt = currentPrompt
       let enhancementSuccessful = false
       let usedEnhancementModel: 'meta-llama-3-8b-instruct' | 'gpt-4o-mini' | null = null
@@ -194,26 +159,25 @@ export default function FluxAIImageGenerator() {
         }
       }
 
-      // Check rate limits after enhancing prompt
       if (!isSimulationMode) {
         let canProceed, usageCount, resetsIn
 
-        if (isUltimate) {
+        if (subscriptionType === 'ultimate') {
           ({ canProceed, usageCount, resetsIn } = await canGenerateImagesUltimate(numOutputs))
-        } else if (isPremium) {
+        } else if (subscriptionType === 'premium') {
           ({ canProceed, usageCount, resetsIn } = await canGenerateImagesPremium(numOutputs))
-        } else if (isPro) {
+        } else if (subscriptionType === 'pro') {
           ({ canProceed, usageCount, resetsIn } = await canGenerateImagesPro(numOutputs))
         } else {
           ({ canProceed, usageCount, resetsIn } = await canGenerateImages(numOutputs))
         }
 
         if (!canProceed) {
-          const limit = isUltimate ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
-                        isPremium ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
-                        isPro ? PRO_GENERATOR_MONTHLY_LIMIT : 
+          const limit = subscriptionType === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
+                        subscriptionType === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
+                        subscriptionType === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT : 
                         GENERATOR_DAILY_LIMIT
-          setError(`You've reached your ${isUltimate || isPremium || isPro ? 'monthly' : 'daily'} limit. You can generate ${limit - usageCount} more image${limit - usageCount !== 1 ? 's' : ''} ${isUltimate || isPremium || isPro ? 'this month' : 'today'}.`)
+          setError(`You've reached your ${subscriptionType !== 'basic' ? 'monthly' : 'daily'} limit. You can generate ${limit - usageCount} more image${limit - usageCount !== 1 ? 's' : ''} ${subscriptionType !== 'basic' ? 'this month' : 'today'}.`)
           setIsLoading(false)
           return
         }
@@ -222,7 +186,6 @@ export default function FluxAIImageGenerator() {
       let finalPrompt = enhancementSuccessful ? enhancedPrompt : currentPrompt
       console.log(`Final prompt ${enhancementSuccessful ? 'after enhancement' : 'without enhancement'}: ${finalPrompt}`)
 
-      // Update originalPrompt and followUpPrompts
       if (isFollowUp) {
         setFollowUpPrompts(prev => [...prev, currentPrompt])
         finalPrompt = `${originalPrompt} ${enhancedPrompt}`
@@ -252,20 +215,18 @@ export default function FluxAIImageGenerator() {
       console.log("Results received from generateFluxImage:", results)
 
       if (results.length > 0) {
-        // Increment usage after successful image generation
         if (!isSimulationMode) {
-          if (isUltimate) {
+          if (subscriptionType === 'ultimate') {
             await incrementGeneratorUsageUltimate(numOutputs)
-          } else if (isPremium) {
+          } else if (subscriptionType === 'premium') {
             await incrementGeneratorUsagePremium(numOutputs)
-          } else if (isPro) {
+          } else if (subscriptionType === 'pro') {
             await incrementGeneratorUsagePro(numOutputs)
           } else {
             await incrementGeneratorUsage(numOutputs)
           }
-          setDailyUsage(prev => prev + numOutputs)
+          fetchUsage()
 
-          // Only increment enhance prompt usage if enhancement was successful
           if (enhancementSuccessful) {
             await incrementEnhancePromptUsage()
             setEnhancePromptUsage(prev => prev + 1)
@@ -282,7 +243,7 @@ export default function FluxAIImageGenerator() {
         setCurrentSeed(newSeed)
 
         const newHistoryEntry: PromptHistoryEntry = { 
-          prompt: currentPrompt, // Store only the user-added follow-up prompt
+          prompt: currentPrompt,
           images: newImageResults,
           followUpLevel: isFollowUp ? followUpLevel : 1,
           seed: newSeed,
@@ -301,7 +262,6 @@ export default function FluxAIImageGenerator() {
         setIsFocused(false)
         setFollowUpLevel(prev => isFollowUp ? prev + 1 : 1)
         
-        // Reset followUpPrompt but keep showSeedInput true for follow-ups
         setFollowUpPrompt('')
         setShowSeedInput(isFollowUp ? true : false)
 
@@ -333,12 +293,10 @@ export default function FluxAIImageGenerator() {
 
     try {
       if (focusedImageIndex === index) {
-        // This is the unfocus action
         setFocusedImageIndex(null)
         setIsFocused(false)
         
         if (followUpLevel === 1) {
-          // Clear the seed and form only at level 1
           setCurrentSeed(null)
           setShowSeedInput(false)
           setFollowUpPrompt('')
@@ -347,14 +305,12 @@ export default function FluxAIImageGenerator() {
             description: "The seed has been cleared. You can now generate new images or refocus.",
           })
         } else {
-          // For level 2 and beyond, just update UI
           toast({
             title: "Focus Cleared",
             description: "Image unfocused. The seed and follow-up prompt remain unchanged.",
           })
         }
       } else {
-        // Focus action
         setFocusedImageIndex(index)
         setIsFocused(true)
         
@@ -475,16 +431,16 @@ export default function FluxAIImageGenerator() {
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault() // Prevent default to avoid line break
+      e.preventDefault()
       handleSubmit(e as unknown as React.FormEvent)
     }
   }
 
   const goToPreviousFollowUp = useCallback(() => {
-    if (followUpLevel <= 1) return // Don't go back if we're at the initial level
+    if (followUpLevel <= 1) return
 
     const newLevel = followUpLevel - 1
-    const previousEntry = promptHistory[newLevel - 1] // Get the previous entry
+    const previousEntry = promptHistory[newLevel - 1]
 
     if (!previousEntry) {
       console.error("Entry not found in prompt history")
@@ -496,16 +452,12 @@ export default function FluxAIImageGenerator() {
     setImageUrls(previousEntry.images.map(result => result.imageUrls[0]))
     setCurrentSeed(previousEntry.seed)
 
-    // Keep the original prompt unchanged
-    // Update follow-up prompts
     setFollowUpPrompts(prevFollowUps => prevFollowUps.slice(0, newLevel - 1))
 
-    // Set only the user-added follow-up prompt
     setFollowUpPrompt(previousEntry.prompt)
 
     setShowSeedInput(true)
     
-    // Trim the prompt history to the current level
     setPromptHistory(prevHistory => prevHistory.slice(0, newLevel))
     setCurrentPromptIndex(newLevel - 1)
     setFocusedImageIndex(null)
@@ -520,9 +472,9 @@ export default function FluxAIImageGenerator() {
   const handleEnhancePromptToggle = (checked: boolean) => {
     setIsEnhancePromptEnabled(checked)
     if (checked) {
-      const limit = isUltimate ? ULTIMATE_ENHANCE_PROMPT_MONTHLY_LIMIT :
-                    isPremium ? PREMIUM_ENHANCE_PROMPT_MONTHLY_LIMIT :
-                    isPro ? PRO_ENHANCE_PROMPT_MONTHLY_LIMIT :
+      const limit = subscriptionType === 'ultimate' ? ULTIMATE_ENHANCE_PROMPT_MONTHLY_LIMIT :
+                    subscriptionType === 'premium' ? PREMIUM_ENHANCE_PROMPT_MONTHLY_LIMIT :
+                    subscriptionType === 'pro' ? PRO_ENHANCE_PROMPT_MONTHLY_LIMIT :
                     ENHANCE_PROMPT_DAILY_LIMIT
       setEnhancePromptLimitReached(enhancePromptUsage >= limit)
     } else {
@@ -546,18 +498,18 @@ export default function FluxAIImageGenerator() {
           <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">
-                {isUltimate ? 'Monthly Usage (Ultimate Plan)' : 
-                 isPremium ? 'Monthly Usage (Premium Plan)' : 
-                 isPro ? 'Monthly Usage (Pro Plan)' : 
+                {subscriptionType === 'ultimate' ? 'Monthly Usage (Ultimate Plan)' : 
+                 subscriptionType === 'premium' ? 'Monthly Usage (Premium Plan)' : 
+                 subscriptionType === 'pro' ? 'Monthly Usage (Pro Plan)' : 
                  'Daily Usage (Free Plan)'}
               </span>
               {isSimulationMode ? (
                 <span className="text-sm font-medium">Simulation Mode</span>
               ) : (
                 <span className="text-sm font-medium">
-                  {dailyUsage} / {isUltimate ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
-                                  isPremium ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
-                                  isPro ? PRO_GENERATOR_MONTHLY_LIMIT : 
+                  {usageCount} / {subscriptionType === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
+                                  subscriptionType === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
+                                  subscriptionType === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT : 
                                   GENERATOR_DAILY_LIMIT}
                 </span>
               )}
@@ -565,17 +517,17 @@ export default function FluxAIImageGenerator() {
             {!isSimulationMode && (
               <>
                 <Progress 
-                  value={(dailyUsage / (isUltimate ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
-                                        isPremium ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
-                                        isPro ? PRO_GENERATOR_MONTHLY_LIMIT : 
+                  value={(usageCount / (subscriptionType === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
+                                        subscriptionType === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
+                                        subscriptionType === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT : 
                                         GENERATOR_DAILY_LIMIT)) * 100} 
                   className="h-2" 
                 />
                 <p className="text-xs text-purple-300">
-                  {(isUltimate ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
-                    isPremium ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
-                    isPro ? PRO_GENERATOR_MONTHLY_LIMIT : 
-                    GENERATOR_DAILY_LIMIT) - dailyUsage} generations remaining. 
+                  {(subscriptionType === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
+                    subscriptionType === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
+                    subscriptionType === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT : 
+                    GENERATOR_DAILY_LIMIT) - usageCount} generations remaining. 
                   Resets in {resetsIn}.
                 </p>
               </>
@@ -790,18 +742,15 @@ export default function FluxAIImageGenerator() {
                     
                     {!isSimulationMode && (
                       <span className="text-sm text-purple-300">
-                        {enhancePromptUsage}/{isUltimate ? "∞" : 
-                                            isPremium ? "∞" : 
-                                            isPro ? "∞" : 
-                                            ENHANCE_PROMPT_DAILY_LIMIT}
+                        {enhancePromptUsage}/{subscriptionType === 'ultimate' || subscriptionType === 'premium' || subscriptionType === 'pro' ? "∞" : ENHANCE_PROMPT_DAILY_LIMIT}
                       </span>
                     )}
                   </div>
                   
                   {isEnhancePromptEnabled && enhancePromptLimitReached && (
                     <p className="text-red-500 text-sm mt-2">
-                      {isUltimate || isPremium || isPro ? 'Monthly' : 'Daily'} limit reached. 
-                      {isUltimate || isPremium || isPro ? ' Unlimited enhancements available.' : 
+                      {subscriptionType !== 'basic' ? 'Monthly' : 'Daily'} limit reached. 
+                      {subscriptionType !== 'basic' ? ' Unlimited enhancements available.' : 
                        `Enhance up to ${ENHANCE_PROMPT_DAILY_LIMIT} prompts per day.`}
                       <br />
                       Resets in: {enhancePromptResetsIn}
@@ -811,20 +760,20 @@ export default function FluxAIImageGenerator() {
 
                 <ShinyButton
                   onClick={handleSubmit}
-                  disabled={isLoading || (!showSeedInput && !prompt.trim()) || (showSeedInput && !followUpPrompt?.trim()) || dailyUsage >= GENERATOR_DAILY_LIMIT}
+                  disabled={isLoading || (!showSeedInput && !prompt.trim()) || (showSeedInput && !followUpPrompt?.trim()) || usageCount >= GENERATOR_DAILY_LIMIT}
                   className={cn(
                     "w-full py-2 md:py-3 text-base md:text-lg font-semibold",
-                    (isLoading || (!showSeedInput && !prompt.trim()) || (showSeedInput && !followUpPrompt?.trim()) || dailyUsage >= GENERATOR_DAILY_LIMIT) && "opacity-50 cursor-not-allowed"
+                    (isLoading || (!showSeedInput && !prompt.trim()) || (showSeedInput && !followUpPrompt?.trim()) || usageCount >= GENERATOR_DAILY_LIMIT) && "opacity-50 cursor-not-allowed"
                   )}
                   text={
                     isLoading 
                       ? "Generating..." 
-                      : dailyUsage >= GENERATOR_DAILY_LIMIT 
+                      : usageCount >= GENERATOR_DAILY_LIMIT 
                         ? "Daily Limit Reached" 
                         : 'Generate Image(s)'
                   }
                 />
-                {dailyUsage >= GENERATOR_DAILY_LIMIT && (
+                {usageCount >= GENERATOR_DAILY_LIMIT && (
                   <p className="text-xs text-red-400 mt-2">
                     You&apos;ve reached your daily limit. Please try again tomorrow or upgrade your plan.
                   </p>

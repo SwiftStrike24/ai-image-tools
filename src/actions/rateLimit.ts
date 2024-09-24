@@ -23,8 +23,7 @@ async function getUserSubscription(userId: string): Promise<string> {
     subscription = await kv.get(subscriptionKey);
   } catch (kvError) {
     console.error("Error accessing Vercel KV for subscription:", kvError);
-    // Fallback to a default subscription or another data source
-    subscription = "basic"; // You might want to adjust this based on your needs
+    subscription = "basic";
   }
   return subscription as string || "basic";
 }

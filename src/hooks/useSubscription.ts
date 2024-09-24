@@ -1,105 +1,93 @@
-import { useState, useEffect } from 'react';
-import { checkRateLimit, incrementRateLimit, getUserUsage } from "@/actions/rateLimit";
-import { checkAndUpdateRateLimitPro } from "@/actions/Plans-rateLimit/rateLimit-Pro";
-import { checkAndUpdateRateLimitPremium } from "@/actions/Plans-rateLimit/rateLimit-Premium";
-import { checkAndUpdateRateLimitUltimate, getUserUsageUltimate } from "@/actions/Plans-rateLimit/rateLimit-Ultimate";
-import { getTimeUntilReset } from '@/utils/dateUtils';
+import { useState, useEffect, useCallback } from 'react';
+import { canGenerateImages, getGeneratorUsage } from "@/actions/rateLimit";
+import { canGenerateImagesPro } from "@/actions/Plans-rateLimit/rateLimit-Pro";
+import { canGenerateImagesPremium } from "@/actions/Plans-rateLimit/rateLimit-Premium";
+import { canGenerateImagesUltimate } from "@/actions/Plans-rateLimit/rateLimit-Ultimate";
 
-type SubscriptionType = 'basic' | 'pro' | 'premium' | 'ultimate';
+const CACHE_DURATION = 60000; // 1 minute in milliseconds
 
 export function useSubscription() {
-  const [subscriptionType, setSubscriptionType] = useState<SubscriptionType>('basic');
+  const [subscriptionType, setSubscriptionType] = useState('basic');
   const [usage, setUsage] = useState(0);
-  const [resetsIn, setResetsIn] = useState("");
+  const [resetsIn, setResetsIn] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [lastFetchTime, setLastFetchTime] = useState(0);
 
-  // Add this new state
-  const [resetPeriod, setResetPeriod] = useState<'daily' | 'monthly'>('daily');
-
-  useEffect(() => {
-    const checkSubscription = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch('/api/check-subscription');
-        const { isPro, isPremium, isUltimate } = await response.json();
-        
-        if (isUltimate) {
-          setSubscriptionType('ultimate');
-          setResetPeriod('monthly');
-        } else if (isPremium) {
-          setSubscriptionType('premium');
-          setResetPeriod('monthly');
-        } else if (isPro) {
-          setSubscriptionType('pro');
-          setResetPeriod('monthly');
-        } else {
-          setSubscriptionType('basic');
-          setResetPeriod('daily');
-        }
-
-        await fetchUsage();
-      } catch (error) {
-        console.error('Error checking subscription:', error);
-      } finally {
-        setIsLoading(false);
+  const fetchSubscriptionType = useCallback(async () => {
+    try {
+      const response = await fetch('/api/check-subscription');
+      const data = await response.json();
+      if (data.isPro) {
+        setSubscriptionType('pro');
+      } else if (data.isPremium) {
+        setSubscriptionType('premium');
+      } else if (data.isUltimate) {
+        setSubscriptionType('ultimate');
+      } else {
+        setSubscriptionType('basic');
       }
-    };
-
-    checkSubscription();
+    } catch (error) {
+      console.error('Error fetching subscription type:', error);
+    }
   }, []);
 
-  const fetchUsage = async () => {
-    try {
-      let usageData;
-      switch (subscriptionType) {
-        case 'ultimate':
-          usageData = await getUserUsageUltimate();
-          break;
-        case 'premium':
-          usageData = await checkAndUpdateRateLimitPremium();
-          break;
-        case 'pro':
-          usageData = await checkAndUpdateRateLimitPro();
-          break;
-        default:
-          usageData = await getUserUsage();
-      }
-      
-      setUsage(usageData.usageCount);
-      setResetsIn(usageData.resetsIn);
-    } catch (error) {
-      console.error('Error fetching usage:', error);
+  const fetchUsage = useCallback(async () => {
+    const now = Date.now();
+    if (now - lastFetchTime < CACHE_DURATION) {
+      return; // Use cached data if it's recent enough
     }
-  };
 
-  const checkAndUpdateLimit = async () => {
+    setIsLoading(true);
     try {
+      await fetchSubscriptionType(); // Fetch the latest subscription type
       let result;
       switch (subscriptionType) {
         case 'ultimate':
-          result = await checkAndUpdateRateLimitUltimate();
+          result = await canGenerateImagesUltimate(0);
           break;
         case 'premium':
-          result = await checkAndUpdateRateLimitPremium();
+          result = await canGenerateImagesPremium(0);
           break;
         case 'pro':
-          result = await checkAndUpdateRateLimitPro();
+          result = await canGenerateImagesPro(0);
           break;
         default:
-          result = await checkRateLimit();
-          if (result.canProceed) {
-            await incrementRateLimit();
-          }
+          result = await canGenerateImages(0);
       }
-      
       setUsage(result.usageCount);
-      setResetsIn(getTimeUntilReset(subscriptionType !== 'basic'));
-      return result.canProceed;
+      setResetsIn(result.resetsIn);
+      setLastFetchTime(now);
     } catch (error) {
-      console.error('Error checking and updating limit:', error);
-      return false;
+      console.error('Error fetching usage:', error);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [subscriptionType, lastFetchTime, fetchSubscriptionType]);
+
+  useEffect(() => {
+    fetchUsage();
+  }, [fetchUsage]);
+
+  const checkAndUpdateLimit = useCallback(async (imagesToGenerate: number) => {
+    await fetchUsage(); // Ensure we have the latest data
+    let result;
+    switch (subscriptionType) {
+      case 'ultimate':
+        result = await canGenerateImagesUltimate(imagesToGenerate);
+        break;
+      case 'premium':
+        result = await canGenerateImagesPremium(imagesToGenerate);
+        break;
+      case 'pro':
+        result = await canGenerateImagesPro(imagesToGenerate);
+        break;
+      default:
+        result = await canGenerateImages(imagesToGenerate);
+    }
+    setUsage(result.usageCount);
+    setResetsIn(result.resetsIn);
+    return result.canProceed;
+  }, [subscriptionType, fetchUsage]);
 
   return {
     subscriptionType,
@@ -107,7 +95,6 @@ export function useSubscription() {
     resetsIn,
     isLoading,
     checkAndUpdateLimit,
-    fetchUsage,
-    resetPeriod // Add this to the returned object
+    fetchUsage
   };
 }
