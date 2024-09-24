@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { canGenerateImages, getGeneratorUsage } from "@/actions/rateLimit";
-import { canGenerateImagesPro } from "@/actions/Plans-rateLimit/rateLimit-Pro";
-import { canGenerateImagesPremium } from "@/actions/Plans-rateLimit/rateLimit-Premium";
-import { canGenerateImagesUltimate } from "@/actions/Plans-rateLimit/rateLimit-Ultimate";
+import { canGenerateImages, canUpscaleImages, getGeneratorUsage, getUpscalerUsage } from "@/actions/rateLimit";
+import { canGenerateImagesPro, checkRateLimitPro, incrementUpscalerUsagePro } from "@/actions/Plans-rateLimit/rateLimit-Pro";
+import { canGenerateImagesPremium, checkRateLimitPremium, incrementUpscalerUsagePremium } from "@/actions/Plans-rateLimit/rateLimit-Premium";
+import { canGenerateImagesUltimate, checkRateLimitUltimate, incrementUpscalerUsageUltimate } from "@/actions/Plans-rateLimit/rateLimit-Ultimate";
 
 const CACHE_DURATION = 60000; // 1 minute in milliseconds
 
-export function useSubscription() {
+export function useSubscription(type: 'generator' | 'upscaler') {
   const [subscriptionType, setSubscriptionType] = useState('basic');
   const [usage, setUsage] = useState(0);
   const [resetsIn, setResetsIn] = useState('');
@@ -17,12 +17,12 @@ export function useSubscription() {
     try {
       const response = await fetch('/api/check-subscription');
       const data = await response.json();
-      if (data.isPro) {
-        setSubscriptionType('pro');
+      if (data.isUltimate) {
+        setSubscriptionType('ultimate');
       } else if (data.isPremium) {
         setSubscriptionType('premium');
-      } else if (data.isUltimate) {
-        setSubscriptionType('ultimate');
+      } else if (data.isPro) {
+        setSubscriptionType('pro');
       } else {
         setSubscriptionType('basic');
       }
@@ -43,16 +43,16 @@ export function useSubscription() {
       let result;
       switch (subscriptionType) {
         case 'ultimate':
-          result = await canGenerateImagesUltimate(0);
+          result = type === 'generator' ? await canGenerateImagesUltimate(0) : await checkRateLimitUltimate();
           break;
         case 'premium':
-          result = await canGenerateImagesPremium(0);
+          result = type === 'generator' ? await canGenerateImagesPremium(0) : await checkRateLimitPremium();
           break;
         case 'pro':
-          result = await canGenerateImagesPro(0);
+          result = type === 'generator' ? await canGenerateImagesPro(0) : await checkRateLimitPro();
           break;
         default:
-          result = await canGenerateImages(0);
+          result = type === 'generator' ? await canGenerateImages(0) : await canUpscaleImages(0);
       }
       setUsage(result.usageCount);
       setResetsIn(result.resetsIn);
@@ -62,32 +62,52 @@ export function useSubscription() {
     } finally {
       setIsLoading(false);
     }
-  }, [subscriptionType, lastFetchTime, fetchSubscriptionType]);
+  }, [subscriptionType, lastFetchTime, fetchSubscriptionType, type]);
 
   useEffect(() => {
     fetchUsage();
   }, [fetchUsage]);
 
-  const checkAndUpdateLimit = useCallback(async (imagesToGenerate: number) => {
+  const checkAndUpdateLimit = useCallback(async (count: number) => {
     await fetchUsage(); // Ensure we have the latest data
     let result;
     switch (subscriptionType) {
       case 'ultimate':
-        result = await canGenerateImagesUltimate(imagesToGenerate);
+        result = type === 'generator' ? await canGenerateImagesUltimate(count) : await checkRateLimitUltimate();
         break;
       case 'premium':
-        result = await canGenerateImagesPremium(imagesToGenerate);
+        result = type === 'generator' ? await canGenerateImagesPremium(count) : await checkRateLimitPremium();
         break;
       case 'pro':
-        result = await canGenerateImagesPro(imagesToGenerate);
+        result = type === 'generator' ? await canGenerateImagesPro(count) : await checkRateLimitPro();
         break;
       default:
-        result = await canGenerateImages(imagesToGenerate);
+        result = type === 'generator' ? await canGenerateImages(count) : await canUpscaleImages(count);
     }
     setUsage(result.usageCount);
     setResetsIn(result.resetsIn);
     return result.canProceed;
-  }, [subscriptionType, fetchUsage]);
+  }, [subscriptionType, fetchUsage, type]);
+
+  const incrementUsage = useCallback(async (count: number = 1) => {
+    let result;
+    switch (subscriptionType) {
+      case 'ultimate':
+        result = await incrementUpscalerUsageUltimate(count);
+        break;
+      case 'premium':
+        result = await incrementUpscalerUsagePremium(count);
+        break;
+      case 'pro':
+        result = await incrementUpscalerUsagePro(count);
+        break;
+      default:
+        // For basic plan, we don't increment here as it's handled differently
+        return;
+    }
+    setUsage(result.usageCount);
+    setResetsIn(result.resetsIn);
+  }, [subscriptionType]);
 
   return {
     subscriptionType,
@@ -95,6 +115,7 @@ export function useSubscription() {
     resetsIn,
     isLoading,
     checkAndUpdateLimit,
-    fetchUsage
+    fetchUsage,
+    incrementUsage
   };
 }

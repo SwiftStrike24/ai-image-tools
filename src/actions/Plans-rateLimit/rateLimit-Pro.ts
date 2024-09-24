@@ -64,7 +64,7 @@ export async function incrementGeneratorUsagePro(imagesToGenerate: number): Prom
   });
 }
 
-export async function checkAndUpdateRateLimitPro(): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
+export async function checkRateLimitPro(): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
   const { userId } = auth();
   
   if (!userId) {
@@ -79,21 +79,44 @@ export async function checkAndUpdateRateLimitPro(): Promise<{ canProceed: boolea
   if (isNewPeriod(lastUsageDate as string | null, true)) {
     currentUsage = 0;
   }
+
+  const resetsIn = getTimeUntilEndOfMonth();
+  
   if (currentUsage >= PRO_UPSCALER_MONTHLY_LIMIT) {
-    const resetsIn = getTimeUntilEndOfMonth();
     return { canProceed: false, usageCount: currentUsage, resetsIn };
   }
 
-  currentUsage += 1;
+  return { canProceed: true, usageCount: currentUsage, resetsIn };
+}
+
+export async function incrementUpscalerUsagePro(imagesToUpscale: number = 1): Promise<{ usageCount: number; resetsIn: string }> {
+  const { userId } = auth();
+  
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  const key = `${PRO_UPSCALER_KEY_PREFIX}${userId}`;
+  const today = new Date().toUTCString();
+
+  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+
+  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+
+  if (isNewPeriod(lastUsageDate as string | null, true)) {
+    currentUsage = 0;
+  }
+
+  currentUsage += imagesToUpscale;
 
   await kv.mset({
     [key]: currentUsage,
-    [`${key}:date`]: new Date().toUTCString(),
-    [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + 1
+    [`${key}:date`]: today,
+    [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + imagesToUpscale
   });
 
   const resetsIn = getTimeUntilEndOfMonth();
-  return { canProceed: true, usageCount: currentUsage, resetsIn };
+  return { usageCount: currentUsage, resetsIn };
 }
 
 export async function canEnhancePromptPro(): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
@@ -115,4 +138,29 @@ export async function incrementEnhancePromptUsagePro(): Promise<void> {
     [`${key}:date`]: today,
     [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + 1
   });
+}
+
+export async function canUpscaleImagesPro(imagesToUpscale: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
+  const { userId } = auth();
+  
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  const key = `${PRO_UPSCALER_KEY_PREFIX}${userId}`;
+  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  
+  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+
+  if (isNewPeriod(lastUsageDate as string | null, true)) {
+    currentUsage = 0;
+  }
+
+  const resetsIn = getTimeUntilEndOfMonth();
+  
+  if (currentUsage + imagesToUpscale > PRO_UPSCALER_MONTHLY_LIMIT) {
+    return { canProceed: false, usageCount: currentUsage, resetsIn };
+  }
+
+  return { canProceed: true, usageCount: currentUsage, resetsIn };
 }

@@ -82,8 +82,9 @@ export default function FluxAIImageGenerator() {
     resetsIn, 
     isLoading: isSubscriptionLoading, 
     checkAndUpdateLimit,
-    fetchUsage
-  } = useSubscription();
+    fetchUsage,
+    incrementUsage
+  } = useSubscription('generator');
 
   const [usageCount, setUsageCount] = useState(usage || 0);
 
@@ -159,30 +160,6 @@ export default function FluxAIImageGenerator() {
         }
       }
 
-      if (!isSimulationMode) {
-        let canProceed, usageCount, resetsIn
-
-        if (subscriptionType === 'ultimate') {
-          ({ canProceed, usageCount, resetsIn } = await canGenerateImagesUltimate(numOutputs))
-        } else if (subscriptionType === 'premium') {
-          ({ canProceed, usageCount, resetsIn } = await canGenerateImagesPremium(numOutputs))
-        } else if (subscriptionType === 'pro') {
-          ({ canProceed, usageCount, resetsIn } = await canGenerateImagesPro(numOutputs))
-        } else {
-          ({ canProceed, usageCount, resetsIn } = await canGenerateImages(numOutputs))
-        }
-
-        if (!canProceed) {
-          const limit = subscriptionType === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
-                        subscriptionType === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
-                        subscriptionType === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT : 
-                        GENERATOR_DAILY_LIMIT
-          setError(`You've reached your ${subscriptionType !== 'basic' ? 'monthly' : 'daily'} limit. You can generate ${limit - usageCount} more image${limit - usageCount !== 1 ? 's' : ''} ${subscriptionType !== 'basic' ? 'this month' : 'today'}.`)
-          setIsLoading(false)
-          return
-        }
-      }
-
       let finalPrompt = enhancementSuccessful ? enhancedPrompt : currentPrompt
       console.log(`Final prompt ${enhancementSuccessful ? 'after enhancement' : 'without enhancement'}: ${finalPrompt}`)
 
@@ -216,16 +193,8 @@ export default function FluxAIImageGenerator() {
 
       if (results.length > 0) {
         if (!isSimulationMode) {
-          if (subscriptionType === 'ultimate') {
-            await incrementGeneratorUsageUltimate(numOutputs)
-          } else if (subscriptionType === 'premium') {
-            await incrementGeneratorUsagePremium(numOutputs)
-          } else if (subscriptionType === 'pro') {
-            await incrementGeneratorUsagePro(numOutputs)
-          } else {
-            await incrementGeneratorUsage(numOutputs)
-          }
-          fetchUsage()
+          await incrementUsage(numOutputs);
+          fetchUsage();
 
           if (enhancementSuccessful) {
             await incrementEnhancePromptUsage()
@@ -757,22 +726,22 @@ export default function FluxAIImageGenerator() {
 
                 <ShinyButton
                   onClick={handleSubmit}
-                  disabled={isLoading || (!showSeedInput && !prompt.trim()) || (showSeedInput && !followUpPrompt?.trim()) || usageCount >= GENERATOR_DAILY_LIMIT}
+                  disabled={isLoading || (!showSeedInput && !prompt.trim()) || (showSeedInput && !followUpPrompt?.trim()) || usage >= (subscriptionType === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : subscriptionType === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT : subscriptionType === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT : GENERATOR_DAILY_LIMIT)}
                   className={cn(
                     "w-full py-2 md:py-3 text-base md:text-lg font-semibold",
-                    (isLoading || (!showSeedInput && !prompt.trim()) || (showSeedInput && !followUpPrompt?.trim()) || usageCount >= GENERATOR_DAILY_LIMIT) && "opacity-50 cursor-not-allowed"
+                    (isLoading || (!showSeedInput && !prompt.trim()) || (showSeedInput && !followUpPrompt?.trim()) || usage >= (subscriptionType === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : subscriptionType === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT : subscriptionType === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT : GENERATOR_DAILY_LIMIT)) && "opacity-50 cursor-not-allowed"
                   )}
                   text={
                     isLoading 
                       ? "Generating..." 
-                      : usageCount >= GENERATOR_DAILY_LIMIT 
-                        ? "Daily Limit Reached" 
+                      : usage >= (subscriptionType === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : subscriptionType === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT : subscriptionType === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT : GENERATOR_DAILY_LIMIT) 
+                        ? `${subscriptionType === 'basic' ? 'Daily' : 'Monthly'} Limit Reached` 
                         : 'Generate Image(s)'
                   }
                 />
-                {usageCount >= GENERATOR_DAILY_LIMIT && (
+                {usage >= (subscriptionType === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : subscriptionType === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT : subscriptionType === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT : GENERATOR_DAILY_LIMIT) && (
                   <p className="text-xs text-red-400 mt-2">
-                    You&apos;ve reached your daily limit. Please try again tomorrow or upgrade your plan.
+                    You&apos;ve reached your {subscriptionType === 'basic' ? 'daily' : 'monthly'} limit. Please try again {subscriptionType === 'basic' ? 'tomorrow' : 'next month'} or upgrade your plan.
                   </p>
                 )}
               </form>

@@ -64,7 +64,7 @@ export async function incrementGeneratorUsageUltimate(imagesToGenerate: number):
   });
 }
 
-export async function checkAndUpdateRateLimitUltimate(increment: boolean = true): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
+export async function checkRateLimitUltimate(): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
   const { userId } = auth();
   
   if (!userId) {
@@ -80,23 +80,43 @@ export async function checkAndUpdateRateLimitUltimate(increment: boolean = true)
     currentUsage = 0;
   }
 
+  const resetsIn = getTimeUntilEndOfMonth();
+  
   if (currentUsage >= ULTIMATE_UPSCALER_MONTHLY_LIMIT) {
-    const resetsIn = getTimeUntilEndOfMonth();
     return { canProceed: false, usageCount: currentUsage, resetsIn };
   }
 
-  if (increment) {
-    currentUsage += 1;
+  return { canProceed: true, usageCount: currentUsage, resetsIn };
+}
 
-    await kv.mset({
-      [key]: currentUsage,
-      [`${key}:date`]: new Date().toUTCString(),
-      [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + 1
-    });
+export async function incrementUpscalerUsageUltimate(imagesToUpscale: number = 1): Promise<{ usageCount: number; resetsIn: string }> {
+  const { userId } = auth();
+  
+  if (!userId) {
+    throw new Error("User not authenticated");
   }
 
+  const key = `${ULTIMATE_UPSCALER_KEY_PREFIX}${userId}`;
+  const today = new Date().toUTCString();
+
+  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+
+  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+
+  if (isNewMonth(lastUsageDate as string | null)) {
+    currentUsage = 0;
+  }
+
+  currentUsage += imagesToUpscale;
+
+  await kv.mset({
+    [key]: currentUsage,
+    [`${key}:date`]: today,
+    [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + imagesToUpscale
+  });
+
   const resetsIn = getTimeUntilEndOfMonth();
-  return { canProceed: true, usageCount: currentUsage, resetsIn };
+  return { usageCount: currentUsage, resetsIn };
 }
 
 export async function canEnhancePromptUltimate(): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
