@@ -498,36 +498,33 @@ export default function FluxAIImageGenerator() {
           <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">
-                {subscriptionType === 'ultimate' ? 'Monthly Usage (Ultimate Plan)' : 
-                 subscriptionType === 'premium' ? 'Monthly Usage (Premium Plan)' : 
-                 subscriptionType === 'pro' ? 'Monthly Usage (Pro Plan)' : 
-                 'Daily Usage (Free Plan)'}
+                {subscriptionType === 'basic' ? 'Daily Usage (Free Plan)' : `Monthly Usage (${subscriptionType.charAt(0).toUpperCase() + subscriptionType.slice(1)} Plan)`}
               </span>
               {isSimulationMode ? (
                 <span className="text-sm font-medium">Simulation Mode</span>
               ) : (
                 <span className="text-sm font-medium">
-                  {usageCount} / {subscriptionType === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
-                                  subscriptionType === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
-                                  subscriptionType === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT : 
-                                  GENERATOR_DAILY_LIMIT}
+                  {usage} / {subscriptionType === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
+                             subscriptionType === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
+                             subscriptionType === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT : 
+                             GENERATOR_DAILY_LIMIT}
                 </span>
               )}
             </div>
             {!isSimulationMode && (
               <>
                 <Progress 
-                  value={(usageCount / (subscriptionType === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
-                                        subscriptionType === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
-                                        subscriptionType === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT : 
-                                        GENERATOR_DAILY_LIMIT)) * 100} 
+                  value={(usage / (subscriptionType === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
+                                   subscriptionType === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
+                                   subscriptionType === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT : 
+                                   GENERATOR_DAILY_LIMIT)) * 100} 
                   className="h-2" 
                 />
                 <p className="text-xs text-purple-300">
                   {(subscriptionType === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT : 
                     subscriptionType === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT : 
                     subscriptionType === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT : 
-                    GENERATOR_DAILY_LIMIT) - usageCount} generations remaining. 
+                    GENERATOR_DAILY_LIMIT) - usage} generations remaining. 
                   Resets in {resetsIn}.
                 </p>
               </>

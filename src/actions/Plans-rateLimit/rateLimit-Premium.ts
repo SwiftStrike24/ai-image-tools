@@ -10,7 +10,7 @@ import {
   PREMIUM_GENERATOR_KEY_PREFIX,
   PREMIUM_ENHANCE_PROMPT_KEY_PREFIX,
 } from "@/constants/rateLimits";
-import { isNewMonth, getTimeUntilNextMonth } from "@/utils/dateUtils";
+import { isNewMonth, getTimeUntilEndOfMonth } from "@/utils/dateUtils";
 
 export async function canGenerateImagesPremium(imagesToGenerate: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
   const { userId } = auth();
@@ -28,7 +28,7 @@ export async function canGenerateImagesPremium(imagesToGenerate: number): Promis
     currentUsage = 0;
   }
 
-  const resetsIn = getTimeUntilNextMonth();
+  const resetsIn = getTimeUntilEndOfMonth();
   
   if (currentUsage + imagesToGenerate > PREMIUM_GENERATOR_MONTHLY_LIMIT) {
     return { canProceed: false, usageCount: currentUsage, resetsIn };
@@ -81,7 +81,7 @@ export async function checkAndUpdateRateLimitPremium(): Promise<{ canProceed: bo
   }
 
   if (currentUsage >= PREMIUM_UPSCALER_MONTHLY_LIMIT) {
-    const resetsIn = getTimeUntilNextMonth();
+    const resetsIn = getTimeUntilEndOfMonth();
     return { canProceed: false, usageCount: currentUsage, resetsIn };
   }
 
@@ -93,7 +93,7 @@ export async function checkAndUpdateRateLimitPremium(): Promise<{ canProceed: bo
     [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + 1
   });
 
-  const resetsIn = getTimeUntilNextMonth();
+  const resetsIn = getTimeUntilEndOfMonth();
   return { canProceed: true, usageCount: currentUsage, resetsIn };
 }
 

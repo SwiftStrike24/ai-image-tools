@@ -146,23 +146,23 @@ export default function LandingPage() {
   const faqs = [
     {
       question: "What's included in the free tier?",
-      answer: "10 image upscales, 10 image generations, and 5 prompt enhancements per day during generation. Choose your LLM for prompt enhancement."
+      answer: "5 image upscales, 5 image generations, and 5 prompt enhancements per day during generation. Choose your LLM for prompt enhancement."
     },
     {
       question: "Which AI models do you use?",
-      answer: "FLUX.1 for image generation and Real-ESRGAN for upscaling."
+      answer: "We use FLUX.1 for stunning image generation and Real-ESRGAN to upscale images for sharp, high-quality results."
     },
     {
       question: "How does image upscaling work?",
-      answer: "Real-ESRGAN enhances image resolution and quality. We offer 2x, 4x, 6x, 8x, and 10x upscaling."
+      answer: "Real-ESRGAN boosts image resolution by 2x, 4x, 6x, 8x, or 10x, improving both clarity and detail."
     },
     {
       question: "What's special about Real-ESRGAN?",
-      answer: "It removes artifacts, restores details, and produces natural-looking results."
+      answer: "It restores lost details, removes artifacts, and produces natural-looking results."
     },
     {
       question: "How does GFPGAN face enhancement work?",
-      answer: "GFPGAN automatically improves facial details during upscaling, enhancing eyes, nose, and mouth for more realistic portraits."
+      answer: "GFPGAN refines facial features like eyes, nose, and mouth for sharp, lifelike portraits during upscaling."
     },
     {
       question: "Can I use the images commercially?",
@@ -170,7 +170,7 @@ export default function LandingPage() {
     },
     {
       question: "How does Prompt Enhancement work?",
-      answer: "We use Meta-Llama 3 (8B) or GPT-4o-mini to automatically enhance your prompts during image generation, resulting in more detailed and creative outputs."
+      answer: "Our Meta-Llama 3 (8B) or GPT-4o-mini models refine your prompts, unlocking more detailed, creative, and visually compelling outputs."
     }
   ]
 
