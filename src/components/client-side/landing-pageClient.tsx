@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, useAnimation, AnimatePresence } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import { Input } from "@/components/ui/input"
@@ -52,12 +52,21 @@ const ImageCarousel = () => {
   // Lower values will make it faster, higher values will make it slower
   const CAROUSEL_DURATION_PER_IMAGE = 2 // seconds
 
+  const shuffleArray = useCallback((array: string[]) => {
+    const shuffled = [...array]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    return shuffled
+  }, [])
+
   useEffect(() => {
     const fetchImages = async () => {
       try {
         const res = await fetch('/api/getImages')
         const data = await res.json()
-        setImages(data.images)
+        setImages(shuffleArray(data.images))
       } catch (error) {
         console.error('Failed to fetch images:', error)
       } finally {
@@ -65,7 +74,7 @@ const ImageCarousel = () => {
       }
     }
     fetchImages()
-  }, [])
+  }, [shuffleArray])
 
   useEffect(() => {
     if (!isLoading && images.length > 0 && carouselRef.current) {
@@ -102,7 +111,7 @@ const ImageCarousel = () => {
       >
         {extendedImages.map((src, index) => (
           <motion.div
-            key={index}
+            key={`${src}-${index}`}
             className="flex-shrink-0 w-40 h-40 mx-2"
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 300 }}
