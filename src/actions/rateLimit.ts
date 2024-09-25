@@ -32,9 +32,9 @@ async function getUserSubscription(userId: string): Promise<SubscriptionTier> {
     subscription = await kv.get(subscriptionKey);
   } catch (kvError) {
     console.error("Error accessing Vercel KV for subscription:", kvError);
-    subscription = "basic";
+    subscription = null;
   }
-  return subscription as SubscriptionTier || "basic";
+  return (subscription as SubscriptionTier) || "basic";
 }
 
 async function getUserId(): Promise<string | null> {

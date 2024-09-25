@@ -20,9 +20,10 @@ export function useSubscription(type: 'generator' | 'upscaler' | 'enhance_prompt
     try {
       const response = await fetch('/api/check-subscription');
       const data = await response.json();
-      setSubscriptionType(data.subscriptionType);
+      setSubscriptionType(data.subscriptionType || 'basic');
     } catch (error) {
       console.error('Error fetching subscription type:', error);
+      setSubscriptionType('basic'); // Fallback to basic if there's an error
     }
   }, []);
 

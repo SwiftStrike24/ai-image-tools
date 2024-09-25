@@ -1,7 +1,6 @@
 import { clerkMiddleware, auth } from "@clerk/nextjs/server";
 import { NextResponse } from 'next/server';
 import type { NextRequest, NextFetchEvent } from 'next/server';
-import { ensureUserSubscription } from "./actions/userOnboarding";
 
 export default async function middleware(req: NextRequest) {
   console.log('Middleware called for path:', req.nextUrl.pathname);
@@ -15,11 +14,6 @@ export default async function middleware(req: NextRequest) {
   }
 
   const { userId } = auth();
-
-  if (userId) {
-    // Ensure user has a subscription (will assign Basic if not exists)
-    await ensureUserSubscription();
-  }
 
   // Redirection logic for admin-protected routes
   if (

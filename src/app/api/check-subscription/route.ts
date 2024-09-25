@@ -34,17 +34,16 @@ export async function GET() {
 			subscription = await kv.get(subscriptionKey);
 		} catch (kvError) {
 			console.error("Error accessing Vercel KV:", kvError);
-			// Fallback to a default subscription or another data source
-			subscription = "basic"; // You might want to adjust this based on your needs
+			subscription = "basic"; // Fallback to basic subscription
 		}
 
 		const isPro = subscription === "pro";
 		const isPremium = subscription === "premium";
 		const isUltimate = subscription === "ultimate";
 
-		return NextResponse.json({ isPro, isPremium, isUltimate, subscriptionType: subscription });
+		return NextResponse.json({ isPro, isPremium, isUltimate, subscriptionType: subscription || "basic" });
 	} catch (error) {
 		console.error("Error checking subscription:", error);
-		return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+		return NextResponse.json({ error: "Internal server error", subscriptionType: "basic" }, { status: 500 });
 	}
 }

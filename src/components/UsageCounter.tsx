@@ -40,13 +40,15 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onU
     <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
       <div className="flex justify-between items-center">
         <span className="text-sm font-medium">
-          {subscriptionType === 'basic' ? 'Daily Usage (Free Plan)' : `Monthly Usage (${subscriptionType.charAt(0).toUpperCase() + subscriptionType.slice(1)} Plan)`}
+          {!subscriptionType || subscriptionType === 'basic' 
+            ? 'Daily Usage (Free Plan)' 
+            : `Monthly Usage (${subscriptionType.charAt(0).toUpperCase() + subscriptionType.slice(1)} Plan)`}
         </span>
         {isSimulationMode ? (
           <span className="text-sm font-medium">Simulation Mode</span>
         ) : (
           <span className="text-sm font-medium">
-            {usage} / {limit}
+            {usage} / {limit ?? 'N/A'}
           </span>
         )}
       </div>
