@@ -4,7 +4,7 @@ import { useSubscription } from '@/hooks/useSubscription'
 import { getLimitForTier, SubscriptionTier } from "@/actions/rateLimit"
 
 interface UsageCounterProps {
-  type: 'generator' | 'upscaler';
+  type: 'generator' | 'upscaler' | 'enhance_prompt';
   isSimulationMode: boolean;
 }
 
@@ -25,6 +25,15 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode }) =
       getLimitForTier(subscriptionType as SubscriptionTier, type).then(setLimit);
     }
   }, [fetchUsage, subscriptionType, type]);
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'generator': return 'generations';
+      case 'upscaler': return 'upscales';
+      case 'enhance_prompt': return 'prompt enhancements';
+      default: return type;
+    }
+  };
 
   if (isSubscriptionLoading || limit === null) {
     return <div>Loading usage information...</div>;
@@ -51,7 +60,7 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode }) =
             className="h-2" 
           />
           <p className="text-xs text-purple-300">
-            {limit - usage} {type === 'generator' ? 'generations' : 'upscales'} remaining. 
+            {limit - usage} {getTypeLabel(type)} remaining. 
             Resets in {resetsIn}.
           </p>
         </>

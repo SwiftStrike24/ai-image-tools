@@ -101,11 +101,11 @@ export async function canGenerateImages(imagesToGenerate: number): Promise<{ can
 
   const resetsIn = getTimeUntilReset(subscription !== 'basic');
   
-  if (currentUsage + imagesToGenerate > limit) {
-    return { canProceed: false, usageCount: currentUsage, resetsIn };
-  }
-
-  return { canProceed: true, usageCount: currentUsage, resetsIn };
+  return { 
+    canProceed: currentUsage + imagesToGenerate <= limit, 
+    usageCount: currentUsage, 
+    resetsIn 
+  };
 }
 
 export async function incrementGeneratorUsage(imagesToGenerate: number): Promise<void> {
@@ -344,47 +344,14 @@ export async function getUserUsage(): Promise<{ usageCount: number; resetsIn: st
 }
 
 export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
-  const userId = await getUserId();
+  const result = await canGenerateImages(imagesToGenerate);
   
-  if (!userId) {
-    throw new Error("User not authenticated");
-  }
-
-  const subscription = await getUserSubscription(userId);
-  const key = `${GENERATOR_KEY_PREFIX}${userId}`;
-  let usageCount, lastUsageDate;
-  
-  try {
-    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
-  } catch (kvError) {
-    console.error("Error accessing Vercel KV for usage:", kvError);
-    // Fallback to default values
-    usageCount = 0;
-    lastUsageDate = null;
+  if (result.canProceed) {
+    await incrementGeneratorUsage(imagesToGenerate);
+    result.usageCount += imagesToGenerate; // Update the usage count
   }
   
-  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
-  let limit = await getLimitForTier(subscription, 'generator');
-
-  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
-    currentUsage = 0;
-  }
-
-  if (currentUsage + imagesToGenerate > limit) {
-    const resetsIn = getTimeUntilReset(subscription !== 'basic');
-    return { canProceed: false, usageCount: currentUsage, resetsIn };
-  }
-
-  currentUsage += imagesToGenerate;
-
-  await kv.mset({
-    [key]: currentUsage,
-    [`${key}:date`]: new Date().toUTCString(),
-    [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + imagesToGenerate
-  });
-
-  const resetsIn = getTimeUntilReset(subscription !== 'basic');
-  return { canProceed: true, usageCount: currentUsage, resetsIn };
+  return result;
 }
 
 export async function getGeneratorUsage(): Promise<{ usageCount: number; resetsIn: string; totalGenerated: number }> {
@@ -435,7 +402,6 @@ export async function canEnhancePrompt(): Promise<{ canProceed: boolean; usageCo
     [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
   } catch (kvError) {
     console.error("Error accessing Vercel KV for usage:", kvError);
-    // Fallback to default values
     usageCount = 0;
     lastUsageDate = null;
   }
@@ -449,11 +415,11 @@ export async function canEnhancePrompt(): Promise<{ canProceed: boolean; usageCo
 
   const resetsIn = getTimeUntilReset(subscription !== 'basic');
   
-  if (currentUsage >= limit) {
-    return { canProceed: false, usageCount: currentUsage, resetsIn };
-  }
-
-  return { canProceed: true, usageCount: currentUsage, resetsIn };
+  return { 
+    canProceed: currentUsage < limit, 
+    usageCount: currentUsage, 
+    resetsIn 
+  };
 }
 
 // New function to increment prompt enhancement usage
@@ -474,7 +440,6 @@ export async function incrementEnhancePromptUsage(): Promise<void> {
     [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
   } catch (kvError) {
     console.error("Error accessing Vercel KV for usage:", kvError);
-    // Fallback to default values
     usageCount = 0;
     lastUsageDate = null;
   }

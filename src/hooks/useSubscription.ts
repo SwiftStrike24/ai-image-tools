@@ -2,17 +2,21 @@ import { useState, useEffect, useCallback } from 'react';
 import { 
   canGenerateImages, 
   canUpscaleImages, 
+  canEnhancePrompt,
   incrementGeneratorUsage, 
   incrementUpscalerUsage,
+  incrementEnhancePromptUsage,
   getGeneratorUsage,
   getUpscalerUsage,
+  getEnhancePromptUsage,
   SubscriptionTier,
-  getLimitForTier
+  getLimitForTier,
+  checkAndUpdateGeneratorLimit // Add this import
 } from "@/actions/rateLimit";
 
 const CACHE_DURATION = 60000; // 1 minute in milliseconds
 
-export function useSubscription(type: 'generator' | 'upscaler') {
+export function useSubscription(type: 'generator' | 'upscaler' | 'enhance_prompt') {
   const [subscriptionType, setSubscriptionType] = useState<SubscriptionTier>('basic');
   const [usage, setUsage] = useState(0);
   const [resetsIn, setResetsIn] = useState('');
@@ -40,12 +44,19 @@ export function useSubscription(type: 'generator' | 'upscaler') {
       await fetchSubscriptionType(); // Fetch the latest subscription type
       let result;
       if (type === 'generator') {
-        result = await canGenerateImages(0);
+        result = await getGeneratorUsage();
+      } else if (type === 'upscaler') {
+        result = await getUpscalerUsage();
+      } else if (type === 'enhance_prompt') {
+        result = await getEnhancePromptUsage();
       } else {
-        result = await canUpscaleImages(0);
+        throw new Error(`Invalid type: ${type}`);
       }
-      setUsage(result.usageCount);
-      setResetsIn(result.resetsIn);
+      
+      if (result) {
+        setUsage(result.usageCount);
+        setResetsIn(result.resetsIn);
+      }
       setLastFetchTime(now);
     } catch (error) {
       console.error('Error fetching usage:', error);
@@ -58,28 +69,25 @@ export function useSubscription(type: 'generator' | 'upscaler') {
     fetchUsage();
   }, [fetchUsage]);
 
-  const checkAndUpdateLimit = useCallback(async (count: number) => {
-    await fetchUsage(); // Ensure we have the latest data
+  const checkAndUpdateLimit = useCallback(async (count: number = 1) => {
     let result;
     if (type === 'generator') {
-      result = await canGenerateImages(count);
-    } else {
+      result = await checkAndUpdateGeneratorLimit(count);
+    } else if (type === 'upscaler') {
       result = await canUpscaleImages(count);
-    }
-    setUsage(result.usageCount);
-    setResetsIn(result.resetsIn);
-    return result.canProceed;
-  }, [type, fetchUsage]);
-
-  const incrementUsage = useCallback(async (count: number = 1) => {
-    if (type === 'generator') {
-      await incrementGeneratorUsage(count);
+    } else if (type === 'enhance_prompt') {
+      result = await canEnhancePrompt();
     } else {
-      await incrementUpscalerUsage(count);
+      throw new Error(`Invalid type: ${type}`);
     }
-    // After incrementing, fetch the latest usage
-    await fetchUsage();
-  }, [type, fetchUsage]);
+    
+    if (result) {
+      setUsage(result.usageCount);
+      setResetsIn(result.resetsIn);
+      return result.canProceed;
+    }
+    return false;
+  }, [type]);
 
   return {
     subscriptionType,
@@ -87,7 +95,6 @@ export function useSubscription(type: 'generator' | 'upscaler') {
     resetsIn,
     isLoading,
     checkAndUpdateLimit,
-    fetchUsage,
-    incrementUsage
+    fetchUsage
   };
 }

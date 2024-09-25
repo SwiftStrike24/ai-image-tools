@@ -28,13 +28,14 @@ import {
   aspectRatioOptions,
   simulateImageGeneration
 } from '@/utils/imageUtils'
-import { canGenerateImages, incrementGeneratorUsage, canEnhancePrompt, incrementEnhancePromptUsage } from "@/actions/rateLimit"
+import { checkAndUpdateGeneratorLimit, incrementGeneratorUsage, canEnhancePrompt, incrementEnhancePromptUsage } from "@/actions/rateLimit"
 import { Progress } from "@/components/ui/progress"
-import { GENERATOR_DAILY_LIMIT, ENHANCE_PROMPT_DAILY_LIMIT } from "@/constants/rateLimits"
+import { GENERATOR_DAILY_LIMIT, ENHANCE_PROMPT_DAILY_LIMIT, PRO_ENHANCE_PROMPT_MONTHLY_LIMIT, PREMIUM_ENHANCE_PROMPT_MONTHLY_LIMIT, ULTIMATE_ENHANCE_PROMPT_MONTHLY_LIMIT } from "@/constants/rateLimits"
 import { SiMeta, SiOpenai } from "react-icons/si"
-import { PRO_ENHANCE_PROMPT_MONTHLY_LIMIT, PREMIUM_ENHANCE_PROMPT_MONTHLY_LIMIT, ULTIMATE_ENHANCE_PROMPT_MONTHLY_LIMIT } from "@/constants/rateLimits"
 import { useSubscription } from '@/hooks/useSubscription'
 import UsageCounter from '@/components/UsageCounter'
+import Link from 'next/link'
+import { useDebounce } from '@/hooks/useDebounce'
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -72,13 +73,24 @@ export default function FluxAIImageGenerator() {
   const [enhancedPromptHistory, setEnhancedPromptHistory] = useState<string[]>([])
   const [enhancementFallback, setEnhancementFallback] = useState<string | null>(null)
   const { 
-    subscriptionType, 
-    usage,
-    resetsIn, 
-    isLoading: isSubscriptionLoading,
-    checkAndUpdateLimit,
-    incrementUsage,
-    fetchUsage
+    subscriptionType: enhancePromptSubscriptionType, 
+    usage: enhancePromptUsage,
+    resetsIn: enhancePromptResetsIn, 
+    isLoading: isEnhancePromptSubscriptionLoading,
+    checkAndUpdateLimit: checkAndUpdateEnhancePromptLimit,
+    fetchUsage: fetchEnhancePromptUsage
+  } = useSubscription('enhance_prompt');
+  const [enhancePromptError, setEnhancePromptError] = useState<string | null>(null)
+  const [isCheckingEnhancePrompt, setIsCheckingEnhancePrompt] = useState(false)
+  const debouncedIsEnhancePromptEnabled = useDebounce(isEnhancePromptEnabled, 300)
+
+  const { 
+    subscriptionType: generatorSubscriptionType,
+    usage: generatorUsage,
+    resetsIn: generatorResetsIn, 
+    isLoading: isGeneratorSubscriptionLoading,
+    checkAndUpdateLimit: checkAndUpdateGeneratorLimit,
+    fetchUsage: fetchGeneratorUsage
   } = useSubscription('generator');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,12 +100,13 @@ export default function FluxAIImageGenerator() {
 
     try {
       if (!isSimulationMode) {
-        const canProceed = await checkAndUpdateLimit(numOutputs);
-        if (!canProceed) {
-          setError(`You've reached your limit. Please try again later or upgrade your plan.`);
+        const result = await checkAndUpdateGeneratorLimit(numOutputs);
+        if (!result) {
+          setError(`You've reached your image generation limit. Please try again later or upgrade your plan.`);
           setIsLoading(false);
           return;
         }
+        // The usage is already updated by checkAndUpdateGeneratorLimit, so we don't need to set it here
       }
 
       let currentPrompt = showSeedInput ? followUpPrompt : prompt
@@ -109,25 +122,33 @@ export default function FluxAIImageGenerator() {
       let usedEnhancementModel: 'meta-llama-3-8b-instruct' | 'gpt-4o-mini' | null = null
 
       if (isEnhancePromptEnabled && !isSimulationMode) {
-        try {
-          let enhancementResult
-          if (enhancementModel === 'meta-llama-3-8b-instruct') {
-            enhancementResult = await enhancePrompt(currentPrompt)
-          } else if (enhancementModel === 'gpt-4o-mini') {
-            enhancementResult = { enhancedPrompt: await enhancePromptGPT4oMini(currentPrompt), usedModel: 'gpt-4o-mini' as const }
-          }
+        const canEnhance = await checkAndUpdateEnhancePromptLimit();
+        if (!canEnhance) {
+          setEnhancePromptError("You've reached your plan's limit for prompt enhancements.")
+          setIsEnhancePromptEnabled(false)
+          // Continue with image generation using the original prompt
+        } else {
+          try {
+            let enhancementResult
+            if (enhancementModel === 'meta-llama-3-8b-instruct') {
+              enhancementResult = await enhancePrompt(currentPrompt)
+            } else if (enhancementModel === 'gpt-4o-mini') {
+              enhancementResult = { enhancedPrompt: await enhancePromptGPT4oMini(currentPrompt), usedModel: 'gpt-4o-mini' as const }
+            }
 
-          if (enhancementResult && enhancementResult.enhancedPrompt !== currentPrompt) {
-            enhancedPrompt = enhancementResult.enhancedPrompt
-            enhancementSuccessful = true
-            usedEnhancementModel = enhancementResult.usedModel
-            setEnhancedPromptHistory(prev => [...prev, enhancedPrompt])
-            console.log("Prompt enhancement successful:", enhancedPrompt)
-          } else {
-            console.warn("Prompt enhancement didn't produce a different result. Using original prompt.")
+            if (enhancementResult && enhancementResult.enhancedPrompt !== currentPrompt) {
+              enhancedPrompt = enhancementResult.enhancedPrompt
+              enhancementSuccessful = true
+              usedEnhancementModel = enhancementResult.usedModel
+              setEnhancedPromptHistory(prev => [...prev, enhancedPrompt])
+              console.log("Prompt enhancement successful:", enhancedPrompt)
+              await incrementEnhancePromptUsage();
+            } else {
+              console.warn("Prompt enhancement didn't produce a different result. Using original prompt.")
+            }
+          } catch (enhanceError) {
+            console.error("Error enhancing prompt:", enhanceError)
           }
-        } catch (enhanceError) {
-          console.error("Error enhancing prompt:", enhanceError)
         }
       }
 
@@ -163,10 +184,6 @@ export default function FluxAIImageGenerator() {
       console.log("Results received from generateFluxImage:", results)
 
       if (results.length > 0) {
-        if (!isSimulationMode) {
-          await incrementUsage(numOutputs);
-        }
-
         const newImageResults = results.map((result, index) => ({
           ...result,
           followUpLevel: isFollowUp ? followUpLevel : 1,
@@ -219,7 +236,8 @@ export default function FluxAIImageGenerator() {
     } finally {
       setIsLoading(false)
       if (!isSimulationMode) {
-        await fetchUsage(); // Fetch updated usage after upscaling
+        await fetchGeneratorUsage();
+        await fetchEnhancePromptUsage();
       }
     }
   }
@@ -406,13 +424,35 @@ export default function FluxAIImageGenerator() {
     })
   }, [followUpLevel, promptHistory, toast])
 
-  const handleEnhancePromptToggle = (checked: boolean) => {
+  const handleEnhancePromptToggle = async (checked: boolean) => {
     setIsEnhancePromptEnabled(checked)
+    if (checked) {
+      setIsCheckingEnhancePrompt(true)
+      const { canProceed } = await canEnhancePrompt()
+      if (!canProceed) {
+        setEnhancePromptError("You've reached your plan's limit for prompt enhancements.")
+        setIsEnhancePromptEnabled(false)
+      } else {
+        setEnhancePromptError(null)
+      }
+      setIsCheckingEnhancePrompt(false)
+    } else {
+      setEnhancePromptError(null)
+    }
   }
 
-  const handleModelSelection = (model: 'meta-llama-3-8b-instruct' | 'gpt-4o-mini') => {
+  const handleModelSelection = async (model: 'meta-llama-3-8b-instruct' | 'gpt-4o-mini') => {
     setEnhancementModel(model)
-    setIsEnhancePromptEnabled(true)
+    setIsCheckingEnhancePrompt(true)
+    const { canProceed } = await canEnhancePrompt()
+    if (!canProceed) {
+      setEnhancePromptError("You've reached your plan's limit for prompt enhancements.")
+      setIsEnhancePromptEnabled(false)
+    } else {
+      setEnhancePromptError(null)
+      setIsEnhancePromptEnabled(true)
+    }
+    setIsCheckingEnhancePrompt(false)
   }
 
   return (
@@ -571,6 +611,7 @@ export default function FluxAIImageGenerator() {
                         id="enhance-prompt"
                         checked={isEnhancePromptEnabled}
                         onCheckedChange={handleEnhancePromptToggle}
+                        disabled={isCheckingEnhancePrompt}
                       />
                       <Label htmlFor="enhance-prompt" className="text-white">Enhance Prompt</Label>
 
@@ -584,6 +625,7 @@ export default function FluxAIImageGenerator() {
                                 onClick={() => handleModelSelection('meta-llama-3-8b-instruct')}
                                 className={`p-2 rounded ${enhancementModel === 'meta-llama-3-8b-instruct' && isEnhancePromptEnabled ? 'bg-purple-600' : 'bg-gray-700'}`}
                                 aria-label="Meta-Llama Model"
+                                disabled={isCheckingEnhancePrompt}
                               >
                                 <SiMeta className="w-4 h-4 text-white" />
                               </button>
@@ -602,6 +644,7 @@ export default function FluxAIImageGenerator() {
                                 onClick={() => handleModelSelection('gpt-4o-mini')}
                                 className={`p-2 rounded ${enhancementModel === 'gpt-4o-mini' && isEnhancePromptEnabled ? 'bg-purple-600' : 'bg-gray-700'}`}
                                 aria-label="GPT-4o-mini Model"
+                                disabled={isCheckingEnhancePrompt}
                               >
                                 <SiOpenai className="w-4 h-4 text-white" />
                               </button>
@@ -624,7 +667,29 @@ export default function FluxAIImageGenerator() {
                         </Tooltip>
                       </TooltipProvider>
                     </div>
+                    <div className="text-sm text-gray-400">
+                      {isCheckingEnhancePrompt ? (
+                        <span>Checking limit...</span>
+                      ) : (
+                        <>
+                          {enhancePromptSubscriptionType === 'basic' && `${enhancePromptUsage}/${ENHANCE_PROMPT_DAILY_LIMIT} daily`}
+                          {enhancePromptSubscriptionType === 'pro' && `${enhancePromptUsage}/${PRO_ENHANCE_PROMPT_MONTHLY_LIMIT === Infinity ? '∞' : PRO_ENHANCE_PROMPT_MONTHLY_LIMIT} monthly`}
+                          {enhancePromptSubscriptionType === 'premium' && `${enhancePromptUsage}/${PREMIUM_ENHANCE_PROMPT_MONTHLY_LIMIT === Infinity ? '∞' : PREMIUM_ENHANCE_PROMPT_MONTHLY_LIMIT} monthly`}
+                          {enhancePromptSubscriptionType === 'ultimate' && `${enhancePromptUsage}/${ULTIMATE_ENHANCE_PROMPT_MONTHLY_LIMIT === Infinity ? '∞' : ULTIMATE_ENHANCE_PROMPT_MONTHLY_LIMIT} monthly`}
+                        </>
+                      )}
+                    </div>
                   </div>
+                  {enhancePromptError && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="text-red-400 text-sm mt-1"
+                    >
+                      {enhancePromptError} <Link href="/pricing" className="text-purple-400 hover:text-purple-300 underline">Upgrade your plan</Link>
+                    </motion.p>
+                  )}
                 </div>
 
                 <ShinyButton
