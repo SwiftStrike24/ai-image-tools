@@ -48,7 +48,7 @@ const plans = [
   },
   {
     name: 'Ultimate',
-    price: '$29',
+    price: '$35',
     features: [
       '4000 upscales/month & 4000 generations/month',
       'All upscale options available',
@@ -64,7 +64,14 @@ const featureComparison = [
   { name: 'Upscales/month', free: '150', pro: '1000', premium: '2000', ultimate: '4000' },
   { name: 'Generations/month', free: '150', pro: '1000', premium: '2000', ultimate: '4000' },
   { name: 'Max upscale option', free: '4x', pro: '8x', premium: '10x', ultimate: 'All options' },
-  { name: 'Prompt enhancements/month', free: '150', pro: 'Unlimited', premium: 'Unlimited', ultimate: 'Unlimited' },
+  { 
+    name: 'Prompt enhancements/month', 
+    free: '150', 
+    pro: 'Unlimited*', 
+    premium: 'Unlimited*', 
+    ultimate: 'Unlimited*',
+    note: 'Limited to the number of generations per month'
+  },
   { name: 'AI model choice', free: 'Yes', pro: 'Yes', premium: 'Yes', ultimate: 'Yes + GPT-4o' },
 ]
 
@@ -161,6 +168,13 @@ export function PricingComponentComponent({ scrollToWaitlist }: { scrollToWaitli
                   <tr key={index} className={index % 2 === 0 ? 'bg-gray-800 bg-opacity-30' : 'bg-gray-800 bg-opacity-10'}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">
                       {feature.name}
+                      {feature.note && (
+                        <div className="mt-1 text-xs text-gray-400 font-normal">
+                          <span className="inline-block px-2 py-1 rounded-full bg-gray-700 bg-opacity-50">
+                            * {feature.note}
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                       {feature.free}

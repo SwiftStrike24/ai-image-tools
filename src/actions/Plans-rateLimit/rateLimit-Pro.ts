@@ -26,6 +26,7 @@ export async function canGenerateImagesPro(imagesToGenerate: number): Promise<{ 
 
   if (isNewPeriod(lastUsageDate as string | null, true)) {
     currentUsage = 0;
+    await kv.set(key, 0);
   }
 
   const resetsIn = getTimeUntilEndOfMonth();
@@ -37,7 +38,7 @@ export async function canGenerateImagesPro(imagesToGenerate: number): Promise<{ 
   return { canProceed: true, usageCount: currentUsage, resetsIn };
 }
 
-export async function incrementGeneratorUsagePro(imagesToGenerate: number): Promise<void> {
+export async function incrementGeneratorUsagePro(imagesToGenerate: number): Promise<{ usageCount: number; resetsIn: string }> {
   const { userId } = auth();
   
   if (!userId) {
@@ -62,6 +63,9 @@ export async function incrementGeneratorUsagePro(imagesToGenerate: number): Prom
     [`${key}:date`]: today,
     [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + imagesToGenerate
   });
+
+  const resetsIn = getTimeUntilEndOfMonth();
+  return { usageCount: currentUsage, resetsIn };
 }
 
 export async function checkRateLimitPro(): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {

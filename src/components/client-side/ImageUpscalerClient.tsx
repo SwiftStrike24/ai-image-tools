@@ -29,6 +29,7 @@ import {
 } from "@/constants/rateLimits"
 import { useSubscription } from '@/hooks/useSubscription'
 import { getTimeUntilReset } from '@/utils/dateUtils'
+import UsageCounter from '@/components/UsageCounter'
 
 // Constants
 const MAX_FILE_SIZE_MB = 50; // 50MB
@@ -223,7 +224,7 @@ function ImageUpscalerComponent() {
       setUpscaledImage(upscaledImageUrl);
 
       // Increment the usage counter
-      await incrementUsage();
+      await incrementUsage(1);
       await fetchUsage();
 
       toast({
@@ -244,7 +245,7 @@ function ImageUpscalerComponent() {
       });
     } finally {
       setIsLoading(false);
-      fetchUsage(); // Fetch updated usage after upscaling
+      await fetchUsage(); // Fetch updated usage after upscaling
     }
   }, [originalFile, upscaleOption, faceEnhance, isLoading, isSimulationMode, simulateUpscale, toast, subscriptionType, resetsIn, checkAndUpdateLimit, fetchUsage, incrementUsage]);
 
@@ -383,47 +384,8 @@ function ImageUpscalerComponent() {
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 via-purple-900/50 to-gray-900/90 z-10" />
       <div className="relative z-20 container mx-auto px-4 py-6 md:py-8">
         <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
-          {/* Usage Display */}
-          <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">
-                {subscriptionType === 'basic' ? 'Daily Usage (Free Plan)' : `Monthly Usage (${subscriptionType.charAt(0).toUpperCase() + subscriptionType.slice(1)} Plan)`}
-              </span>
-              {isSimulationMode ? (
-                <span className="text-sm font-medium">Simulation Mode</span>
-              ) : (
-                <span className="text-sm font-medium">
-                  {usage} / {subscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : 
-                              subscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : 
-                              subscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : 
-                              UPSCALER_DAILY_LIMIT}
-                </span>
-              )}
-            </div>
-            {!isSimulationMode && (
-              <>
-                <Progress 
-                  value={(usage / (subscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : 
-                                   subscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : 
-                                   subscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : 
-                                   UPSCALER_DAILY_LIMIT)) * 100} 
-                  className="h-2" 
-                />
-                <p className="text-xs text-purple-300">
-                  {(subscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : 
-                    subscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : 
-                    subscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : 
-                    UPSCALER_DAILY_LIMIT) - usage} upscales remaining. 
-                  Resets in {resetsIn}.
-                </p>
-              </>
-            )}
-            {isSimulationMode && (
-              <p className="text-xs text-purple-300">
-                Simulation mode active. No API calls are being made.
-              </p>
-            )}
-          </div>
+          {/* Usage Counter */}
+          <UsageCounter type="upscaler" isSimulationMode={isSimulationMode} />
 
           <div className="flex justify-between items-center">
             <motion.p 

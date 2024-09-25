@@ -119,6 +119,31 @@ export async function incrementUpscalerUsagePremium(imagesToUpscale: number = 1)
   return { usageCount: currentUsage, resetsIn };
 }
 
+export async function canUpscaleImagesPremium(imagesToUpscale: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
+  const { userId } = auth();
+  
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  const key = `${PREMIUM_UPSCALER_KEY_PREFIX}${userId}`;
+  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  
+  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+
+  if (isNewMonth(lastUsageDate as string | null)) {
+    currentUsage = 0;
+  }
+
+  const resetsIn = getTimeUntilEndOfMonth();
+  
+  if (currentUsage + imagesToUpscale > PREMIUM_UPSCALER_MONTHLY_LIMIT) {
+    return { canProceed: false, usageCount: currentUsage, resetsIn };
+  }
+
+  return { canProceed: true, usageCount: currentUsage, resetsIn };
+}
+
 export async function canEnhancePromptPremium(): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
   // Premium users have unlimited prompt enhancements
   return { canProceed: true, usageCount: 0, resetsIn: "Unlimited" };

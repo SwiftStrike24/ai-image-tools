@@ -159,3 +159,28 @@ export async function getUserUsageUltimate(): Promise<{ usageCount: number; rese
   const resetsIn = getTimeUntilEndOfMonth();
   return { usageCount: currentUsage, resetsIn };
 }
+
+export async function canUpscaleImagesUltimate(imagesToUpscale: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
+  const { userId } = auth();
+  
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  const key = `${ULTIMATE_UPSCALER_KEY_PREFIX}${userId}`;
+  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  
+  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+
+  if (isNewMonth(lastUsageDate as string | null)) {
+    currentUsage = 0;
+  }
+
+  const resetsIn = getTimeUntilEndOfMonth();
+  
+  if (currentUsage + imagesToUpscale > ULTIMATE_UPSCALER_MONTHLY_LIMIT) {
+    return { canProceed: false, usageCount: currentUsage, resetsIn };
+  }
+
+  return { canProceed: true, usageCount: currentUsage, resetsIn };
+}
