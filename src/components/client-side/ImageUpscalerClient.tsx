@@ -30,7 +30,7 @@ import {
 import { useSubscription } from '@/hooks/useSubscription'
 import { getTimeUntilReset } from '@/utils/dateUtils'
 import UsageCounter from '@/components/UsageCounter'
-import { canUpscaleImages, incrementUpscalerUsage } from "@/actions/rateLimit"
+import { checkAndUpdateUpscalerLimit } from "@/actions/rateLimit"
 
 // Constants
 const MAX_FILE_SIZE_MB = 50; // 50MB
@@ -68,10 +68,9 @@ function ImageUpscalerComponent() {
     subscriptionType, 
     usage,
     resetsIn, 
-    isLoading: isSubscriptionLoading, 
+    isLoading: isSubscriptionLoading,
     checkAndUpdateLimit,
-    fetchUsage,
-    incrementUsage
+    fetchUsage
   } = useSubscription('upscaler');
 
   useEffect(() => {
@@ -188,14 +187,14 @@ function ImageUpscalerComponent() {
     setError(null);
 
     try {
-      const canProceed = await checkAndUpdateLimit(1);
+      const result = await checkAndUpdateUpscalerLimit(1);
 
-      if (!canProceed) {
+      if (!result.canProceed) {
         const limit = subscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : 
                       subscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : 
                       subscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : 
                       UPSCALER_DAILY_LIMIT;
-        setError(`You've reached your ${subscriptionType === 'basic' ? 'daily' : 'monthly'} limit of ${limit} upscales. Please try again ${resetsIn}.`);
+        setError(`You've reached your ${subscriptionType === 'basic' ? 'daily' : 'monthly'} limit of ${limit} upscales. Please try again ${result.resetsIn}.`);
         setIsLoading(false);
         return;
       }
@@ -224,8 +223,6 @@ function ImageUpscalerComponent() {
 
       setUpscaledImage(upscaledImageUrl);
 
-      // Increment the usage counter
-      await incrementUsage(1);
       await fetchUsage();
 
       toast({
@@ -248,7 +245,7 @@ function ImageUpscalerComponent() {
       setIsLoading(false);
       await fetchUsage(); // Fetch updated usage after upscaling
     }
-  }, [originalFile, upscaleOption, faceEnhance, isLoading, isSimulationMode, simulateUpscale, toast, subscriptionType, resetsIn, checkAndUpdateLimit, fetchUsage, incrementUsage]);
+  }, [originalFile, upscaleOption, faceEnhance, isLoading, isSimulationMode, simulateUpscale, toast, subscriptionType, fetchUsage]);
 
   // Function to clear the uploaded image
   const handleClearImage = useCallback(() => {

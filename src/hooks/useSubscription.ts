@@ -1,17 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
-  canGenerateImages, 
-  canUpscaleImages, 
-  canEnhancePrompt,
-  incrementGeneratorUsage, 
-  incrementUpscalerUsage,
-  incrementEnhancePromptUsage,
   getGeneratorUsage,
   getUpscalerUsage,
   getEnhancePromptUsage,
   SubscriptionTier,
   getLimitForTier,
-  checkAndUpdateGeneratorLimit // Add this import
+  checkAndUpdateGeneratorLimit,
+  checkAndUpdateUpscalerLimit,
+  canEnhancePrompt
 } from "@/actions/rateLimit";
 
 const CACHE_DURATION = 60000; // 1 minute in milliseconds
@@ -74,7 +70,7 @@ export function useSubscription(type: 'generator' | 'upscaler' | 'enhance_prompt
     if (type === 'generator') {
       result = await checkAndUpdateGeneratorLimit(count);
     } else if (type === 'upscaler') {
-      result = await canUpscaleImages(count);
+      result = await checkAndUpdateUpscalerLimit(count);
     } else if (type === 'enhance_prompt') {
       result = await canEnhancePrompt();
     } else {

@@ -491,3 +491,44 @@ export async function getEnhancePromptUsage(): Promise<{ usageCount: number; res
   const resetsIn = getTimeUntilReset(subscription !== 'basic');
   return { usageCount: currentUsage, resetsIn, totalEnhanced: total };
 }
+export async function checkAndUpdateUpscalerLimit(imagesToUpscale: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
+  const userId = await getUserId();
+  
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  const subscription = await getUserSubscription(userId);
+  const key = `${UPSCALER_KEY_PREFIX}${userId}`;
+  let usageCount, lastUsageDate;
+  
+  try {
+    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  } catch (kvError) {
+    console.error("Error accessing Vercel KV for usage:", kvError);
+    usageCount = 0;
+    lastUsageDate = null;
+  }
+  
+  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+  let limit = await getLimitForTier(subscription, 'upscaler');
+
+  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
+    currentUsage = 0;
+  }
+
+  const canProceed = currentUsage + imagesToUpscale <= limit;
+  const resetsIn = getTimeUntilReset(subscription !== 'basic');
+
+  if (canProceed) {
+    currentUsage += imagesToUpscale;
+    const today = new Date().toUTCString();
+    await kv.mset({
+      [key]: currentUsage,
+      [`${key}:date`]: today,
+      [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + imagesToUpscale
+    });
+  }
+  
+  return { canProceed, usageCount: currentUsage, resetsIn };
+}
