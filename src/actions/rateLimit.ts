@@ -11,12 +11,21 @@ import {
   ENHANCE_PROMPT_DAILY_LIMIT,
   PRO_UPSCALER_MONTHLY_LIMIT,
   PRO_GENERATOR_MONTHLY_LIMIT,
-  PRO_ENHANCE_PROMPT_MONTHLY_LIMIT
+  PRO_ENHANCE_PROMPT_MONTHLY_LIMIT,
+  PREMIUM_UPSCALER_MONTHLY_LIMIT,
+  PREMIUM_GENERATOR_MONTHLY_LIMIT,
+  PREMIUM_ENHANCE_PROMPT_MONTHLY_LIMIT,
+  ULTIMATE_UPSCALER_MONTHLY_LIMIT,
+  ULTIMATE_GENERATOR_MONTHLY_LIMIT,
+  ULTIMATE_ENHANCE_PROMPT_MONTHLY_LIMIT
 } from "@/constants/rateLimits";
+import { isNewPeriod, getTimeUntilReset } from "@/utils/dateUtils";
+
+export type SubscriptionTier = 'basic' | 'pro' | 'premium' | 'ultimate';
 
 const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
 
-async function getUserSubscription(userId: string): Promise<string> {
+async function getUserSubscription(userId: string): Promise<SubscriptionTier> {
   const subscriptionKey = `${SUBSCRIPTION_KEY_PREFIX}${userId}`;
   let subscription;
   try {
@@ -25,7 +34,7 @@ async function getUserSubscription(userId: string): Promise<string> {
     console.error("Error accessing Vercel KV for subscription:", kvError);
     subscription = "basic";
   }
-  return subscription as string || "basic";
+  return subscription as SubscriptionTier || "basic";
 }
 
 async function getUserId(): Promise<string | null> {
@@ -44,7 +53,26 @@ async function getUserId(): Promise<string | null> {
   }
 }
 
-// Modify the existing functions to check subscription
+export async function getLimitForTier(tier: SubscriptionTier, type: 'generator' | 'upscaler' | 'enhance_prompt'): Promise<number> {
+  switch (type) {
+    case 'generator':
+      return tier === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT :
+             tier === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT :
+             tier === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT :
+             GENERATOR_DAILY_LIMIT;
+    case 'upscaler':
+      return tier === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT :
+             tier === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT :
+             tier === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT :
+             UPSCALER_DAILY_LIMIT;
+    case 'enhance_prompt':
+      return tier === 'ultimate' ? ULTIMATE_ENHANCE_PROMPT_MONTHLY_LIMIT :
+             tier === 'premium' ? PREMIUM_ENHANCE_PROMPT_MONTHLY_LIMIT :
+             tier === 'pro' ? PRO_ENHANCE_PROMPT_MONTHLY_LIMIT :
+             ENHANCE_PROMPT_DAILY_LIMIT;
+  }
+}
+
 export async function canGenerateImages(imagesToGenerate: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
   const userId = await getUserId();
   
@@ -60,19 +88,18 @@ export async function canGenerateImages(imagesToGenerate: number): Promise<{ can
     [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
   } catch (kvError) {
     console.error("Error accessing Vercel KV for usage:", kvError);
-    // Fallback to default values
     usageCount = 0;
     lastUsageDate = null;
   }
   
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
-  let limit = subscription === "pro" ? PRO_GENERATOR_MONTHLY_LIMIT : GENERATOR_DAILY_LIMIT;
+  let limit = await getLimitForTier(subscription, 'generator');
 
-  if (isNewPeriod(lastUsageDate as string | null, subscription)) {
+  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
   }
 
-  const resetsIn = getTimeUntilReset(subscription);
+  const resetsIn = getTimeUntilReset(subscription !== 'basic');
   
   if (currentUsage + imagesToGenerate > limit) {
     return { canProceed: false, usageCount: currentUsage, resetsIn };
@@ -81,7 +108,6 @@ export async function canGenerateImages(imagesToGenerate: number): Promise<{ can
   return { canProceed: true, usageCount: currentUsage, resetsIn };
 }
 
-// Separate function to increment generator usage after successful generation
 export async function incrementGeneratorUsage(imagesToGenerate: number): Promise<void> {
   const userId = await getUserId();
   
@@ -89,6 +115,7 @@ export async function incrementGeneratorUsage(imagesToGenerate: number): Promise
     throw new Error("User not authenticated");
   }
 
+  const subscription = await getUserSubscription(userId);
   const key = `${GENERATOR_KEY_PREFIX}${userId}`;
   const today = new Date().toUTCString();
 
@@ -98,14 +125,13 @@ export async function incrementGeneratorUsage(imagesToGenerate: number): Promise
     [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
   } catch (kvError) {
     console.error("Error accessing Vercel KV for usage:", kvError);
-    // Fallback to default values
     usageCount = 0;
     lastUsageDate = null;
   }
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
 
-  if (isNewDay(lastUsageDate as string | null)) {
+  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
   }
 
@@ -138,13 +164,13 @@ export async function canUpscaleImages(imagesToUpscale: number): Promise<{ canPr
   }
   
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
-  let limit = UPSCALER_DAILY_LIMIT;
+  let limit = await getLimitForTier(subscription, 'upscaler');
 
-  if (isNewPeriod(lastUsageDate as string | null, subscription)) {
+  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
   }
 
-  const resetsIn = getTimeUntilReset(subscription);
+  const resetsIn = getTimeUntilReset(subscription !== 'basic');
   
   if (currentUsage + imagesToUpscale > limit) {
     return { canProceed: false, usageCount: currentUsage, resetsIn };
@@ -160,14 +186,23 @@ export async function incrementUpscalerUsage(imagesToUpscale: number): Promise<v
     throw new Error("User not authenticated");
   }
 
+  const subscription = await getUserSubscription(userId);
   const key = `${UPSCALER_KEY_PREFIX}${userId}`;
   const today = new Date().toUTCString();
 
-  const [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  let usageCount, lastUsageDate;
+
+  try {
+    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
+  } catch (kvError) {
+    console.error("Error accessing Vercel KV for usage:", kvError);
+    usageCount = 0;
+    lastUsageDate = null;
+  }
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
 
-  if (isNewDay(lastUsageDate as string | null)) {
+  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
   }
 
@@ -201,11 +236,11 @@ export async function getUpscalerUsage(): Promise<{ usageCount: number; resetsIn
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
 
-  if (isNewPeriod(lastUsageDate as string | null, subscription)) {
+  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
   }
 
-  const resetsIn = getTimeUntilReset(subscription);
+  const resetsIn = getTimeUntilReset(subscription !== 'basic');
   return { usageCount: currentUsage, resetsIn };
 }
 
@@ -230,12 +265,12 @@ export async function checkRateLimit(): Promise<{ canProceed: boolean; usageCoun
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
 
-  if (isNewDay(lastUsageDate as string | null)) {
+  if (isNewPeriod(lastUsageDate as string | null, true)) {
     currentUsage = 0;
   }
 
   const canProceed = currentUsage < UPSCALER_DAILY_LIMIT;
-  const resetsIn = getTimeUntilReset('basic');
+  const resetsIn = getTimeUntilReset(true);
 
   return { canProceed, usageCount: currentUsage, resetsIn };
 }
@@ -261,7 +296,7 @@ export async function incrementRateLimit(): Promise<{ usageCount: number; resets
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
 
-  if (isNewDay(lastUsageDate as string | null)) {
+  if (isNewPeriod(lastUsageDate as string | null, true)) {
     currentUsage = 0;
   }
 
@@ -273,7 +308,7 @@ export async function incrementRateLimit(): Promise<{ usageCount: number; resets
     [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + 1
   });
 
-  const resetsIn = getTimeUntilReset('basic');
+  const resetsIn = getTimeUntilReset(true);
   return { usageCount: currentUsage, resetsIn };
 }
 
@@ -299,12 +334,12 @@ export async function getUserUsage(): Promise<{ usageCount: number; resetsIn: st
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
 
-  if (isNewPeriod(lastUsageDate as string | null, subscription)) {
+  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
     await kv.set(key, 0);
   }
 
-  const resetsIn = getTimeUntilReset(subscription);
+  const resetsIn = getTimeUntilReset(subscription !== 'basic');
   return { usageCount: currentUsage, resetsIn };
 }
 
@@ -329,14 +364,14 @@ export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Pr
   }
   
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
-  let limit = subscription === "pro" ? PRO_GENERATOR_MONTHLY_LIMIT : GENERATOR_DAILY_LIMIT;
+  let limit = await getLimitForTier(subscription, 'generator');
 
-  if (isNewPeriod(lastUsageDate as string | null, subscription)) {
+  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
   }
 
   if (currentUsage + imagesToGenerate > limit) {
-    const resetsIn = getTimeUntilReset(subscription);
+    const resetsIn = getTimeUntilReset(subscription !== 'basic');
     return { canProceed: false, usageCount: currentUsage, resetsIn };
   }
 
@@ -348,7 +383,7 @@ export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Pr
     [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + imagesToGenerate
   });
 
-  const resetsIn = getTimeUntilReset(subscription);
+  const resetsIn = getTimeUntilReset(subscription !== 'basic');
   return { canProceed: true, usageCount: currentUsage, resetsIn };
 }
 
@@ -376,11 +411,11 @@ export async function getGeneratorUsage(): Promise<{ usageCount: number; resetsI
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
   let total = typeof totalGenerated === 'number' ? totalGenerated : 0;
 
-  if (isNewPeriod(lastUsageDate as string | null, subscription)) {
+  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
   }
 
-  const resetsIn = getTimeUntilReset(subscription);
+  const resetsIn = getTimeUntilReset(subscription !== 'basic');
   return { usageCount: currentUsage, resetsIn, totalGenerated: total };
 }
 
@@ -406,13 +441,13 @@ export async function canEnhancePrompt(): Promise<{ canProceed: boolean; usageCo
   }
   
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
-  let limit = subscription === "pro" ? PRO_ENHANCE_PROMPT_MONTHLY_LIMIT : ENHANCE_PROMPT_DAILY_LIMIT;
+  let limit = await getLimitForTier(subscription, 'enhance_prompt');
 
-  if (isNewPeriod(lastUsageDate as string | null, subscription)) {
+  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
   }
 
-  const resetsIn = getTimeUntilReset(subscription);
+  const resetsIn = getTimeUntilReset(subscription !== 'basic');
   
   if (currentUsage >= limit) {
     return { canProceed: false, usageCount: currentUsage, resetsIn };
@@ -429,6 +464,7 @@ export async function incrementEnhancePromptUsage(): Promise<void> {
     throw new Error("User not authenticated");
   }
 
+  const subscription = await getUserSubscription(userId);
   const key = `${ENHANCE_PROMPT_KEY_PREFIX}${userId}`;
   const today = new Date().toUTCString();
 
@@ -445,7 +481,7 @@ export async function incrementEnhancePromptUsage(): Promise<void> {
 
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
 
-  if (isNewDay(lastUsageDate as string | null)) {
+  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
   }
 
@@ -483,47 +519,10 @@ export async function getEnhancePromptUsage(): Promise<{ usageCount: number; res
   let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
   let total = typeof totalEnhanced === 'number' ? totalEnhanced : 0;
 
-  if (isNewPeriod(lastUsageDate as string | null, subscription)) {
+  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
   }
 
-  const resetsIn = getTimeUntilReset(subscription);
+  const resetsIn = getTimeUntilReset(subscription !== 'basic');
   return { usageCount: currentUsage, resetsIn, totalEnhanced: total };
-}
-
-// Helper functions
-function isNewPeriod(lastUsageDate: string | null, subscription: string): boolean {
-  if (!lastUsageDate) return true;
-  const now = new Date();
-  const last = new Date(lastUsageDate);
-  if (subscription === "pro") {
-    return now.getUTCMonth() !== last.getUTCMonth() || now.getUTCFullYear() !== last.getUTCFullYear();
-  } else {
-    return now.getUTCDate() !== last.getUTCDate() || now.getUTCMonth() !== last.getUTCMonth() || now.getUTCFullYear() !== last.getUTCFullYear();
-  }
-}
-
-function getTimeUntilReset(subscription: string): string {
-  const now = new Date();
-  if (subscription === "pro") {
-    const nextMonth = new Date(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
-    const msUntilNextMonth = nextMonth.getTime() - now.getTime();
-    const daysUntilNextMonth = Math.ceil(msUntilNextMonth / (1000 * 60 * 60 * 24));
-    return `${daysUntilNextMonth} days`;
-  } else {
-    const tomorrow = new Date(now);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-    tomorrow.setUTCHours(0, 0, 0, 0);
-    const msUntilMidnight = tomorrow.getTime() - now.getTime();
-    const hoursUntilMidnight = Math.floor(msUntilMidnight / (1000 * 60 * 60));
-    const minutesUntilMidnight = Math.floor((msUntilMidnight % (1000 * 60 * 60)) / (1000 * 60));
-    return `${hoursUntilMidnight}h ${minutesUntilMidnight}m`;
-  }
-}
-
-function isNewDay(lastUsageDate: string | null): boolean {
-  if (!lastUsageDate) return true;
-  const now = new Date();
-  const last = new Date(lastUsageDate);
-  return now.getUTCDate() !== last.getUTCDate() || now.getUTCMonth() !== last.getUTCMonth() || now.getUTCFullYear() !== last.getUTCFullYear();
 }

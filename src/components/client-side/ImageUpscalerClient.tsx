@@ -30,6 +30,7 @@ import {
 import { useSubscription } from '@/hooks/useSubscription'
 import { getTimeUntilReset } from '@/utils/dateUtils'
 import UsageCounter from '@/components/UsageCounter'
+import { canUpscaleImages, incrementUpscalerUsage } from "@/actions/rateLimit"
 
 // Constants
 const MAX_FILE_SIZE_MB = 50; // 50MB

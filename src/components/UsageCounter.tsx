@@ -1,16 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Progress } from "@/components/ui/progress"
 import { useSubscription } from '@/hooks/useSubscription'
-import { 
-  GENERATOR_DAILY_LIMIT, 
-  PRO_GENERATOR_MONTHLY_LIMIT, 
-  PREMIUM_GENERATOR_MONTHLY_LIMIT, 
-  ULTIMATE_GENERATOR_MONTHLY_LIMIT,
-  UPSCALER_DAILY_LIMIT,
-  PRO_UPSCALER_MONTHLY_LIMIT,
-  PREMIUM_UPSCALER_MONTHLY_LIMIT,
-  ULTIMATE_UPSCALER_MONTHLY_LIMIT
-} from "@/constants/rateLimits"
+import { getLimitForTier, SubscriptionTier } from "@/actions/rateLimit"
 
 interface UsageCounterProps {
   type: 'generator' | 'upscaler';
@@ -26,27 +17,16 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode }) =
     fetchUsage
   } = useSubscription(type);
 
+  const [limit, setLimit] = useState<number | null>(null);
+
   useEffect(() => {
     fetchUsage();
-  }, [fetchUsage]);
-
-  const getLimit = () => {
-    if (type === 'generator') {
-      return subscriptionType === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT :
-             subscriptionType === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT :
-             subscriptionType === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT :
-             GENERATOR_DAILY_LIMIT;
-    } else {
-      return subscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT :
-             subscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT :
-             subscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT :
-             UPSCALER_DAILY_LIMIT;
+    if (subscriptionType) {
+      getLimitForTier(subscriptionType as SubscriptionTier, type).then(setLimit);
     }
-  };
+  }, [fetchUsage, subscriptionType, type]);
 
-  const limit = getLimit();
-
-  if (isSubscriptionLoading) {
+  if (isSubscriptionLoading || limit === null) {
     return <div>Loading usage information...</div>;
   }
 

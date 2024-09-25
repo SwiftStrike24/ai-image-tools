@@ -28,7 +28,7 @@ import {
   aspectRatioOptions,
   simulateImageGeneration
 } from '@/utils/imageUtils'
-import { canGenerateImages, getGeneratorUsage, incrementGeneratorUsage, canEnhancePrompt, incrementEnhancePromptUsage, getEnhancePromptUsage } from "@/actions/rateLimit"
+import { canGenerateImages, incrementGeneratorUsage, canEnhancePrompt, incrementEnhancePromptUsage } from "@/actions/rateLimit"
 import { Progress } from "@/components/ui/progress"
 import { GENERATOR_DAILY_LIMIT, ENHANCE_PROMPT_DAILY_LIMIT } from "@/constants/rateLimits"
 import { SiMeta, SiOpenai } from "react-icons/si"
