@@ -6,7 +6,7 @@ export const TOTAL_UPSCALER_KEY_PREFIX = 'upscaler_total_usage:'; // Prefix for 
 export const TOTAL_ENHANCE_PROMPT_KEY_PREFIX = 'enhance_prompt_total_usage:'; // New prefix for total prompt enhancements
 export const UPSCALER_DAILY_LIMIT = 10;
 export const GENERATOR_DAILY_LIMIT = 10;
-export const ENHANCE_PROMPT_DAILY_LIMIT = 5; // New daily limit for prompt enhancement
+export const ENHANCE_PROMPT_DAILY_LIMIT = 6; // New daily limit for prompt enhancement
 
 // Pro plan constants
 export const PRO_UPSCALER_MONTHLY_LIMIT = 1000;

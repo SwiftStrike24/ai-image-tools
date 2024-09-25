@@ -6,9 +6,11 @@ import { getLimitForTier, SubscriptionTier } from "@/actions/rateLimit"
 interface UsageCounterProps {
   type: 'generator' | 'upscaler' | 'enhance_prompt';
   isSimulationMode: boolean;
+  onUsageUpdate: (usage: number) => void;
+  forceUpdate?: number; // Add this prop
 }
 
-const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode }) => {
+const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onUsageUpdate, forceUpdate }) => {
   const { 
     subscriptionType, 
     usage,
@@ -24,16 +26,11 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode }) =
     if (subscriptionType) {
       getLimitForTier(subscriptionType as SubscriptionTier, type).then(setLimit);
     }
-  }, [fetchUsage, subscriptionType, type]);
+  }, [fetchUsage, subscriptionType, type, forceUpdate]); // Add forceUpdate to the dependency array
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'generator': return 'generations';
-      case 'upscaler': return 'upscales';
-      case 'enhance_prompt': return 'prompt enhancements';
-      default: return type;
-    }
-  };
+  useEffect(() => {
+    onUsageUpdate(usage);
+  }, [usage, onUsageUpdate]);
 
   if (isSubscriptionLoading || limit === null) {
     return <div>Loading usage information...</div>;
@@ -60,7 +57,7 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode }) =
             className="h-2" 
           />
           <p className="text-xs text-purple-300">
-            {limit - usage} {getTypeLabel(type)} remaining. 
+            {limit - usage} {type === 'generator' ? 'generations' : type === 'upscaler' ? 'upscales' : 'enhancements'} remaining. 
             Resets in {resetsIn}.
           </p>
         </>

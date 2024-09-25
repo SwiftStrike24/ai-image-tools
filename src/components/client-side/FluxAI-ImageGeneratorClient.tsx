@@ -93,6 +93,22 @@ export default function FluxAIImageGenerator() {
     fetchUsage: fetchGeneratorUsage
   } = useSubscription('generator');
 
+  const [generatorUpdateTrigger, setGeneratorUpdateTrigger] = useState(0)
+  const [upscalerUpdateTrigger, setUpscalerUpdateTrigger] = useState(0)
+  const [enhancePromptUpdateTrigger, setEnhancePromptUpdateTrigger] = useState(0)
+
+  const handleGeneratorUsageUpdate = useCallback((newUsage: number) => {
+    console.log("New generator usage:", newUsage);
+  }, []);
+
+  const handleUpscalerUsageUpdate = useCallback((newUsage: number) => {
+    console.log("New upscaler usage:", newUsage);
+  }, []);
+
+  const handleEnhancePromptUsageUpdate = useCallback((newUsage: number) => {
+    console.log("New enhance prompt usage:", newUsage);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -229,6 +245,14 @@ export default function FluxAIImageGenerator() {
 
       if (isSimulationMode) {
         setSimulationId(uuidv4())
+      }
+
+      // After successful generation, update the generator usage
+      setGeneratorUpdateTrigger(prev => prev + 1)
+
+      // If enhance prompt was used, update its usage as well
+      if (isEnhancePromptEnabled) {
+        setEnhancePromptUpdateTrigger(prev => prev + 1)
       }
     } catch (error) {
       console.error('Image generation error:', error)
@@ -455,16 +479,36 @@ export default function FluxAIImageGenerator() {
     setIsCheckingEnhancePrompt(false)
   }
 
+  const handleUpscale = async (imageUrl: string) => {
+    // ... (existing upscale logic)
+
+    try {
+      // ... (upscale process)
+
+      // After successful upscale, update the upscaler usage
+      setUpscalerUpdateTrigger(prev => prev + 1)
+
+      // ... (rest of the existing code)
+    } catch (error) {
+      // ... (error handling)
+    }
+  }
+
   return (
-    <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
+    <div className="relative min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-purple-900 text-white">
       <GlobalStyles />
       <RetroGrid className="absolute inset-0 z-0 opacity-50" />
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 via-purple-900/50 to-gray-900/90 z-10" />
       <div className="relative z-20 container mx-auto px-4 py-6 md:py-8">
         <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
-          <UsageCounter type="generator" isSimulationMode={isSimulationMode} />
+          <UsageCounter 
+            type="generator" 
+            isSimulationMode={isSimulationMode}
+            onUsageUpdate={handleGeneratorUsageUpdate}
+            forceUpdate={generatorUpdateTrigger}
+          />
 
-          <div className="flex justify-between items-center">
+          <div className="flex items-center justify-between">
             <motion.p 
               className="text-xl bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600"
               initial={{ opacity: 0, y: -10 }}
