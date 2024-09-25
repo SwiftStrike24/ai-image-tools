@@ -318,6 +318,8 @@ export default function LandingPage() {
       { before: '/images/landing-page/before-after-images/before-image.jpg', after: '/images/landing-page/before-after-images/after-image.jpg' },
       { before: '/images/landing-page/before-after-images/before-image3.webp', after: '/images/landing-page/before-after-images/after-image3.jpg' },
       { before: '/images/landing-page/before-after-images/before-image4.webp', after: '/images/landing-page/before-after-images/after-image4.jpg' },
+      { before: '/images/landing-page/before-after-images/before-image6.webp', after: '/images/landing-page/before-after-images/after-image6.jpg' },
+      { before: '/images/landing-page/before-after-images/before-image7.webp', after: '/images/landing-page/before-after-images/after-image7.jpg' },
     ])
   }, [])
 
