@@ -1,7 +1,8 @@
 import { config } from 'dotenv';
-import { kv } from "@vercel/kv";
 import { clerkClient } from "@clerk/clerk-sdk-node";
 import { ENHANCE_PROMPT_DAILY_LIMIT, ENHANCE_PROMPT_KEY_PREFIX } from "../src/constants/rateLimits";
+import { getRedisClient } from "../src/lib/redis";
+import { RedisClientType } from 'redis';
 
 config({ path: '.env.local' });
 
@@ -33,20 +34,20 @@ const AVG_INPUT_TOKENS = 50;
 const AVG_OUTPUT_TOKENS = 100;
 
 async function viewUserEnhancePrompts() {
+  let redisClient: RedisClientType | null = null;
   try {
-    const keys = await kv.keys(`${ENHANCE_PROMPT_KEY_PREFIX}*`);
+    redisClient = await getRedisClient();
+    const keys = await redisClient.keys(`${ENHANCE_PROMPT_KEY_PREFIX}*`);
     const userKeys = keys.filter(key => !key.endsWith(':date') && !key.endsWith(':total') && !key.endsWith(':model'));
 
     const userEnhancePrompts = await Promise.all(userKeys.map(async (key) => {
       const userId = key.replace(ENHANCE_PROMPT_KEY_PREFIX, '');
-      const [usageCount, lastUsageDate, totalEnhanced, modelUsage] = await kv.mget([key, `${key}:date`, `${key}:total`, `${key}:model`]);
-      const usage = typeof usageCount === 'number' ? usageCount : 0;
-      const total = typeof totalEnhanced === 'number' ? totalEnhanced : 0;
+      const [usageCount, lastUsageDate, totalEnhanced, modelUsage] = await redisClient!.mGet([key, `${key}:date`, `${key}:total`, `${key}:model`]);
+      const usage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
+      const total = typeof totalEnhanced === 'string' ? parseInt(totalEnhanced, 10) : 0;
       const remainingEnhancements = ENHANCE_PROMPT_DAILY_LIMIT - usage;
       const totalEnhancedPrompts = total;
-      const modelCounts: ModelCounts = typeof modelUsage === 'object' && modelUsage !== null
-        ? modelUsage as ModelCounts
-        : { 'meta-llama-3-8b-instruct': 0, 'gpt-4o-mini': 0 };
+      const modelCounts: ModelCounts = typeof modelUsage === 'string' ? JSON.parse(modelUsage) : { 'meta-llama-3-8b-instruct': 0, 'gpt-4o-mini': 0 };
 
       let username = 'Unknown';
       let email = 'Unknown';
@@ -58,7 +59,7 @@ async function viewUserEnhancePrompts() {
         console.error(`Error fetching user info for ${userId}:`, error);
       }
 
-      return { userId, username, email, remainingEnhancements, usageCount, totalEnhancedPrompts, modelCounts };
+      return { userId, username, email, remainingEnhancements, usageCount: usage, totalEnhancedPrompts, modelCounts };
     }));
 
     const timeRemaining = getTimeRemaining();
@@ -112,6 +113,10 @@ async function viewUserEnhancePrompts() {
 
   } catch (error) {
     console.error("Error fetching user enhance prompts usage:", error);
+  } finally {
+    if (redisClient) {
+      await redisClient.quit();
+    }
   }
 }
 

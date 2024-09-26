@@ -1,20 +1,27 @@
-import { kv } from "@vercel/kv";
+import { getRedisClient } from "@/lib/redis";
 import { NextResponse } from "next/server";
+import { RedisClientType } from 'redis';
 
 export async function GET() {
   const waitlistKey = "waitlist";
+  let redisClient: RedisClientType | null = null;
   try {
-    console.log("Attempting to fetch emails from KV store");
-    const emails = await kv.smembers(waitlistKey);
-    console.log("Fetched emails:", emails);
+    redisClient = await getRedisClient();
+    console.log("Attempting to fetch emails from Redis");
+    const emails = await redisClient.sMembers(waitlistKey);
+    console.log(`Fetched ${emails.length} emails from Redis`);
     
     if (!emails || emails.length === 0) {
-      console.log("No emails found in KV store");
+      console.log("No emails found in Redis");
     }
 
-    return NextResponse.json({ emails, debug: process.env.KV_URL ? "KV_URL is set" : "KV_URL is not set" });
+    return NextResponse.json({ emails });
   } catch (error) {
     console.error("Error fetching waitlist emails:", error);
-    return NextResponse.json({ error: "Failed to fetch waitlist emails", debug: process.env.KV_URL ? "KV_URL is set" : "KV_URL is not set" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch waitlist emails" }, { status: 500 });
+  } finally {
+    if (redisClient) {
+      await redisClient.quit();
+    }
   }
 }
