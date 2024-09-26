@@ -1,7 +1,9 @@
-import { config } from 'dotenv';
-import { kv } from "@vercel/kv";
+import dotenv, { config } from 'dotenv';
+dotenv.config({ path: '.env.local' });
+
 import { clerkClient } from "@clerk/clerk-sdk-node";
 import { UPSCALER_DAILY_LIMIT, UPSCALER_KEY_PREFIX } from "../src/constants/rateLimits";
+import { getRedisClient } from "../src/lib/redis";
 
 // Load environment variables from .env.local
 config({ path: '.env.local' });
@@ -18,17 +20,22 @@ function getTimeRemaining(): string {
 }
 
 async function viewUserUpscales() {
+  const redisClient = await getRedisClient();
+
   try {
-    const keys = await kv.keys(`${UPSCALER_KEY_PREFIX}*`);
+    const keys = await redisClient.keys(`${UPSCALER_KEY_PREFIX}*`);
     const userKeys = keys.filter(key => !key.endsWith(':date') && !key.endsWith(':total')); // {{ edit_4 }}
 
     const userUpscales = await Promise.all(userKeys.map(async (key) => {
       const userId = key.replace(UPSCALER_KEY_PREFIX, '');
-      const [usageCount, lastUsageDate, totalUpscaled] = await kv.mget([key, `${key}:date`, `${key}:total`]); // {{ edit_5 }}
-      const usage = typeof usageCount === 'number' ? usageCount : 0;
-      const total = typeof totalUpscaled === 'number' ? totalUpscaled : 0; // {{ edit_6 }}
+      const [usageCount, lastUsageDate, totalUpscaled] = await Promise.all([
+        redisClient.get(key),
+        redisClient.get(`${key}:date`),
+        redisClient.get(`${key}:total`)
+      ]);
+      const usage = parseInt(usageCount || '0', 10);
+      const total = parseInt(totalUpscaled || '0', 10);
       const remainingUpscales = UPSCALER_DAILY_LIMIT - usage;
-      const totalUpscaledImages = total;
 
       let username = 'Unknown';
       let email = 'Unknown';
@@ -40,7 +47,7 @@ async function viewUserUpscales() {
         console.error(`Error fetching user info for ${userId}:`, error);
       }
 
-      return { userId, username, email, remainingUpscales, usageCount, totalUpscaledImages }; // {{ edit_9 }}
+      return { userId, username, email, remainingUpscales, usageCount: usage, totalUpscaledImages: total };
     }));
 
     const timeRemaining = getTimeRemaining();
@@ -82,6 +89,8 @@ async function viewUserUpscales() {
 
   } catch (error) {
     console.error("Error fetching user upscales:", error);
+  } finally {
+    await redisClient.quit();
   }
 }
 

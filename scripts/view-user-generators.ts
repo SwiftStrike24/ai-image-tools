@@ -1,7 +1,9 @@
-import { config } from 'dotenv';
-import { kv } from "@vercel/kv";
+import dotenv, { config } from 'dotenv';
+dotenv.config({ path: '.env.local' });
+
 import { clerkClient } from "@clerk/clerk-sdk-node";
 import { GENERATOR_DAILY_LIMIT, GENERATOR_KEY_PREFIX } from "../src/constants/rateLimits";
+import { getRedisClient } from "../src/lib/redis";
 
 // Load environment variables from .env.local
 config({ path: '.env.local' });
@@ -18,15 +20,21 @@ function getTimeRemaining(): string {
 }
 
 async function viewUserGenerators() {
+  const redisClient = await getRedisClient();
+
   try {
-    const keys = await kv.keys(`${GENERATOR_KEY_PREFIX}*`);
+    const keys = await redisClient.keys(`${GENERATOR_KEY_PREFIX}*`);
     const userKeys = keys.filter(key => !key.endsWith(':date') && !key.endsWith(':total')); // {{ edit_4 }}
 
     const userGenerators = await Promise.all(userKeys.map(async (key) => {
       const userId = key.replace(GENERATOR_KEY_PREFIX, '');
-      const [usageCount, lastUsageDate, totalGenerated] = await kv.mget([key, `${key}:date`, `${key}:total`]); // {{ edit_5 }}
-      const usage = typeof usageCount === 'number' ? usageCount : 0;
-      const total = typeof totalGenerated === 'number' ? totalGenerated : 0; // {{ edit_6 }}
+      const [usageCount, lastUsageDate, totalGenerated] = await Promise.all([
+        redisClient.get(key),
+        redisClient.get(`${key}:date`),
+        redisClient.get(`${key}:total`)
+      ]);
+      const usage = parseInt(usageCount || '0', 10);
+      const total = parseInt(totalGenerated || '0', 10);
       const remainingGenerations = GENERATOR_DAILY_LIMIT - usage;
       const totalGeneratedImages = total;
 
@@ -40,7 +48,7 @@ async function viewUserGenerators() {
         console.error(`Error fetching user info for ${userId}:`, error);
       }
 
-      return { userId, username, email, remainingGenerations, usageCount, totalGeneratedImages }; // {{ edit_9 }}
+      return { userId, username, email, remainingGenerations, usageCount: usage, totalGeneratedImages: total }; // {{ edit_9 }}
     }));
 
     const timeRemaining = getTimeRemaining();
@@ -82,6 +90,8 @@ async function viewUserGenerators() {
 
   } catch (error) {
     console.error("Error fetching user generator usage:", error);
+  } finally {
+    await redisClient.quit();
   }
 }
 

@@ -1,7 +1,6 @@
 "use server";
 
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { kv } from "@vercel/kv";
 import {
   UPSCALER_DAILY_LIMIT,
   GENERATOR_DAILY_LIMIT,
@@ -20,6 +19,7 @@ import {
   ULTIMATE_ENHANCE_PROMPT_MONTHLY_LIMIT
 } from "@/constants/rateLimits";
 import { isNewPeriod, getTimeUntilReset } from "@/utils/dateUtils";
+import { getRedisClient } from "@/lib/redis";
 
 export type SubscriptionTier = 'basic' | 'pro' | 'premium' | 'ultimate';
 
@@ -29,9 +29,10 @@ async function getUserSubscription(userId: string): Promise<SubscriptionTier> {
   const subscriptionKey = `${SUBSCRIPTION_KEY_PREFIX}${userId}`;
   let subscription;
   try {
-    subscription = await kv.get(subscriptionKey);
-  } catch (kvError) {
-    console.error("Error accessing Vercel KV for subscription:", kvError);
+    const redisClient = await getRedisClient();
+    subscription = await redisClient.get(subscriptionKey);
+  } catch (redisError) {
+    console.error("Error accessing Redis for subscription:", redisError);
     subscription = null;
   }
   return (subscription as SubscriptionTier) || "basic";
@@ -85,14 +86,16 @@ export async function canGenerateImages(imagesToGenerate: number): Promise<{ can
   let usageCount, lastUsageDate;
   
   try {
-    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
-  } catch (kvError) {
-    console.error("Error accessing Vercel KV for usage:", kvError);
-    usageCount = 0;
+    const redisClient = await getRedisClient();
+    usageCount = await redisClient.get(key);
+    lastUsageDate = await redisClient.get(`${key}:date`);
+  } catch (redisError) {
+    console.error("Error accessing Redis for usage:", redisError);
+    usageCount = null;
     lastUsageDate = null;
   }
   
-  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
   let limit = await getLimitForTier(subscription, 'generator');
 
   if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
@@ -122,14 +125,16 @@ export async function incrementGeneratorUsage(imagesToGenerate: number): Promise
   let usageCount, lastUsageDate;
 
   try {
-    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
-  } catch (kvError) {
-    console.error("Error accessing Vercel KV for usage:", kvError);
-    usageCount = 0;
+    const redisClient = await getRedisClient();
+    usageCount = await redisClient.get(key);
+    lastUsageDate = await redisClient.get(`${key}:date`);
+  } catch (redisError) {
+    console.error("Error accessing Redis for usage:", redisError);
+    usageCount = null;
     lastUsageDate = null;
   }
 
-  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
 
   if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
@@ -137,11 +142,12 @@ export async function incrementGeneratorUsage(imagesToGenerate: number): Promise
 
   currentUsage += imagesToGenerate;
 
-  await kv.mset({
-    [key]: currentUsage,
-    [`${key}:date`]: today,
-    [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + imagesToGenerate
-  });
+  const redisClient = await getRedisClient();
+  await redisClient.mSet([
+    key, currentUsage.toString(),
+    `${key}:date`, today,
+    `${key}:total`, (parseInt(await redisClient.get(`${key}:total`) || '0', 10) + imagesToGenerate).toString()
+  ]);
 }
 
 export async function canUpscaleImages(imagesToUpscale: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
@@ -156,14 +162,18 @@ export async function canUpscaleImages(imagesToUpscale: number): Promise<{ canPr
   let usageCount, lastUsageDate;
   
   try {
-    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
-  } catch (kvError) {
-    console.error("Error accessing Vercel KV for usage:", kvError);
+    const redisClient = await getRedisClient();
+    [usageCount, lastUsageDate] = await Promise.all([
+      redisClient.get(key),
+      redisClient.get(`${key}:date`)
+    ]);
+  } catch (redisError) {
+    console.error("Error accessing Redis for usage:", redisError);
     usageCount = 0;
     lastUsageDate = null;
   }
   
-  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
   let limit = await getLimitForTier(subscription, 'upscaler');
 
   if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
@@ -193,14 +203,18 @@ export async function incrementUpscalerUsage(imagesToUpscale: number): Promise<v
   let usageCount, lastUsageDate;
 
   try {
-    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
-  } catch (kvError) {
-    console.error("Error accessing Vercel KV for usage:", kvError);
+    const redisClient = await getRedisClient();
+    [usageCount, lastUsageDate] = await Promise.all([
+      redisClient.get(key),
+      redisClient.get(`${key}:date`)
+    ]);
+  } catch (redisError) {
+    console.error("Error accessing Redis for usage:", redisError);
     usageCount = 0;
     lastUsageDate = null;
   }
 
-  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
 
   if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
@@ -208,11 +222,12 @@ export async function incrementUpscalerUsage(imagesToUpscale: number): Promise<v
 
   currentUsage += imagesToUpscale;
 
-  await kv.mset({
-    [key]: currentUsage,
-    [`${key}:date`]: today,
-    [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + imagesToUpscale
-  });
+  const redisClient = await getRedisClient();
+  await redisClient.mSet([
+    key, currentUsage.toString(),
+    `${key}:date`, today,
+    `${key}:total`, (parseInt(await redisClient.get(`${key}:total`) || '0', 10) + imagesToUpscale).toString()
+  ]);
 }
 
 export async function getUpscalerUsage(): Promise<{ usageCount: number; resetsIn: string }> {
@@ -227,14 +242,18 @@ export async function getUpscalerUsage(): Promise<{ usageCount: number; resetsIn
   let usageCount, lastUsageDate;
 
   try {
-    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
-  } catch (kvError) {
-    console.error("Error accessing Vercel KV for usage:", kvError);
+    const redisClient = await getRedisClient();
+    [usageCount, lastUsageDate] = await Promise.all([
+      redisClient.get(key),
+      redisClient.get(`${key}:date`)
+    ]);
+  } catch (redisError) {
+    console.error("Error accessing Redis for usage:", redisError);
     usageCount = 0;
     lastUsageDate = null;
   }
 
-  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
 
   if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
@@ -255,15 +274,19 @@ export async function checkRateLimit(): Promise<{ canProceed: boolean; usageCoun
   let usageCount, lastUsageDate;
 
   try {
-    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
-  } catch (kvError) {
-    console.error("Error accessing Vercel KV for usage:", kvError);
+    const redisClient = await getRedisClient();
+    [usageCount, lastUsageDate] = await Promise.all([
+      redisClient.get(key),
+      redisClient.get(`${key}:date`)
+    ]);
+  } catch (redisError) {
+    console.error("Error accessing Redis for usage:", redisError);
     // Fallback to default values
     usageCount = 0;
     lastUsageDate = null;
   }
 
-  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
 
   if (isNewPeriod(lastUsageDate as string | null, true)) {
     currentUsage = 0;
@@ -286,15 +309,19 @@ export async function incrementRateLimit(): Promise<{ usageCount: number; resets
   let usageCount, lastUsageDate;
 
   try {
-    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
-  } catch (kvError) {
-    console.error("Error accessing Vercel KV for usage:", kvError);
+    const redisClient = await getRedisClient();
+    [usageCount, lastUsageDate] = await Promise.all([
+      redisClient.get(key),
+      redisClient.get(`${key}:date`)
+    ]);
+  } catch (redisError) {
+    console.error("Error accessing Redis for usage:", redisError);
     // Fallback to default values
     usageCount = 0;
     lastUsageDate = null;
   }
 
-  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
 
   if (isNewPeriod(lastUsageDate as string | null, true)) {
     currentUsage = 0;
@@ -302,11 +329,12 @@ export async function incrementRateLimit(): Promise<{ usageCount: number; resets
 
   currentUsage += 1;
 
-  await kv.mset({
-    [key]: currentUsage,
-    [`${key}:date`]: new Date().toUTCString(),
-    [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + 1
-  });
+  const redisClient = await getRedisClient();
+  await redisClient.mSet([
+    key, currentUsage.toString(),
+    `${key}:date`, new Date().toUTCString(),
+    `${key}:total`, (parseInt(await redisClient.get(`${key}:total`) || '0', 10) + 1).toString()
+  ]);
 
   const resetsIn = getTimeUntilReset(true);
   return { usageCount: currentUsage, resetsIn };
@@ -324,19 +352,24 @@ export async function getUserUsage(): Promise<{ usageCount: number; resetsIn: st
   let usageCount, lastUsageDate;
 
   try {
-    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
-  } catch (kvError) {
-    console.error("Error accessing Vercel KV for usage:", kvError);
+    const redisClient = await getRedisClient();
+    [usageCount, lastUsageDate] = await Promise.all([
+      redisClient.get(key),
+      redisClient.get(`${key}:date`)
+    ]);
+  } catch (redisError) {
+    console.error("Error accessing Redis for usage:", redisError);
     // Fallback to default values
     usageCount = 0;
     lastUsageDate = null;
   }
 
-  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
 
   if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
-    await kv.set(key, 0);
+    const redisClient = await getRedisClient();
+    await redisClient.set(key, '0');
   }
 
   const resetsIn = getTimeUntilReset(subscription !== 'basic');
@@ -366,17 +399,22 @@ export async function getGeneratorUsage(): Promise<{ usageCount: number; resetsI
   let usageCount, lastUsageDate, totalGenerated;
 
   try {
-    [usageCount, lastUsageDate, totalGenerated] = await kv.mget([key, `${key}:date`, `${key}:total`]);
-  } catch (kvError) {
-    console.error("Error accessing Vercel KV for usage:", kvError);
+    const redisClient = await getRedisClient();
+    [usageCount, lastUsageDate, totalGenerated] = await Promise.all([
+      redisClient.get(key),
+      redisClient.get(`${key}:date`),
+      redisClient.get(`${key}:total`)
+    ]);
+  } catch (redisError) {
+    console.error("Error accessing Redis for usage:", redisError);
     // Fallback to default values
     usageCount = 0;
     lastUsageDate = null;
     totalGenerated = 0;
   }
 
-  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
-  let total = typeof totalGenerated === 'number' ? totalGenerated : 0;
+  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
+  let total = typeof totalGenerated === 'string' ? parseInt(totalGenerated, 10) : 0;
 
   if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
@@ -399,14 +437,18 @@ export async function canEnhancePrompt(): Promise<{ canProceed: boolean; usageCo
   let usageCount, lastUsageDate;
   
   try {
-    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
-  } catch (kvError) {
-    console.error("Error accessing Vercel KV for usage:", kvError);
+    const redisClient = await getRedisClient();
+    [usageCount, lastUsageDate] = await Promise.all([
+      redisClient.get(key),
+      redisClient.get(`${key}:date`)
+    ]);
+  } catch (redisError) {
+    console.error("Error accessing Redis for usage:", redisError);
     usageCount = 0;
     lastUsageDate = null;
   }
   
-  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
   let limit = await getLimitForTier(subscription, 'enhance_prompt');
 
   if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
@@ -437,14 +479,18 @@ export async function incrementEnhancePromptUsage(): Promise<void> {
   let usageCount, lastUsageDate;
 
   try {
-    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
-  } catch (kvError) {
-    console.error("Error accessing Vercel KV for usage:", kvError);
+    const redisClient = await getRedisClient();
+    [usageCount, lastUsageDate] = await Promise.all([
+      redisClient.get(key),
+      redisClient.get(`${key}:date`)
+    ]);
+  } catch (redisError) {
+    console.error("Error accessing Redis for usage:", redisError);
     usageCount = 0;
     lastUsageDate = null;
   }
 
-  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
 
   if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
@@ -452,11 +498,12 @@ export async function incrementEnhancePromptUsage(): Promise<void> {
 
   currentUsage += 1;
 
-  await kv.mset({
-    [key]: currentUsage,
-    [`${key}:date`]: today,
-    [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + 1
-  });
+  const redisClient = await getRedisClient();
+  await redisClient.mSet([
+    key, currentUsage.toString(),
+    `${key}:date`, today,
+    `${key}:total`, (parseInt(await redisClient.get(`${key}:total`) || '0', 10) + 1).toString()
+  ]);
 }
 
 // New function to get prompt enhancement usage
@@ -472,17 +519,22 @@ export async function getEnhancePromptUsage(): Promise<{ usageCount: number; res
   let usageCount, lastUsageDate, totalEnhanced;
 
   try {
-    [usageCount, lastUsageDate, totalEnhanced] = await kv.mget([key, `${key}:date`, `${key}:total`]);
-  } catch (kvError) {
-    console.error("Error accessing Vercel KV for usage:", kvError);
+    const redisClient = await getRedisClient();
+    [usageCount, lastUsageDate, totalEnhanced] = await Promise.all([
+      redisClient.get(key),
+      redisClient.get(`${key}:date`),
+      redisClient.get(`${key}:total`)
+    ]);
+  } catch (redisError) {
+    console.error("Error accessing Redis for usage:", redisError);
     // Fallback to default values
     usageCount = 0;
     lastUsageDate = null;
     totalEnhanced = 0;
   }
 
-  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
-  let total = typeof totalEnhanced === 'number' ? totalEnhanced : 0;
+  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
+  let total = typeof totalEnhanced === 'string' ? parseInt(totalEnhanced, 10) : 0;
 
   if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
     currentUsage = 0;
@@ -491,6 +543,7 @@ export async function getEnhancePromptUsage(): Promise<{ usageCount: number; res
   const resetsIn = getTimeUntilReset(subscription !== 'basic');
   return { usageCount: currentUsage, resetsIn, totalEnhanced: total };
 }
+
 export async function checkAndUpdateUpscalerLimit(imagesToUpscale: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
   const userId = await getUserId();
   
@@ -503,14 +556,18 @@ export async function checkAndUpdateUpscalerLimit(imagesToUpscale: number): Prom
   let usageCount, lastUsageDate;
   
   try {
-    [usageCount, lastUsageDate] = await kv.mget([key, `${key}:date`]);
-  } catch (kvError) {
-    console.error("Error accessing Vercel KV for usage:", kvError);
+    const redisClient = await getRedisClient();
+    [usageCount, lastUsageDate] = await Promise.all([
+      redisClient.get(key),
+      redisClient.get(`${key}:date`)
+    ]);
+  } catch (redisError) {
+    console.error("Error accessing Redis for usage:", redisError);
     usageCount = 0;
     lastUsageDate = null;
   }
   
-  let currentUsage = typeof usageCount === 'number' ? usageCount : 0;
+  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
   let limit = await getLimitForTier(subscription, 'upscaler');
 
   if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
@@ -523,11 +580,12 @@ export async function checkAndUpdateUpscalerLimit(imagesToUpscale: number): Prom
   if (canProceed) {
     currentUsage += imagesToUpscale;
     const today = new Date().toUTCString();
-    await kv.mset({
-      [key]: currentUsage,
-      [`${key}:date`]: today,
-      [`${key}:total`]: ((await kv.get(`${key}:total`) as number) || 0) + imagesToUpscale
-    });
+    const redisClient = await getRedisClient();
+    await redisClient.mSet([
+      key, currentUsage.toString(),
+      `${key}:date`, today,
+      `${key}:total`, (parseInt(await redisClient.get(`${key}:total`) || '0', 10) + imagesToUpscale).toString()
+    ]);
   }
   
   return { canProceed, usageCount: currentUsage, resetsIn };

@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
-import { kv } from "@vercel/kv";
+dotenv.config({ path: '.env.local' });
+
 import { clerkClient } from "@clerk/clerk-sdk-node";
+import { getRedisClient } from "../src/lib/redis";
 
 // Load environment variables from .env.local
 dotenv.config({ path: '.env.local' });
@@ -11,19 +13,22 @@ interface SubscriptionSummary {
   [key: string]: number;
 }
 
-async function getUserSubscription(userId: string): Promise<string> {
+async function getUserSubscription(redisClient: any, userId: string): Promise<string> {
   try {
     const subscriptionKey = `${SUBSCRIPTION_KEY_PREFIX}${userId}`;
-    const subscription = await kv.get(subscriptionKey);
-    return subscription as string || "basic";
+    const subscription = await redisClient.get(subscriptionKey);
+    return subscription || "basic";
   } catch (error) {
-    // Silently fallback to "basic" subscription on error
+    console.error(`Error getting subscription for user ${userId}:`, error);
     return "basic";
   }
 }
 
 async function checkAllUserSubscriptions() {
+  let redisClient;
   try {
+    redisClient = await getRedisClient();
+
     // Fetch all users from Clerk
     const users = await clerkClient.users.getUserList();
 
@@ -47,7 +52,7 @@ async function checkAllUserSubscriptions() {
       const username = user.username || `${user.firstName} ${user.lastName}`.trim() || 'Unknown';
       const email = user.emailAddresses[0]?.emailAddress || 'Unknown';
 
-      const subscription = await getUserSubscription(userId);
+      const subscription = await getUserSubscription(redisClient, userId);
 
       console.log(`${userId.padEnd(32)} | ${username.padEnd(18)} | ${email.padEnd(30)} | ${subscription}`);
 
@@ -89,6 +94,10 @@ async function checkAllUserSubscriptions() {
 
   } catch (error) {
     console.error('Error checking user subscriptions:', error);
+  } finally {
+    if (redisClient) {
+      await redisClient.quit();
+    }
   }
 }
 

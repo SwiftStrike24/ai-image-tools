@@ -1,7 +1,9 @@
 import dotenv from 'dotenv';
-import { kv } from "@vercel/kv";
+dotenv.config({ path: '.env.local' });
+
 import inquirer from 'inquirer';
 import { clerkClient } from "@clerk/clerk-sdk-node";
+import { getRedisClient } from "../src/lib/redis";
 
 // Load environment variables from .env.local
 dotenv.config({ path: '.env.local' });
@@ -23,15 +25,17 @@ async function assignUserSubscription() {
     choices: ['basic', 'pro', 'premium', 'ultimate'],
   });
 
+  const redisClient = await getRedisClient();
+
   try {
     // Fetch user details from Clerk
     const user = await clerkClient.users.getUser(userId);
     const username = user.username || `${user.firstName} ${user.lastName}`.trim() || 'Unknown';
     const email = user.emailAddresses[0]?.emailAddress || 'Unknown';
 
-    // Assign subscription in Vercel KV
+    // Assign subscription in Redis
     const subscriptionKey = `${SUBSCRIPTION_KEY_PREFIX}${userId}`;
-    await kv.set(subscriptionKey, subscriptionType);
+    await redisClient.set(subscriptionKey, subscriptionType);
 
     console.log('\nSubscription Assigned Successfully:');
     console.log(`User ID: ${userId}`);
@@ -41,6 +45,8 @@ async function assignUserSubscription() {
 
   } catch (error) {
     console.error('Error assigning user subscription:', error);
+  } finally {
+    await redisClient.quit();
   }
 }
 

@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server';
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { kv } from "@vercel/kv";
+import { getRedisClient } from "@/lib/redis";
 
 const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
 
 export async function GET() {
 	let userId;
 	try {
-		// Try to get userId from auth()
 		const authResult = auth();
 		userId = authResult.userId;
 	} catch (error) {
 		console.error("Error getting userId from auth():", error);
-		// Fallback to currentUser() if auth() fails
 		try {
 			const user = await currentUser();
 			userId = user?.id;
@@ -31,9 +29,10 @@ export async function GET() {
 		let subscription;
 		
 		try {
-			subscription = await kv.get(subscriptionKey);
-		} catch (kvError) {
-			console.error("Error accessing Vercel KV:", kvError);
+			const redisClient = await getRedisClient();
+			subscription = await redisClient.get(subscriptionKey);
+		} catch (redisError) {
+			console.error("Error accessing Redis:", redisError);
 			subscription = "basic"; // Fallback to basic subscription
 		}
 
