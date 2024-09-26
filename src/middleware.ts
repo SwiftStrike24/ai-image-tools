@@ -15,6 +15,11 @@ export default async function middleware(req: NextRequest) {
 
   const { userId } = auth();
 
+  // Allow access to sign-in page without redirection
+  if (req.nextUrl.pathname.startsWith('/sign-in')) {
+    return NextResponse.next();
+  }
+
   // Redirection logic for admin-protected routes
   if (
     req.nextUrl.pathname.startsWith('/upscaler') ||

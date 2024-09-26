@@ -3,9 +3,12 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { CheckIcon, SparklesIcon } from 'lucide-react'
-import ShineBorder from './magicui/shine-border'
-import { MagicCard } from './magicui/magic-card'
+import ShineBorder from '@/components/magicui/shine-border'
+import { MagicCard } from '@/components/magicui/magic-card'
 import { loadStripe } from '@stripe/stripe-js'
+import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@clerk/nextjs"
+import { useRouter } from 'next/navigation'
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
@@ -32,7 +35,7 @@ const plans = [
     ],
     cta: 'Upgrade to Pro',
     popular: true,
-    // paymentLink: 'https://buy.stripe.com/test_3cseY93JD8kE3Wo9AA'
+    priceId: 'price_1Q3AztHYPfrMrymk4VqOuNAD',
   },
   {
     name: 'Premium',
@@ -44,7 +47,7 @@ const plans = [
       'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
     ],
     cta: 'Go Premium',
-    // paymentLink: 'https://buy.stripe.com/test_6oE9DPcg958sboQ9AB'
+    priceId: 'price_1Q3B16HYPfrMrymkgzihBxJR',
   },
   {
     name: 'Ultimate',
@@ -56,7 +59,7 @@ const plans = [
       'Exclusive access to GPT-4o for prompt enhancements',
     ],
     cta: 'Go Ultimate',
-    // paymentLink: 'https://buy.stripe.com/test_14kcQ15RL7gA2Sk146'
+    priceId: 'price_1Q3B2gHYPfrMrymkYyJgjmci',
   },
 ]
 
@@ -200,13 +203,56 @@ export function PricingComponentComponent({ scrollToWaitlist }: { scrollToWaitli
 }
 
 function PlanContent({ plan, isMonthly, scrollToWaitlist }: { plan: any; isMonthly: boolean; scrollToWaitlist: () => void }) {
-  const handleSubscribe = () => {
-    // if (plan.paymentLink) {
-    //   window.location.href = plan.paymentLink;
-    // } else {
-    //   console.log(`${plan.name} plan selected`);
-    // }
-    scrollToWaitlist();
+  const { toast } = useToast()
+  const { isLoaded, isSignedIn } = useAuth()
+  const router = useRouter()
+
+  const handleSubscribe = async () => {
+    if (plan.name === 'Basic') {
+      scrollToWaitlist();
+      return;
+    }
+
+    if (!isLoaded) {
+      // Auth state is still loading, show a loading state or return
+      return;
+    }
+
+    if (!isSignedIn) {
+      // User is not signed in, redirect to sign-in page
+      router.push('/sign-in?redirect=/pricing');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ priceId: plan.priceId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'An error occurred');
+      }
+
+      const data = await response.json();
+      
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
