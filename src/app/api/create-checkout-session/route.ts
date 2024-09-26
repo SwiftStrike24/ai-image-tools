@@ -28,6 +28,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid request: missing price ID.' }, { status: 400 });
     }
 
+    // Fetch the price to get the product ID
+    const price = await stripe.prices.retrieve(priceId);
+    const productId = price.product as string;
+
+    // Fetch the product to get the tier from metadata
+    const product = await stripe.products.retrieve(productId);
+    const tier = product.metadata.tier;
+
     console.log(`Creating checkout session for user ${userId} with priceId ${priceId}`);
     const session = await stripe.checkout.sessions.create({
       billing_address_collection: 'auto',
@@ -37,6 +45,9 @@ export async function POST(req: Request) {
       cancel_url: `${DOMAIN}/pricing`,
       client_reference_id: userId,
       customer_email: user.emailAddresses[0].emailAddress,
+      subscription_data: {
+        metadata: { userId }, // Add this line to include userId in the subscription metadata
+      },
     });
 
     console.log(`Checkout session created successfully for user ${userId}`);

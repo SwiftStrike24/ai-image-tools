@@ -55,7 +55,10 @@ export function useSubscription(type: 'generator' | 'upscaler' | 'enhance_prompt
 
   useEffect(() => {
     fetchUsage();
-  }, [fetchUsage]);
+    // Refetch subscription type every minute
+    const intervalId = setInterval(fetchSubscriptionType, 60000);
+    return () => clearInterval(intervalId);
+  }, [fetchUsage, fetchSubscriptionType]);
 
   const checkAndUpdateLimit = useCallback(async (count: number = 1) => {
     let result;
