@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useToast } from "@/hooks/use-toast"
 import { Loader2 } from 'lucide-react'
 
@@ -9,6 +9,7 @@ export default function SuccessPage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const searchParams = useSearchParams()
   const { toast } = useToast()
+  const router = useRouter()
 
   useEffect(() => {
     const sessionId = searchParams?.get('session_id')
@@ -22,6 +23,13 @@ export default function SuccessPage() {
               title: "Success",
               description: "Your subscription has been activated!",
             })
+            // Set a timeout to redirect after 3-5 seconds
+            const redirectTimeout = setTimeout(() => {
+              router.push('/generator')
+            }, 3000 + Math.random() * 2000) // Random delay between 3-5 seconds
+
+            // Clear the timeout if the component unmounts
+            return () => clearTimeout(redirectTimeout)
           } else {
             setStatus('error')
             toast({
@@ -40,7 +48,7 @@ export default function SuccessPage() {
           })
         })
     }
-  }, [searchParams, toast])
+  }, [searchParams, toast, router])
 
   if (status === 'loading') {
     return (
@@ -57,10 +65,12 @@ export default function SuccessPage() {
       </h1>
       <p className="text-xl mb-8">
         {status === 'success'
-          ? 'Your subscription has been successfully activated.'
+          ? 'Your subscription has been successfully activated. Redirecting you to the generator...'
           : 'There was an issue processing your subscription.'}
       </p>
-      {/* Add more content or CTAs as needed */}
+      {status === 'success' && (
+        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+      )}
     </div>
   )
 }
