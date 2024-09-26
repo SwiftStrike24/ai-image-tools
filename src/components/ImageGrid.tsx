@@ -18,6 +18,7 @@ interface ImageGridProps {
   isSimulationMode: boolean;
   downloadingIndex: number | null;
   showSeedInput: boolean;
+  numOutputs: number;
 }
 
 const ImageGrid: React.FC<ImageGridProps> = ({
@@ -31,7 +32,11 @@ const ImageGrid: React.FC<ImageGridProps> = ({
   isSimulationMode,
   downloadingIndex,
   showSeedInput,
+  numOutputs,
 }) => {
+  // Determine the actual number of images to display
+  const actualNumOutputs = Math.min(imageResults.length, numOutputs);
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -40,14 +45,14 @@ const ImageGrid: React.FC<ImageGridProps> = ({
       transition={{ duration: 0.3 }}
       className={cn(
         'grid gap-4',
-        imageResults.length === 1
+        actualNumOutputs === 1
           ? 'grid-cols-1'
-          : imageResults.length === 2
+          : actualNumOutputs === 2
           ? 'grid-cols-2'
           : 'grid-cols-2 sm:grid-cols-2'
       )}
     >
-      {imageResults.map((result, arrayIndex) => {
+      {imageResults.slice(0, actualNumOutputs).map((result, arrayIndex) => {
         const isThisImageFocused = focusedImageIndex === result.index;
         const shouldBlur = isFocused && !isThisImageFocused;
 

@@ -96,6 +96,7 @@ export default function FluxAIImageGenerator() {
   const [generatorUpdateTrigger, setGeneratorUpdateTrigger] = useState(0)
   const [upscalerUpdateTrigger, setUpscalerUpdateTrigger] = useState(0)
   const [enhancePromptUpdateTrigger, setEnhancePromptUpdateTrigger] = useState(0)
+  const [enhancedOriginalPrompt, setEnhancedOriginalPrompt] = useState('')
 
   const handleGeneratorUsageUpdate = useCallback((newUsage: number) => {
     console.log("New generator usage:", newUsage);
@@ -159,6 +160,11 @@ export default function FluxAIImageGenerator() {
               setEnhancedPromptHistory(prev => [...prev, enhancedPrompt])
               console.log("Prompt enhancement successful:", enhancedPrompt)
               await incrementEnhancePromptUsage();
+              
+              // Store the enhanced original prompt
+              if (!isFollowUp) {
+                setEnhancedOriginalPrompt(enhancedPrompt)
+              }
             } else {
               console.warn("Prompt enhancement didn't produce a different result. Using original prompt.")
             }
@@ -173,7 +179,10 @@ export default function FluxAIImageGenerator() {
 
       if (isFollowUp) {
         setFollowUpPrompts(prev => [...prev, currentPrompt])
-        finalPrompt = `${originalPrompt} ${enhancedPrompt}`
+        // Use the enhanced original prompt for follow-ups if it exists
+        finalPrompt = enhancedOriginalPrompt 
+          ? `${enhancedOriginalPrompt}, ${currentPrompt}`
+          : `${originalPrompt}, ${currentPrompt}`
       } else {
         setOriginalPrompt(currentPrompt)
         setFollowUpPrompts([])
@@ -214,23 +223,30 @@ export default function FluxAIImageGenerator() {
           images: newImageResults,
           followUpLevel: isFollowUp ? followUpLevel : 1,
           seed: newSeed,
+          enhancedOriginalPrompt: enhancedOriginalPrompt || undefined,
+          aspectRatio: aspectRatio,
+          numOutputs: numOutputs,
         }
         
         setPromptHistory(prevHistory => {
-          const newHistory = [...prevHistory.slice(0, followUpLevel - 1), newHistoryEntry]
-          setCurrentPromptIndex(newHistory.length - 1)
-          return newHistory
+          const newHistory = [...prevHistory, newHistoryEntry];
+          setCurrentPromptIndex(newHistory.length - 1);
+          return newHistory;
         })
 
+        // Update these states to show the new images
         setImageResults(newImageResults)
         setImageUrls(newImageResults.map(result => result.imageUrls[0]))
         setGeneratedAspectRatio(aspectRatio)
+
+        // Reset focus states
         setFocusedImageIndex(null)
         setIsFocused(false)
+
+        // Update follow-up related states
         setFollowUpLevel(prev => isFollowUp ? prev + 1 : 1)
-        
         setFollowUpPrompt('')
-        setShowSeedInput(isFollowUp ? true : false)
+        setShowSeedInput(true)
 
         if (enhancementSuccessful) {
           toast({
@@ -239,6 +255,9 @@ export default function FluxAIImageGenerator() {
             variant: "default",
           })
         }
+
+        // Force re-render of ImageGrid
+        setResetKey(prev => prev + 1)
       } else {
         throw new Error('No images were generated. Please try again.')
       }
@@ -257,6 +276,11 @@ export default function FluxAIImageGenerator() {
     } catch (error) {
       console.error('Image generation error:', error)
       setError(error instanceof Error ? error.message : "Failed to generate image(s). Please try again.")
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to generate image(s). Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
       if (!isSimulationMode) {
@@ -271,51 +295,26 @@ export default function FluxAIImageGenerator() {
     setIsProcessingSeed(true)
 
     try {
-      if (focusedImageIndex === index) {
-        setFocusedImageIndex(null)
-        setIsFocused(false)
-        
-        if (followUpLevel === 1) {
-          setCurrentSeed(null)
-          setShowSeedInput(false)
-          setFollowUpPrompt('')
-          toast({
-            title: "Seed Cleared",
-            description: "The seed has been cleared. You can now generate new images or refocus.",
-          })
-        } else {
-          toast({
-            title: "Focus Cleared",
-            description: "Image unfocused. The seed and follow-up prompt remain unchanged.",
-          })
-        }
-      } else {
-        setFocusedImageIndex(index)
-        setIsFocused(true)
-        
-        if (followUpLevel === 1) {
-          setCurrentSeed(seed)
-          setShowSeedInput(true)
-        }
-        
-        toast({
-          title: "Image Focused",
-          description: followUpLevel === 1 
-            ? "You can now enter a follow-up prompt based on this image."
-            : "Image focused. The seed and follow-up prompt remain unchanged.",
-        })
-      }
+      setFocusedImageIndex(index)
+      setIsFocused(true)
+      setCurrentSeed(seed)
+      setShowSeedInput(true)
+      
+      toast({
+        title: "Image Focused",
+        description: "You can now enter a follow-up prompt based on this image.",
+      })
     } catch (error) {
       console.error("Error in handleCopySeed:", error)
       toast({
         title: "Error",
-        description: "An error occurred while managing image focus. Please try again.",
+        description: "An error occurred while focusing the image. Please try again.",
         variant: "destructive",
       })
     } finally {
       setTimeout(() => setIsProcessingSeed(false), 500)
     }
-  }, [isProcessingSeed, toast, focusedImageIndex, followUpLevel])
+  }, [isProcessingSeed, toast])
 
   const handleNewImage = useCallback(() => {
     setFollowUpPrompt(null)
@@ -423,6 +422,11 @@ export default function FluxAIImageGenerator() {
 
     if (!previousEntry) {
       console.error("Entry not found in prompt history")
+      toast({
+        title: "Error",
+        description: "Unable to load previous follow-up. Please try again.",
+        variant: "destructive",
+      })
       return
     }
 
@@ -430,17 +434,21 @@ export default function FluxAIImageGenerator() {
     setImageResults(previousEntry.images)
     setImageUrls(previousEntry.images.map(result => result.imageUrls[0]))
     setCurrentSeed(previousEntry.seed)
-
-    setFollowUpPrompts(prevFollowUps => prevFollowUps.slice(0, newLevel - 1))
-
+    setNumOutputs(previousEntry.numOutputs)
+    setAspectRatio(previousEntry.aspectRatio)
+    setGeneratedAspectRatio(previousEntry.aspectRatio)
     setFollowUpPrompt(previousEntry.prompt)
-
     setShowSeedInput(true)
-    
     setPromptHistory(prevHistory => prevHistory.slice(0, newLevel))
     setCurrentPromptIndex(newLevel - 1)
     setFocusedImageIndex(null)
     setIsFocused(false)
+
+    if (previousEntry.enhancedOriginalPrompt) {
+      setEnhancedOriginalPrompt(previousEntry.enhancedOriginalPrompt)
+    }
+
+    setResetKey(prev => prev + 1)
 
     toast({
       title: "Previous Follow-up Loaded",
@@ -752,6 +760,7 @@ export default function FluxAIImageGenerator() {
             <div className="space-y-4">
               {promptHistory.length > 0 && (
                 <ImageGrid
+                  key={`${resetKey}-${imageResults.length}-${generatedAspectRatio}-${numOutputs}`}
                   imageResults={imageResults}
                   generatedAspectRatio={generatedAspectRatio}
                   isFocused={isFocused}
@@ -762,6 +771,7 @@ export default function FluxAIImageGenerator() {
                   isSimulationMode={isSimulationMode}
                   downloadingIndex={downloadingIndex}
                   showSeedInput={showSeedInput}
+                  numOutputs={numOutputs}
                 />
               )}
               {isFocused && (

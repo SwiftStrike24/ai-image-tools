@@ -23,4 +23,7 @@ export interface PromptHistoryEntry {
   images: FluxImageResult[];
   followUpLevel: number;
   seed: number;
+  enhancedOriginalPrompt?: string;
+  aspectRatio: string;
+  numOutputs: number;
 }
