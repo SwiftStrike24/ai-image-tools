@@ -295,14 +295,23 @@ export default function FluxAIImageGenerator() {
     setIsProcessingSeed(true)
 
     try {
-      setFocusedImageIndex(index)
-      setIsFocused(true)
+      if (focusedImageIndex === index) {
+        // If the clicked image is already focused, unfocus it
+        setFocusedImageIndex(null)
+        setIsFocused(false)
+      } else {
+        // Focus the clicked image
+        setFocusedImageIndex(index)
+        setIsFocused(true)
+      }
       setCurrentSeed(seed)
       setShowSeedInput(true)
       
       toast({
-        title: "Image Focused",
-        description: "You can now enter a follow-up prompt based on this image.",
+        title: focusedImageIndex === index ? "Image Unfocused" : "Image Focused",
+        description: focusedImageIndex === index 
+          ? "You can now enter a new prompt or select another image."
+          : "You can now enter a follow-up prompt based on this image.",
       })
     } catch (error) {
       console.error("Error in handleCopySeed:", error)
@@ -314,7 +323,16 @@ export default function FluxAIImageGenerator() {
     } finally {
       setTimeout(() => setIsProcessingSeed(false), 500)
     }
-  }, [isProcessingSeed, toast])
+  }, [isProcessingSeed, toast, focusedImageIndex])
+
+  const handleClearFocus = useCallback(() => {
+    setFocusedImageIndex(null)
+    setIsFocused(false)
+    toast({
+      title: "Focus Cleared",
+      description: "You can now enter a new prompt or select another image.",
+    })
+  }, [toast])
 
   const handleNewImage = useCallback(() => {
     setFollowUpPrompt(null)
@@ -415,46 +433,56 @@ export default function FluxAIImageGenerator() {
   }
 
   const goToPreviousFollowUp = useCallback(() => {
-    if (followUpLevel <= 1) return
+    const newLevel = followUpLevel - 1;
+    if (newLevel < 1) return;
 
-    const newLevel = followUpLevel - 1
-    const previousEntry = promptHistory[newLevel - 1]
-
+    const previousEntry = promptHistory[newLevel - 1];
     if (!previousEntry) {
-      console.error("Entry not found in prompt history")
+      console.error("Entry not found in prompt history");
       toast({
         title: "Error",
         description: "Unable to load previous follow-up. Please try again.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setFollowUpLevel(newLevel)
-    setImageResults(previousEntry.images)
-    setImageUrls(previousEntry.images.map(result => result.imageUrls[0]))
-    setCurrentSeed(previousEntry.seed)
-    setNumOutputs(previousEntry.numOutputs)
-    setAspectRatio(previousEntry.aspectRatio)
-    setGeneratedAspectRatio(previousEntry.aspectRatio)
-    setFollowUpPrompt(previousEntry.prompt)
-    setShowSeedInput(true)
-    setPromptHistory(prevHistory => prevHistory.slice(0, newLevel))
-    setCurrentPromptIndex(newLevel - 1)
-    setFocusedImageIndex(null)
-    setIsFocused(false)
+    // Get the current entry to extract the follow-up prompt
+    const currentEntry = promptHistory[followUpLevel - 1];
+    const currentFollowUpPrompt = currentEntry.prompt;
+
+    setFollowUpLevel(newLevel);
+    setImageResults(previousEntry.images);
+    setImageUrls(previousEntry.images.map(result => result.imageUrls[0]));
+    setCurrentSeed(previousEntry.seed);
+    setNumOutputs(previousEntry.numOutputs);
+    setAspectRatio(previousEntry.aspectRatio);
+    setGeneratedAspectRatio(previousEntry.aspectRatio);
+    
+    // Set the follow-up prompt to the current entry's prompt
+    setFollowUpPrompt(currentFollowUpPrompt);
+    
+    setShowSeedInput(true);
+    setPromptHistory(prevHistory => prevHistory.slice(0, newLevel));
+    setCurrentPromptIndex(newLevel - 1);
+    setFocusedImageIndex(null);
+    setIsFocused(false);
 
     if (previousEntry.enhancedOriginalPrompt) {
-      setEnhancedOriginalPrompt(previousEntry.enhancedOriginalPrompt)
+      setEnhancedOriginalPrompt(previousEntry.enhancedOriginalPrompt);
     }
 
-    setResetKey(prev => prev + 1)
+    // Update the original prompt and follow-up prompts
+    setOriginalPrompt(promptHistory[0].prompt);
+    setFollowUpPrompts(promptHistory.slice(1, newLevel).map(entry => entry.prompt));
+
+    setResetKey(prev => prev + 1);
 
     toast({
       title: "Previous Follow-up Loaded",
       description: `Returned to Follow-up Level: ${newLevel}`,
-    })
-  }, [followUpLevel, promptHistory, toast])
+    });
+  }, [followUpLevel, promptHistory, toast]);
 
   const handleEnhancePromptToggle = async (checked: boolean) => {
     setIsEnhancePromptEnabled(checked)
@@ -776,7 +804,7 @@ export default function FluxAIImageGenerator() {
               )}
               {isFocused && (
                 <ShinyButton
-                  onClick={() => setFocusedImageIndex(null)}
+                  onClick={handleClearFocus}
                   className="w-full py-2 md:py-3 text-base md:text-lg font-semibold"
                   text="Clear Focus"
                 />

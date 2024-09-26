@@ -96,13 +96,10 @@ const ImageGrid: React.FC<ImageGridProps> = ({
               <ShinyButton
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
-                  if (!isFocused || isThisImageFocused) {
-                    handleCopySeed(result.seed, result, result.index);
-                  }
+                  handleCopySeed(result.seed, result, result.index);
                 }}
                 className="text-xs md:text-sm py-1 px-2 md:py-2 md:px-3"
                 text={isThisImageFocused ? "Unfocus" : "Focus"}
-                disabled={isFocused && !isThisImageFocused}
               />
             </div>
             <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
