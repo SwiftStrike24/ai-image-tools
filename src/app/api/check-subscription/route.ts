@@ -28,13 +28,8 @@ export async function GET() {
 		const subscriptionKey = `${SUBSCRIPTION_KEY_PREFIX}${userId}`;
 		let subscription;
 		
-		try {
-			const redisClient = await getRedisClient();
-			subscription = await redisClient.get(subscriptionKey);
-		} catch (redisError) {
-			console.error("Error accessing Redis:", redisError);
-			subscription = "basic"; // Fallback to basic subscription
-		}
+		const redisClient = await getRedisClient();
+		subscription = await redisClient.get(subscriptionKey);
 
 		const isPro = subscription === "pro";
 		const isPremium = subscription === "premium";

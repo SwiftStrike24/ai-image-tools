@@ -111,9 +111,8 @@ export function PricingComponentComponent({ scrollToWaitlist }: { scrollToWaitli
     if (lowerPlanName === lowerSubType) {
       return { text: 'Current Plan', style: 'bg-gray-500 cursor-not-allowed' };
     } else if (
-      (lowerSubType === 'basic' && lowerPlanName !== 'basic') ||
-      (lowerSubType === 'pro' && ['premium', 'ultimate'].includes(lowerPlanName)) ||
-      (lowerSubType === 'premium' && lowerPlanName === 'ultimate')
+      ['basic', 'pro', 'premium', 'ultimate'].indexOf(lowerPlanName) >
+      ['basic', 'pro', 'premium', 'ultimate'].indexOf(lowerSubType)
     ) {
       return { text: `Upgrade to ${planName}`, style: 'bg-purple-600 hover:bg-purple-700' };
     } else {
@@ -255,6 +254,12 @@ function PlanContent({ plan, isMonthly, scrollToWaitlist, buttonProps }: { plan:
       return;
     }
 
+    if (buttonProps.text.startsWith('Downgrade')) {
+      // Open confirmation modal
+      setIsDowngradeModalOpen(true);
+      return;
+    }
+
     try {
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
@@ -288,12 +293,12 @@ function PlanContent({ plan, isMonthly, scrollToWaitlist, buttonProps }: { plan:
 
   const handleDowngrade = async () => {
     try {
-      const response = await fetch('/api/downgrade-subscription', {
+      const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ planName: plan.name }),
+        body: JSON.stringify({ priceId: plan.priceId }),
       });
 
       if (!response.ok) {
@@ -303,13 +308,11 @@ function PlanContent({ plan, isMonthly, scrollToWaitlist, buttonProps }: { plan:
 
       const data = await response.json();
       
-      toast({
-        title: "Downgrade Scheduled",
-        description: `Your subscription will be downgraded to ${plan.name} at the end of your current billing cycle.`,
-        variant: "default",
-      });
-
-      setIsDowngradeModalOpen(false);
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('No checkout URL returned');
+      }
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -378,7 +381,7 @@ function PlanContent({ plan, isMonthly, scrollToWaitlist, buttonProps }: { plan:
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-4">
-                <p className="text-sm text-gray-300">Your new plan will take effect at the end of your current billing cycle:</p>
+                <p className="text-sm text-gray-300">Your new plan will take effect immediately.</p>
                 <ScrollArea className="h-[200px] mt-2">
                   <ul className="space-y-2">
                     {plan.features.map((feature: string, index: number) => (

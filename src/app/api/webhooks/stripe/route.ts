@@ -61,6 +61,9 @@ export async function POST(req: Request) {
       case 'invoice.payment_succeeded':
         await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice);
         break;
+      case 'customer.deleted':
+        await handleCustomerDeleted(event.data.object as Stripe.Customer);
+        break;
       default:
         console.log(`Received ${event.type} event, no action needed`);
     }
@@ -85,7 +88,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     try {
       const redisClient = await getRedisClient();
       await redisClient.set(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`, customerId);
-      
+
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
       await updateUserSubscription(userId, subscription);
     } catch (error) {
@@ -102,22 +105,6 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   if (!userId) {
     console.error('Missing userId in subscription metadata');
     return;
-  }
-
-  const redisClient = await getRedisClient();
-  const pendingDowngrade = await redisClient.get(`${SUBSCRIPTION_KEY_PREFIX}${userId}:pending_downgrade`);
-
-  if (subscription.cancel_at_period_end && pendingDowngrade) {
-    // Handle pending downgrade
-    const newPlanId = getPlanIdFromName(pendingDowngrade);
-    if (newPlanId) {
-      await stripe.subscriptions.update(subscription.id, {
-        cancel_at_period_end: false,
-        items: [{ id: subscription.items.data[0].id, price: newPlanId }],
-        metadata: { downgradeTo: null },
-      });
-    }
-    await redisClient.del(`${SUBSCRIPTION_KEY_PREFIX}${userId}:pending_downgrade`);
   }
 
   await updateUserSubscription(userId, subscription);
@@ -162,6 +149,19 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   }
 }
 
+async function handleCustomerDeleted(customer: Stripe.Customer) {
+  console.log('Handling customer.deleted event');
+  const userId = customer.metadata.userId;
+  if (userId) {
+    const redisClient = await getRedisClient();
+    await redisClient.del(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
+    await redisClient.del(`${SUBSCRIPTION_KEY_PREFIX}${userId}`);
+    console.log(`Removed Stripe customer ID and subscription for user ${userId} from Redis`);
+  } else {
+    console.error('Missing userId in customer metadata');
+  }
+}
+
 async function updateUserSubscription(userId: string, subscription: Stripe.Subscription) {
   const productId = subscription.items.data[0].price.product as string;
   const product = await stripe.products.retrieve(productId);
@@ -177,6 +177,8 @@ async function updateUserSubscription(userId: string, subscription: Stripe.Subsc
     case 'ultimate':
       subscriptionTier = 'ultimate';
       break;
+    default:
+      subscriptionTier = 'basic';
   }
 
   const redisClient = await getRedisClient();
