@@ -89,10 +89,44 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       const redisClient = await getRedisClient();
       await redisClient.set(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`, customerId);
 
+      // Fetch the customer details from Stripe
+      const customer = await stripe.customers.retrieve(customerId);
+      
+      // Get the payment intent
+      const paymentIntentId = session.payment_intent as string;
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      
+      // Get the payment method
+      const paymentMethodId = paymentIntent.payment_method as string;
+      const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+
+      // Use the cardholder name from the payment method
+      const cardholderName = paymentMethod.billing_details.name || 'Name not provided';
+
+      // Update Stripe customer with the cardholder name and add userId to metadata
+      await stripe.customers.update(customerId, {
+        name: cardholderName,
+        metadata: {
+          userId: userId,
+        },
+      });
+
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
       await updateUserSubscription(userId, subscription);
+
+      // Handle subscription change if this was an upgrade/change
+      if (session.metadata?.action === 'subscription_change') {
+        const currentSubscriptionId = session.metadata.current_subscription_id;
+        if (currentSubscriptionId) {
+          // Cancel the old subscription
+          await stripe.subscriptions.cancel(currentSubscriptionId);
+          console.log(`Canceled old subscription ${currentSubscriptionId} for user ${userId}`);
+        }
+      }
+
+      console.log(`Updated Stripe customer ${customerId} with name: ${cardholderName}`);
     } catch (error) {
-      console.error('Error updating subscription after checkout:', error);
+      console.error('Error updating subscription or customer after checkout:', error);
     }
   } else {
     console.error('Missing userId, subscriptionId, or customerId in checkout session');
@@ -107,7 +141,19 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
     return;
   }
 
-  await updateUserSubscription(userId, subscription);
+  const redisClient = await getRedisClient();
+  const pendingDowngrade = await redisClient.get(`${SUBSCRIPTION_KEY_PREFIX}${userId}:pending_downgrade`);
+
+  if (pendingDowngrade) {
+    if (subscription.current_period_end <= (Date.now() / 1000)) {
+      // The subscription period has ended
+      await redisClient.del(`${SUBSCRIPTION_KEY_PREFIX}${userId}:pending_downgrade`);
+      await updateUserSubscription(userId, subscription);
+      console.log(`Downgrade to ${pendingDowngrade} has taken effect for user ${userId}`);
+    }
+  } else {
+    await updateUserSubscription(userId, subscription);
+  }
 }
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
@@ -155,14 +201,23 @@ async function handleCustomerDeleted(customer: Stripe.Customer) {
   if (userId) {
     const redisClient = await getRedisClient();
     await redisClient.del(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
-    await redisClient.del(`${SUBSCRIPTION_KEY_PREFIX}${userId}`);
-    console.log(`Removed Stripe customer ID and subscription for user ${userId} from Redis`);
+    // Instead of deleting, set the subscription to 'basic'
+    await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, 'basic');
+    console.log(`Removed Stripe customer ID and reset subscription for user ${userId} to basic in Redis`);
   } else {
     console.error('Missing userId in customer metadata');
   }
 }
 
 async function updateUserSubscription(userId: string, subscription: Stripe.Subscription) {
+  const redisClient = await getRedisClient();
+  
+  if (subscription.status === 'canceled') {
+    await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, 'basic');
+    console.log(`Reset subscription for user ${userId} to basic due to cancellation`);
+    return;
+  }
+
   const productId = subscription.items.data[0].price.product as string;
   const product = await stripe.products.retrieve(productId);
   let subscriptionTier: SubscriptionTier = 'basic';
@@ -181,7 +236,6 @@ async function updateUserSubscription(userId: string, subscription: Stripe.Subsc
       subscriptionTier = 'basic';
   }
 
-  const redisClient = await getRedisClient();
   await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, subscriptionTier);
 
   console.log(`Updated subscription for user ${userId} to ${subscriptionTier}`);

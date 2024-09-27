@@ -27,6 +27,7 @@ const plans = [
       'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
     ],
     cta: 'Get Started',
+    priceId: null, // No priceId for the free plan
   },
   {
     name: 'Pro',
@@ -99,7 +100,7 @@ const StripeBuyButton = ({ buyButtonId, publishableKey }: { buyButtonId: string;
   )
 }
 
-export function PricingComponentComponent({ scrollToWaitlist }: { scrollToWaitlist: () => void }) {
+export function PricingComponentComponent() {
   const [isMonthly, setIsMonthly] = useState(true)
   const { subscriptionType } = useSubscription('generator'); // Use the generator type, but it doesn't matter which one we use here
 
@@ -146,10 +147,10 @@ export function PricingComponentComponent({ scrollToWaitlist }: { scrollToWaitli
                     color={["#8B5CF6", "#6366F1", "#EC4899"]}
                     className="h-full"
                   >
-                    <PlanContent plan={plan} isMonthly={isMonthly} scrollToWaitlist={scrollToWaitlist} buttonProps={getButtonProps(plan.name)} />
+                    <PlanContent plan={plan} isMonthly={isMonthly} buttonProps={getButtonProps(plan.name)} />
                   </ShineBorder>
                 ) : (
-                  <PlanContent plan={plan} isMonthly={isMonthly} scrollToWaitlist={scrollToWaitlist} buttonProps={getButtonProps(plan.name)} />
+                  <PlanContent plan={plan} isMonthly={isMonthly} buttonProps={getButtonProps(plan.name)} />
                 )}
               </MagicCard>
             </motion.div>
@@ -224,15 +225,22 @@ export function PricingComponentComponent({ scrollToWaitlist }: { scrollToWaitli
   )
 }
 
-function PlanContent({ plan, isMonthly, scrollToWaitlist, buttonProps }: { plan: any; isMonthly: boolean; scrollToWaitlist: () => void; buttonProps: { text: string; style: string } }) {
+function PlanContent({ plan, isMonthly, buttonProps }: { plan: any; isMonthly: boolean; buttonProps: { text: string; style: string } }) {
   const { toast } = useToast()
   const { isLoaded, isSignedIn } = useAuth()
   const router = useRouter()
   const [isDowngradeModalOpen, setIsDowngradeModalOpen] = useState(false)
+  const { subscriptionType } = useSubscription('generator');
 
   const handleSubscribe = async () => {
     if (plan.name === 'Basic') {
-      scrollToWaitlist();
+      // Instead of scrolling, we'll handle the Basic plan subscription here
+      // For now, let's just show a toast message
+      toast({
+        title: "Basic Plan",
+        description: "You've selected the Basic plan. No further action needed.",
+        variant: "default",
+      });
       return;
     }
 
@@ -260,45 +268,50 @@ function PlanContent({ plan, isMonthly, scrollToWaitlist, buttonProps }: { plan:
       return;
     }
 
-    try {
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ priceId: plan.priceId }),
-      });
+    if (plan.priceId) {
+      try {
+        const response = await fetch('/api/create-checkout-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ priceId: plan.priceId }),
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'An error occurred');
-      }
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'An error occurred');
+        }
 
-      const data = await response.json();
-      
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error('No checkout URL returned');
+        const data = await response.json();
+        
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          throw new Error('No checkout URL returned');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "An error occurred. Please try again.",
+          variant: "destructive",
+        });
       }
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
-        variant: "destructive",
-      });
+    } else {
+      // Handle downgrading to Basic plan
+      setIsDowngradeModalOpen(true);
     }
   };
 
   const handleDowngrade = async () => {
     try {
-      const response = await fetch('/api/create-checkout-session', {
+      const response = await fetch('/api/downgrade-subscription', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ priceId: plan.priceId }),
+        body: JSON.stringify({ planName: plan.name }),
       });
 
       if (!response.ok) {
@@ -308,11 +321,14 @@ function PlanContent({ plan, isMonthly, scrollToWaitlist, buttonProps }: { plan:
 
       const data = await response.json();
       
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        throw new Error('No checkout URL returned');
-      }
+      toast({
+        title: "Downgrade Scheduled",
+        description: `Your subscription has been downgraded to ${plan.name}.`,
+        variant: "default",
+      });
+
+      setIsDowngradeModalOpen(false);
+      router.refresh();
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -377,16 +393,18 @@ function PlanContent({ plan, isMonthly, scrollToWaitlist, buttonProps }: { plan:
               <DialogHeader>
                 <DialogTitle>Confirm Downgrade</DialogTitle>
                 <DialogDescription>
-                  Are you sure you want to downgrade to the {plan.name} plan?
+                  Are you sure you want to downgrade from the {subscriptionType} plan to the {plan.name} plan?
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-4">
-                <p className="text-sm text-gray-300">Your new plan will take effect immediately.</p>
+                <p className="text-sm text-gray-300">
+                  You will lose access to the following features:
+                </p>
                 <ScrollArea className="h-[200px] mt-2">
                   <ul className="space-y-2">
-                    {plan.features.map((feature: string, index: number) => (
+                    {getLostFeatures(subscriptionType, plan.name).map((feature: string, index: number) => (
                       <li key={index} className="flex items-start">
-                        <CheckIcon className="h-5 w-5 text-purple-400 flex-shrink-0 mr-2" aria-hidden="true" />
+                        <CheckIcon className="h-5 w-5 text-red-500 flex-shrink-0 mr-2" aria-hidden="true" />
                         <span className="text-xs text-gray-300">{feature}</span>
                       </li>
                     ))}
@@ -403,4 +421,22 @@ function PlanContent({ plan, isMonthly, scrollToWaitlist, buttonProps }: { plan:
       </AnimatePresence>
     </div>
   )
+}
+
+// Helper function to get lost features when downgrading
+function getLostFeatures(currentPlan: string, newPlan: string) {
+  const planOrder = ['basic', 'pro', 'premium', 'ultimate'];
+  const currentPlanIndex = planOrder.indexOf(currentPlan.toLowerCase());
+  const newPlanIndex = planOrder.indexOf(newPlan.toLowerCase());
+
+  if (newPlanIndex >= currentPlanIndex) return [];
+
+  const lostFeatures = [];
+  for (let i = currentPlanIndex; i > newPlanIndex; i--) {
+    lostFeatures.push(...plans[i].features);
+  }
+
+  // Remove duplicates and features that are still available in the new plan
+  const newPlanFeatures = new Set(plans[newPlanIndex].features);
+  return [...new Set(lostFeatures.filter(feature => !newPlanFeatures.has(feature)))];
 }

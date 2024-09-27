@@ -130,14 +130,18 @@ export async function POST(req: Request) {
         ],
         subscription_data: {
           metadata: { userId },
-          // Remove the trial_from_plan property
         },
         success_url: successUrl,
         cancel_url: cancelUrl,
+        // Add metadata to indicate this is an upgrade/change
+        metadata: {
+          action: 'subscription_change',
+          current_subscription_id: currentSubscription.id,
+        },
       });
 
-      // Cancel the current subscription immediately
-      await stripe.subscriptions.cancel(currentSubscription.id);
+      // Remove the immediate cancellation of the current subscription
+      // await stripe.subscriptions.cancel(currentSubscription.id);
     } else {
       // User doesn't have an active subscription, create a new one
       session = await stripe.checkout.sessions.create({

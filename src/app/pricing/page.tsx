@@ -1,19 +1,12 @@
 "use client"
 
 import { PricingComponentComponent } from '@/components/pricing-component'
-import { useRef } from 'react'
 import { motion } from 'framer-motion'
 import GridPattern from "@/components/magicui/animated-grid-pattern"
 import AnimatedGradientText from "@/components/magicui/animated-gradient-text"
 import BlurFade from "@/components/magicui/blur-fade"
 
 export default function PricingPage() {
-  const waitlistRef = useRef<HTMLDivElement>(null)
-
-  const scrollToWaitlist = () => {
-    waitlistRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
-
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -76,10 +69,8 @@ export default function PricingPage() {
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <PricingComponentComponent scrollToWaitlist={scrollToWaitlist} />
+          <PricingComponentComponent />
         </motion.div>
-
-        <div ref={waitlistRef} />
       </div>
     </motion.div>
   )
