@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { CheckIcon, SparklesIcon } from 'lucide-react'
 import ShineBorder from '@/components/magicui/shine-border'
 import { MagicCard } from '@/components/magicui/magic-card'
@@ -10,6 +10,9 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter } from 'next/navigation'
 import { useSubscription } from '@/hooks/useSubscription'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Button } from "@/components/ui/button"
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
@@ -226,6 +229,7 @@ function PlanContent({ plan, isMonthly, scrollToWaitlist, buttonProps }: { plan:
   const { toast } = useToast()
   const { isLoaded, isSignedIn } = useAuth()
   const router = useRouter()
+  const [isDowngradeModalOpen, setIsDowngradeModalOpen] = useState(false)
 
   const handleSubscribe = async () => {
     if (plan.name === 'Basic') {
@@ -234,12 +238,10 @@ function PlanContent({ plan, isMonthly, scrollToWaitlist, buttonProps }: { plan:
     }
 
     if (!isLoaded) {
-      // Auth state is still loading, show a loading state or return
       return;
     }
 
     if (!isSignedIn) {
-      // User is not signed in, redirect to sign-in page
       router.push('/sign-in?redirect=/pricing');
       return;
     }
@@ -274,6 +276,40 @@ function PlanContent({ plan, isMonthly, scrollToWaitlist, buttonProps }: { plan:
       } else {
         throw new Error('No checkout URL returned');
       }
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDowngrade = async () => {
+    try {
+      const response = await fetch('/api/downgrade-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ planName: plan.name }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'An error occurred');
+      }
+
+      const data = await response.json();
+      
+      toast({
+        title: "Downgrade Scheduled",
+        description: `Your subscription will be downgraded to ${plan.name} at the end of your current billing cycle.`,
+        variant: "default",
+      });
+
+      setIsDowngradeModalOpen(false);
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -330,6 +366,38 @@ function PlanContent({ plan, isMonthly, scrollToWaitlist, buttonProps }: { plan:
           {buttonProps.text}
         </motion.button>
       </div>
+
+      <AnimatePresence>
+        {isDowngradeModalOpen && (
+          <Dialog open={isDowngradeModalOpen} onOpenChange={setIsDowngradeModalOpen}>
+            <DialogContent className="sm:max-w-[425px] bg-gray-800 text-gray-100">
+              <DialogHeader>
+                <DialogTitle>Confirm Downgrade</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to downgrade to the {plan.name} plan?
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mt-4">
+                <p className="text-sm text-gray-300">Your new plan will take effect at the end of your current billing cycle:</p>
+                <ScrollArea className="h-[200px] mt-2">
+                  <ul className="space-y-2">
+                    {plan.features.map((feature: string, index: number) => (
+                      <li key={index} className="flex items-start">
+                        <CheckIcon className="h-5 w-5 text-purple-400 flex-shrink-0 mr-2" aria-hidden="true" />
+                        <span className="text-xs text-gray-300">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </ScrollArea>
+              </div>
+              <div className="mt-4 flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsDowngradeModalOpen(false)}>Cancel</Button>
+                <Button onClick={handleDowngrade}>Confirm Downgrade</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

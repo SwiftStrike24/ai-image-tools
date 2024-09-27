@@ -9,6 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
+const STRIPE_CUSTOMER_KEY_PREFIX = "stripe_customer:";
 const PROCESSED_EVENTS_KEY_PREFIX = "processed_event:";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -23,34 +24,28 @@ export async function POST(req: Request) {
   const rawBody = await req.text();
   const signature = headers().get('stripe-signature');
 
-  if (!signature) {
-    console.error('Missing Stripe signature');
-    return NextResponse.json({ error: 'Missing Stripe signature' }, { status: 400 });
-  }
-
-  if (!webhookSecret) {
-    console.error('Missing Stripe webhook secret');
-    return NextResponse.json({ error: 'Configuration error: Missing webhook secret' }, { status: 500 });
+  if (!signature || !webhookSecret) {
+    console.error('Missing Stripe signature or webhook secret');
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
   let event: Stripe.Event;
 
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-  } catch (err: any) {
-    console.error(`Webhook Error: ${err.message}`);
-    return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
+  } catch (err) {
+    console.error(`Webhook signature verification failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
-  console.log(`Received event type: ${event.type}`);
-
   const redisClient = await getRedisClient();
+
+  // Check if this event has already been processed
   const eventId = event.id;
   const isProcessed = await redisClient.get(`${PROCESSED_EVENTS_KEY_PREFIX}${eventId}`);
-
   if (isProcessed) {
     console.log(`Event ${eventId} has already been processed. Skipping.`);
-    return NextResponse.json({ received: true, alreadyProcessed: true });
+    return NextResponse.json({ received: true });
   }
 
   try {
@@ -60,65 +55,110 @@ export async function POST(req: Request) {
         break;
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
+      case 'customer.subscription.deleted':
         await handleSubscriptionChange(event.data.object as Stripe.Subscription);
         break;
-      case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+      case 'invoice.payment_succeeded':
+        await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice);
         break;
-      // Add more cases for other event types you want to handle
       default:
-        console.log(`Unhandled event type ${event.type}`);
+        console.log(`Received ${event.type} event, no action needed`);
     }
 
-    // Mark the event as processed
-    await redisClient.set(`${PROCESSED_EVENTS_KEY_PREFIX}${eventId}`, 'true', {
-      EX: 86400 // Expire after 24 hours (86400 seconds)
-    });
+    // Mark this event as processed
+    await redisClient.set(`${PROCESSED_EVENTS_KEY_PREFIX}${eventId}`, 'true', { EX: 60 * 60 * 24 }); // Expire after 24 hours
 
+    return NextResponse.json({ received: true });
   } catch (error) {
     console.error('Error processing webhook:', error);
-    return NextResponse.json({ error: 'Error processing webhook' }, { status: 500 });
+    return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
   }
-
-  return NextResponse.json({ received: true });
 }
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   console.log('Handling checkout.session.completed');
-  const userId = session.client_reference_id;
+  const userId = session.metadata?.userId;
   const subscriptionId = session.subscription as string;
+  const customerId = session.customer as string;
 
-  if (userId && subscriptionId) {
+  if (userId && subscriptionId && customerId) {
     try {
+      const redisClient = await getRedisClient();
+      await redisClient.set(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`, customerId);
+      
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
       await updateUserSubscription(userId, subscription);
     } catch (error) {
       console.error('Error updating subscription after checkout:', error);
     }
   } else {
-    console.error('Missing userId or subscriptionId in checkout session');
+    console.error('Missing userId, subscriptionId, or customerId in checkout session');
   }
 }
 
 async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   console.log(`Handling subscription ${subscription.status} event`);
   const userId = subscription.metadata.userId;
-  if (userId) {
-    await updateUserSubscription(userId, subscription);
-  } else {
+  if (!userId) {
     console.error('Missing userId in subscription metadata');
+    return;
   }
+
+  const redisClient = await getRedisClient();
+  const pendingDowngrade = await redisClient.get(`${SUBSCRIPTION_KEY_PREFIX}${userId}:pending_downgrade`);
+
+  if (subscription.cancel_at_period_end && pendingDowngrade) {
+    // Handle pending downgrade
+    const newPlanId = getPlanIdFromName(pendingDowngrade);
+    if (newPlanId) {
+      await stripe.subscriptions.update(subscription.id, {
+        cancel_at_period_end: false,
+        items: [{ id: subscription.items.data[0].id, price: newPlanId }],
+        metadata: { downgradeTo: null },
+      });
+    }
+    await redisClient.del(`${SUBSCRIPTION_KEY_PREFIX}${userId}:pending_downgrade`);
+  }
+
+  await updateUserSubscription(userId, subscription);
 }
 
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  console.log('Handling customer.subscription.deleted');
-  const userId = subscription.metadata.userId;
-  if (userId) {
-    const redisClient = await getRedisClient();
-    await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, 'basic');
-    console.log(`Reset subscription for user ${userId} to basic`);
+async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
+  console.log('Handling invoice.payment_succeeded event');
+  const subscriptionId = invoice.subscription as string;
+  if (subscriptionId) {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const userId = subscription.metadata.userId;
+    if (userId) {
+      await updateUserSubscription(userId, subscription);
+      
+      // If this is a prorated payment for an upgrade, update the subscription immediately
+      if (invoice.billing_reason === 'subscription_update') {
+        const redisClient = await getRedisClient();
+        const productId = subscription.items.data[0].price.product as string;
+        const product = await stripe.products.retrieve(productId);
+        let subscriptionTier: SubscriptionTier = 'basic';
+
+        switch (product.name.toLowerCase()) {
+          case 'pro':
+            subscriptionTier = 'pro';
+            break;
+          case 'premium':
+            subscriptionTier = 'premium';
+            break;
+          case 'ultimate':
+            subscriptionTier = 'ultimate';
+            break;
+        }
+
+        await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, subscriptionTier);
+        console.log(`Immediately updated subscription for user ${userId} to ${subscriptionTier} after proration payment`);
+      }
+    } else {
+      console.error('Missing userId in subscription metadata');
+    }
   } else {
-    console.error('Missing userId in subscription metadata');
+    console.error('Missing subscriptionId in invoice');
   }
 }
 
@@ -143,4 +183,13 @@ async function updateUserSubscription(userId: string, subscription: Stripe.Subsc
   await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, subscriptionTier);
 
   console.log(`Updated subscription for user ${userId} to ${subscriptionTier}`);
+}
+
+function getPlanIdFromName(planName: string): string | null {
+  const planMap: { [key: string]: string } = {
+    'Pro': 'price_1Q3AztHYPfrMrymk4VqOuNAD',
+    'Premium': 'price_1Q3B16HYPfrMrymkgzihBxJR',
+    'Ultimate': 'price_1Q3B2gHYPfrMrymkYyJgjmci',
+  };
+  return planMap[planName] || null;
 }

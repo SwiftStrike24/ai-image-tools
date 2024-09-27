@@ -6,12 +6,13 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { cn } from "@/lib/utils"
 import { UserButton } from '@clerk/nextjs'
-import { Sparkles, Zap, Menu } from 'lucide-react'
+import { Sparkles, Zap, Menu, CreditCard } from 'lucide-react'
 import RetroGrid from "@/components/magicui/retro-grid"
 import AnimatedGradientText from "@/components/magicui/animated-gradient-text"
 import HyperText from "@/components/magicui/hyper-text"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import ShimmerButton from "@/components/magicui/shimmer-button"
 
 const tabs = [
   { id: 'upscaler', label: 'Image Upscaler', path: '/upscaler', icon: Zap },
@@ -40,14 +41,28 @@ export default function HeaderClient() {
       <RetroGrid className="absolute inset-0 z-0 opacity-20" />
       <div className="absolute inset-0 bg-purple-900/30 backdrop-blur-sm" />
       <div className="relative z-20 max-w-7xl mx-auto">
-        <div className="flex justify-between items-center">
-          <Link href="/" className="text-lg md:text-xl font-bold">
-            <HyperText
-              text="FluxScale AI"
-              className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600"
-              duration={3000}
-            />
-          </Link>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Link href="/" className="text-lg md:text-xl font-bold">
+              <HyperText
+                text="FluxScale AI"
+                className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600"
+                duration={3000}
+              />
+            </Link>
+            
+            <Link href="/pricing" passHref>
+              <ShimmerButton
+                className="px-4 py-2 text-sm font-medium rounded-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+              >
+                <div className="flex items-center justify-start">
+                  <CreditCard className="w-4 h-4 mr-2 flex-shrink-0" />
+                  <span className="text-white whitespace-nowrap">Pricing</span>
+                </div>
+              </ShimmerButton>
+            </Link>
+          </div>
+
           <div className="flex items-center space-x-2 md:space-x-4">
             <nav className="hidden md:block">
               <ul className="flex space-x-1">
