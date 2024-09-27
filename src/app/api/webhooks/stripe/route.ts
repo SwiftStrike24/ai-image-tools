@@ -2,20 +2,28 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getRedisClient } from "@/lib/redis";
 import { SubscriptionTier } from '@/actions/rateLimit';
+import { headers } from 'next/headers';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
 });
 
 const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
+const PROCESSED_EVENTS_KEY_PREFIX = "processed_event:";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-export async function POST(req: Request) {
-  const body = await req.text();
-  const sig = req.headers.get('stripe-signature');
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
-  if (!sig) {
+export async function POST(req: Request) {
+  const rawBody = await req.text();
+  const signature = headers().get('stripe-signature');
+
+  if (!signature) {
     console.error('Missing Stripe signature');
     return NextResponse.json({ error: 'Missing Stripe signature' }, { status: 400 });
   }
@@ -28,7 +36,7 @@ export async function POST(req: Request) {
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (err: any) {
     console.error(`Webhook Error: ${err.message}`);
     return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
@@ -36,23 +44,37 @@ export async function POST(req: Request) {
 
   console.log(`Received event type: ${event.type}`);
 
+  const redisClient = await getRedisClient();
+  const eventId = event.id;
+  const isProcessed = await redisClient.get(`${PROCESSED_EVENTS_KEY_PREFIX}${eventId}`);
+
+  if (isProcessed) {
+    console.log(`Event ${eventId} has already been processed. Skipping.`);
+    return NextResponse.json({ received: true, alreadyProcessed: true });
+  }
+
   try {
     switch (event.type) {
       case 'checkout.session.completed':
         await handleCheckoutSessionCompleted(event.data.object as Stripe.Checkout.Session);
         break;
       case 'customer.subscription.created':
-        await handleSubscriptionCreated(event.data.object as Stripe.Subscription);
-        break;
       case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
+        await handleSubscriptionChange(event.data.object as Stripe.Subscription);
         break;
       case 'customer.subscription.deleted':
         await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
         break;
+      // Add more cases for other event types you want to handle
       default:
         console.log(`Unhandled event type ${event.type}`);
     }
+
+    // Mark the event as processed
+    await redisClient.set(`${PROCESSED_EVENTS_KEY_PREFIX}${eventId}`, 'true', {
+      EX: 86400 // Expire after 24 hours (86400 seconds)
+    });
+
   } catch (error) {
     console.error('Error processing webhook:', error);
     return NextResponse.json({ error: 'Error processing webhook' }, { status: 500 });
@@ -78,18 +100,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   }
 }
 
-async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
-  console.log('Handling customer.subscription.created');
-  const userId = subscription.metadata.userId;
-  if (userId) {
-    await updateUserSubscription(userId, subscription);
-  } else {
-    console.error('Missing userId in subscription metadata');
-  }
-}
-
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  console.log('Handling customer.subscription.updated');
+async function handleSubscriptionChange(subscription: Stripe.Subscription) {
+  console.log(`Handling subscription ${subscription.status} event`);
   const userId = subscription.metadata.userId;
   if (userId) {
     await updateUserSubscription(userId, subscription);

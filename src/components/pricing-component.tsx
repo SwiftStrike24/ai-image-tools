@@ -9,6 +9,7 @@ import { loadStripe } from '@stripe/stripe-js'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter } from 'next/navigation'
+import { useSubscription } from '@/hooks/useSubscription'
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
@@ -97,6 +98,25 @@ const StripeBuyButton = ({ buyButtonId, publishableKey }: { buyButtonId: string;
 
 export function PricingComponentComponent({ scrollToWaitlist }: { scrollToWaitlist: () => void }) {
   const [isMonthly, setIsMonthly] = useState(true)
+  const { subscriptionType } = useSubscription('generator'); // Use the generator type, but it doesn't matter which one we use here
+
+  // Helper function to determine button text and style
+  const getButtonProps = (planName: string) => {
+    const lowerPlanName = planName.toLowerCase();
+    const lowerSubType = subscriptionType.toLowerCase();
+
+    if (lowerPlanName === lowerSubType) {
+      return { text: 'Current Plan', style: 'bg-gray-500 cursor-not-allowed' };
+    } else if (
+      (lowerSubType === 'basic' && lowerPlanName !== 'basic') ||
+      (lowerSubType === 'pro' && ['premium', 'ultimate'].includes(lowerPlanName)) ||
+      (lowerSubType === 'premium' && lowerPlanName === 'ultimate')
+    ) {
+      return { text: `Upgrade to ${planName}`, style: 'bg-purple-600 hover:bg-purple-700' };
+    } else {
+      return { text: `Downgrade to ${planName}`, style: 'bg-yellow-600 hover:bg-yellow-700' };
+    }
+  };
 
   return (
     <div className="bg-transparent text-gray-100 py-12 px-4 sm:px-6 lg:px-8">
@@ -124,10 +144,10 @@ export function PricingComponentComponent({ scrollToWaitlist }: { scrollToWaitli
                     color={["#8B5CF6", "#6366F1", "#EC4899"]}
                     className="h-full"
                   >
-                    <PlanContent plan={plan} isMonthly={isMonthly} scrollToWaitlist={scrollToWaitlist} />
+                    <PlanContent plan={plan} isMonthly={isMonthly} scrollToWaitlist={scrollToWaitlist} buttonProps={getButtonProps(plan.name)} />
                   </ShineBorder>
                 ) : (
-                  <PlanContent plan={plan} isMonthly={isMonthly} scrollToWaitlist={scrollToWaitlist} />
+                  <PlanContent plan={plan} isMonthly={isMonthly} scrollToWaitlist={scrollToWaitlist} buttonProps={getButtonProps(plan.name)} />
                 )}
               </MagicCard>
             </motion.div>
@@ -202,7 +222,7 @@ export function PricingComponentComponent({ scrollToWaitlist }: { scrollToWaitli
   )
 }
 
-function PlanContent({ plan, isMonthly, scrollToWaitlist }: { plan: any; isMonthly: boolean; scrollToWaitlist: () => void }) {
+function PlanContent({ plan, isMonthly, scrollToWaitlist, buttonProps }: { plan: any; isMonthly: boolean; scrollToWaitlist: () => void; buttonProps: { text: string; style: string } }) {
   const { toast } = useToast()
   const { isLoaded, isSignedIn } = useAuth()
   const router = useRouter()
@@ -221,6 +241,15 @@ function PlanContent({ plan, isMonthly, scrollToWaitlist }: { plan: any; isMonth
     if (!isSignedIn) {
       // User is not signed in, redirect to sign-in page
       router.push('/sign-in?redirect=/pricing');
+      return;
+    }
+
+    if (buttonProps.text === 'Current Plan') {
+      toast({
+        title: "Current Plan",
+        description: "You are already subscribed to this plan.",
+        variant: "default",
+      });
       return;
     }
 
@@ -294,12 +323,11 @@ function PlanContent({ plan, isMonthly, scrollToWaitlist }: { plan: any; isMonth
           whileTap={{ scale: 0.95 }}
           onClick={handleSubscribe}
           className={`w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-100 ${
-            plan.popular
-              ? 'bg-purple-600 hover:bg-purple-700'
-              : 'bg-gray-700 hover:bg-gray-600'
+            buttonProps.style
           } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200`}
+          disabled={buttonProps.text === 'Current Plan'}
         >
-          {plan.cta}
+          {buttonProps.text}
         </motion.button>
       </div>
     </div>
