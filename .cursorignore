@@ -1,0 +1,38 @@
+# Ignore node_modules (already added by you)
+node_modules/
+
+# Ignore build output
+.next/
+.vercel/
+
+# Ignore public assets
+public/
+
+# Ignore environment files
+.env
+.env.local
+.env.*.local
+
+# Ignore test folders and related files
+__tests__/
+coverage/
+
+# Ignore log files
+*.log
+
+# Ignore temporary files
+*.tmp
+*.swp
+.DS_Store
+
+# Ignore git and version control files
+.git/
+.gitignore
+
+# Ignore package lock and yarn lock files (optional if you don’t need them indexed)
+package-lock.json
+yarn.lock
+
+# Ignore config and cache files
+.vscode/
+.cache/

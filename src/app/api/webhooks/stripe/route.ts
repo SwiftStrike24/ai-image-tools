@@ -89,42 +89,28 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       const redisClient = await getRedisClient();
       await redisClient.set(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`, customerId);
 
-      // Fetch the customer details from Stripe
-      const customer = await stripe.customers.retrieve(customerId);
-      
-      // Get the payment intent
-      const paymentIntentId = session.payment_intent as string;
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-      
-      // Get the payment method
-      const paymentMethodId = paymentIntent.payment_method as string;
-      const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
-
-      // Use the cardholder name from the payment method
-      const cardholderName = paymentMethod.billing_details.name || 'Name not provided';
-
-      // Update Stripe customer with the cardholder name and add userId to metadata
+      // Update Stripe customer metadata
       await stripe.customers.update(customerId, {
-        name: cardholderName,
         metadata: {
           userId: userId,
         },
       });
 
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-      await updateUserSubscription(userId, subscription);
+      let subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
-      // Handle subscription change if this was an upgrade/change
-      if (session.metadata?.action === 'subscription_change') {
-        const currentSubscriptionId = session.metadata.current_subscription_id;
-        if (currentSubscriptionId) {
+      // Check if this is an update to an existing subscription
+      if (session.metadata?.action === 'update_subscription' && session.metadata?.subscription_id) {
+        const oldSubscriptionId = session.metadata.subscription_id;
+        if (oldSubscriptionId !== subscriptionId) {
           // Cancel the old subscription
-          await stripe.subscriptions.cancel(currentSubscriptionId);
-          console.log(`Canceled old subscription ${currentSubscriptionId} for user ${userId}`);
+          await stripe.subscriptions.cancel(oldSubscriptionId);
+          console.log(`Canceled old subscription ${oldSubscriptionId} for user ${userId}`);
         }
       }
 
-      console.log(`Updated Stripe customer ${customerId} with name: ${cardholderName}`);
+      await updateUserSubscription(userId, subscription);
+
+      console.log(`Updated Stripe customer ${customerId} for user ${userId}`);
     } catch (error) {
       console.error('Error updating subscription or customer after checkout:', error);
     }
@@ -141,19 +127,7 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
     return;
   }
 
-  const redisClient = await getRedisClient();
-  const pendingDowngrade = await redisClient.get(`${SUBSCRIPTION_KEY_PREFIX}${userId}:pending_downgrade`);
-
-  if (pendingDowngrade) {
-    if (subscription.current_period_end <= (Date.now() / 1000)) {
-      // The subscription period has ended
-      await redisClient.del(`${SUBSCRIPTION_KEY_PREFIX}${userId}:pending_downgrade`);
-      await updateUserSubscription(userId, subscription);
-      console.log(`Downgrade to ${pendingDowngrade} has taken effect for user ${userId}`);
-    }
-  } else {
-    await updateUserSubscription(userId, subscription);
-  }
+  await updateUserSubscription(userId, subscription);
 }
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
@@ -199,11 +173,23 @@ async function handleCustomerDeleted(customer: Stripe.Customer) {
   console.log('Handling customer.deleted event');
   const userId = customer.metadata.userId;
   if (userId) {
-    const redisClient = await getRedisClient();
-    await redisClient.del(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
-    // Instead of deleting, set the subscription to 'basic'
-    await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, 'basic');
-    console.log(`Removed Stripe customer ID and reset subscription for user ${userId} to basic in Redis`);
+    try {
+      const redisClient = await getRedisClient();
+      
+      // Remove the Stripe customer ID from Redis
+      await redisClient.del(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
+      
+      // Set the subscription to 'basic'
+      await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, 'basic');
+      
+      console.log(`Removed Stripe customer ID and reset subscription for user ${userId} to basic in Redis`);
+      
+      // Optionally, you can add more cleanup or notification logic here
+      // For example, you might want to notify the user that their subscription has been canceled
+      
+    } catch (error) {
+      console.error(`Error handling customer deletion for user ${userId}:`, error);
+    }
   } else {
     console.error('Missing userId in customer metadata');
   }

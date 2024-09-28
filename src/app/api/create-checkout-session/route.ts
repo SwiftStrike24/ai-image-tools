@@ -115,7 +115,7 @@ export async function POST(req: Request) {
     let session;
 
     if (subscriptions.data.length > 0) {
-      // User has a subscription, handle upgrade or downgrade
+      // User has a subscription, create a session for updating the subscription
       const currentSubscription = subscriptions.data[0];
 
       session = await stripe.checkout.sessions.create({
@@ -133,15 +133,12 @@ export async function POST(req: Request) {
         },
         success_url: successUrl,
         cancel_url: cancelUrl,
-        // Add metadata to indicate this is an upgrade/change
+        // Instead of passing the subscription directly, use metadata
         metadata: {
-          action: 'subscription_change',
-          current_subscription_id: currentSubscription.id,
-        },
+          subscription_id: currentSubscription.id,
+          action: 'update_subscription'
+        }
       });
-
-      // Remove the immediate cancellation of the current subscription
-      // await stripe.subscriptions.cancel(currentSubscription.id);
     } else {
       // User doesn't have an active subscription, create a new one
       session = await stripe.checkout.sessions.create({
