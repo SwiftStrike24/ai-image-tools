@@ -1,6 +1,7 @@
-import { clerkMiddleware, auth } from "@clerk/nextjs/server";
+import { clerkMiddleware, auth, clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from 'next/server';
 import type { NextRequest, NextFetchEvent } from 'next/server';
+import { saveUserToSupabase, testSupabaseConnection } from "@/lib/supabase";
 
 export default async function middleware(req: NextRequest) {
   console.log('Middleware called for path:', req.nextUrl.pathname);
@@ -14,6 +15,34 @@ export default async function middleware(req: NextRequest) {
   }
 
   const { userId } = auth();
+  console.log('User ID from auth:', userId);
+
+  // Save user data to Supabase if authenticated
+  if (userId) {
+    try {
+      console.log('Testing Supabase connection...');
+      const isConnected = await testSupabaseConnection();
+      if (!isConnected) {
+        console.error('Failed to connect to Supabase, skipping user save');
+        return NextResponse.next();
+      }
+      console.log('Supabase connection successful');
+
+      console.log('Fetching user data from Clerk');
+      const user = await clerkClient.users.getUser(userId);
+      if (user) {
+        console.log('User data fetched, saving to Supabase');
+        const result = await saveUserToSupabase(user);
+        console.log('Save user result:', result);
+      } else {
+        console.log('No user data returned from Clerk');
+      }
+    } catch (error) {
+      console.error('Error in middleware while saving user to Supabase:', error);
+    }
+  } else {
+    console.log('No user ID, skipping Supabase save');
+  }
 
   // Allow access to sign-in page without redirection
   if (req.nextUrl.pathname.startsWith('/sign-in')) {
