@@ -6,7 +6,6 @@ import { useInView } from 'react-intersection-observer'
 import { Input } from "@/components/ui/input"
 import { ArrowRight, Wand2, Maximize, Layout, Download, Sparkles, CreditCard, Menu, UserCheck } from 'lucide-react'
 import Image from 'next/image'
-import BeforeAfterSlider from '@/components/BeforeAfterSlider'
 import { addToWaitlist } from '@/actions/waitlist-actions'
 import { useToast } from "@/hooks/use-toast"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
@@ -23,10 +22,11 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
 
-const ReactPlayer = dynamic(() => import('react-player/lazy'), { ssr: false })
+// Dynamically import components that are not needed immediately
+const BeforeAfterSlider = dynamic(() => import('@/components/BeforeAfterSlider'), { ssr: false })
 
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
@@ -108,6 +108,7 @@ const ImageCarousel = () => {
               width={200}
               height={200}
               className="rounded-lg object-cover w-full h-full"
+              loading="lazy"
             />
           </motion.div>
         ))}
@@ -316,15 +317,8 @@ export default function LandingPage() {
   // const UpscaleVideoUrl = "https://2k0gowvr1yoiaado.public.blob.vercel-storage.com/landingPage-HowTo/Howto-Upscale-2chZeXRFFoBIXXpEqWxtrmXbj7VpaB.mp4"
 
   // local storage
-  const ImageGenVideoUrl = "/videos/landingPage-HowTo/Howto-ImageGen.mp4"
-  const UpscaleVideoUrl = "/videos/landingPage-HowTo/Howto-Upscale.mp4"
-
-  const [isVideoReady, setIsVideoReady] = useState(false)
-  const [hasVideoError, setHasVideoError] = useState(false)
-  const { ref: videoRef, inView: videoInView } = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
-  })
+  const ImageGenVideoUrl = "/videos/landingPage-HowTo/Howto-ImageGen.webp"
+  const UpscaleVideoUrl = "/videos/landingPage-HowTo/Howto-Upscale.webp"
 
   return (
     <AnimatePresence>
@@ -593,67 +587,17 @@ export default function LandingPage() {
                 </motion.h3>
                 <div className="flex flex-col md:flex-row items-center justify-center space-y-8 md:space-y-0 md:space-x-8">
                   <motion.div 
-                    ref={videoRef}
                     variants={itemVariants} 
                     className="w-full md:w-1/2 relative aspect-video"
                   >
-                    <AnimatePresence>
-                      {!isVideoReady && (
-                        <motion.div
-                          initial={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.5 }}
-                          className="absolute inset-0"
-                        >
-                          <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg" />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.5 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
-                              className="text-white text-2xl font-bold bg-black bg-opacity-50 px-6 py-3 rounded-full"
-                            >
-                              Loading Video...
-                            </motion.div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                    {videoInView && !hasVideoError && (
-                      <ReactPlayer
-                        url={ImageGenVideoUrl}
-                        playing
-                        loop
-                        muted
-                        playsinline
-                        width="100%"
-                        height="100%"
-                        onReady={() => setIsVideoReady(true)}
-                        onError={() => setHasVideoError(true)}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          opacity: isVideoReady ? 1 : 0,
-                          transition: 'opacity 0.5s ease-in-out',
-                        }}
-                        config={{
-                          file: {
-                            attributes: {
-                              crossOrigin: "anonymous",
-                              preload: "auto",
-                            },
-                            forceVideo: true,
-                            forceAudio: false,
-                          },
-                        }}
-                      />
-                    )}
-                    {hasVideoError && (
-                      <div className="absolute inset-0 flex items-center justify-center text-white bg-black bg-opacity-50 rounded-lg">
-                        <p>Sorry, there was an error loading the video. Please try again later.</p>
-                      </div>
-                    )}
+                    <Image
+                      src={ImageGenVideoUrl}
+                      alt="How AI Image Generation Works"
+                      layout="fill"
+                      objectFit="cover"
+                      className="rounded-lg"
+                      unoptimized
+                    />
                   </motion.div>
                   <motion.div variants={itemVariants} className="w-full md:w-1/2 space-y-4">
                     <h4 className="text-2xl font-semibold">Create AI-Powered Images in 4 Steps</h4>
@@ -728,63 +672,14 @@ export default function LandingPage() {
                     variants={itemVariants} 
                     className="w-full md:w-1/2 relative aspect-video"
                   >
-                    <AnimatePresence>
-                      {!isVideoReady && (
-                        <motion.div
-                          initial={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.5 }}
-                          className="absolute inset-0"
-                        >
-                          <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg" />
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.5 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ duration: 0.5, repeat: Infinity, repeatType: "reverse" }}
-                              className="text-white text-2xl font-bold bg-black bg-opacity-50 px-6 py-3 rounded-full"
-                            >
-                              Loading Video...
-                            </motion.div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                    {videoInView && !hasVideoError && (
-                      <ReactPlayer
-                        url={UpscaleVideoUrl}
-                        playing
-                        loop
-                        muted
-                        playsinline
-                        width="100%"
-                        height="100%"
-                        onReady={() => setIsVideoReady(true)}
-                        onError={() => setHasVideoError(true)}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          opacity: isVideoReady ? 1 : 0,
-                          transition: 'opacity 0.5s ease-in-out',
-                        }}
-                        config={{
-                          file: {
-                            attributes: {
-                              crossOrigin: "anonymous",
-                              preload: "auto",
-                            },
-                            forceVideo: true,
-                            forceAudio: false,
-                          },
-                        }}
-                      />
-                    )}
-                    {hasVideoError && (
-                      <div className="absolute inset-0 flex items-center justify-center text-white bg-black bg-opacity-50 rounded-lg">
-                        <p>Sorry, there was an error loading the video. Please try again later.</p>
-                      </div>
-                    )}
+                    <Image
+                      src={UpscaleVideoUrl}
+                      alt="How AI Image Upscaling Works"
+                      layout="fill"
+                      objectFit="cover"
+                      className="rounded-lg"
+                      unoptimized
+                    />
                   </motion.div>
                   <motion.div variants={itemVariants} className="w-full md:w-1/2 space-y-4">
                     <h4 className="text-2xl font-semibold">Enhance Your Images in 4 Steps</h4>
