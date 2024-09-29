@@ -1,7 +1,10 @@
-import { clerkMiddleware, auth, clerkClient } from "@clerk/nextjs/server";
+import { clerkMiddleware, auth } from "@clerk/nextjs/server";
 import { NextResponse } from 'next/server';
 import type { NextRequest, NextFetchEvent } from 'next/server';
-import { saveUserToSupabase, testSupabaseConnection } from "@/lib/supabase";
+import { saveUserToSupabase, syncUserDataWithRedis } from "@/lib/supabase";
+
+// Add a simple in-memory cache
+const userSaveCache: { [key: string]: number } = {};
 
 export default async function middleware(req: NextRequest) {
   console.log('Middleware called for path:', req.nextUrl.pathname);
@@ -15,33 +18,21 @@ export default async function middleware(req: NextRequest) {
   }
 
   const { userId } = auth();
-  console.log('User ID from auth:', userId);
 
-  // Save user data to Supabase if authenticated
+  // Save user data to Supabase and sync with Redis if authenticated and not recently saved
   if (userId) {
-    try {
-      console.log('Testing Supabase connection...');
-      const isConnected = await testSupabaseConnection();
-      if (!isConnected) {
-        console.error('Failed to connect to Supabase, skipping user save');
-        return NextResponse.next();
+    const currentTime = Date.now();
+    if (!userSaveCache[userId] || currentTime - userSaveCache[userId] > 300000) { // 5 minutes
+      try {
+        console.log('Attempting to save user to Supabase and sync with Redis:', userId);
+        await saveUserToSupabase(userId);
+        await syncUserDataWithRedis(userId);
+        userSaveCache[userId] = currentTime;
+        console.log('User saved successfully to Supabase and synced with Redis:', userId);
+      } catch (error) {
+        console.error('Error in middleware while saving user to Supabase and syncing with Redis:', error);
       }
-      console.log('Supabase connection successful');
-
-      console.log('Fetching user data from Clerk');
-      const user = await clerkClient.users.getUser(userId);
-      if (user) {
-        console.log('User data fetched, saving to Supabase');
-        const result = await saveUserToSupabase(user);
-        console.log('Save user result:', result);
-      } else {
-        console.log('No user data returned from Clerk');
-      }
-    } catch (error) {
-      console.error('Error in middleware while saving user to Supabase:', error);
     }
-  } else {
-    console.log('No user ID, skipping Supabase save');
   }
 
   // Allow access to sign-in page without redirection
@@ -52,8 +43,7 @@ export default async function middleware(req: NextRequest) {
   // Redirection logic for admin-protected routes
   if (
     req.nextUrl.pathname.startsWith('/upscaler') ||
-    req.nextUrl.pathname.startsWith('/generator') ||
-    req.nextUrl.pathname.startsWith('/admin/waitlist')
+    req.nextUrl.pathname.startsWith('/generator')
   ) {
     const adminAuthenticated = req.cookies.get('admin_authenticated')?.value;
 

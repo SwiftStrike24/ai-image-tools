@@ -20,27 +20,13 @@ import HyperText from "@/components/magicui/hyper-text"
 import BlurFade from "@/components/magicui/blur-fade"
 import AnimatedGradientText from "@/components/magicui/animated-gradient-text"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
-import { PricingComponentComponent } from '@/components/pricing-component'
-import { styled } from '@stitches/react';
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import { useRouter } from 'next/navigation'
 
 const ReactPlayer = dynamic(() => import('react-player/lazy'), { ssr: false })
-
-const PricingWrapper = styled('div', {
-  '& > div': {
-    background: 'transparent !important',
-    backdropFilter: 'none !important',
-    WebkitBackdropFilter: 'none !important',
-  },
-  '& .pricing-card': {
-    background: 'rgba(30, 30, 30, 0.6) !important',
-    backdropFilter: 'blur(20px) !important',
-    WebkitBackdropFilter: 'blur(20px) !important',
-  }
-});
 
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
@@ -138,8 +124,8 @@ export default function LandingPage() {
   const { toast } = useToast()
   const emailInputRef = useRef<HTMLTextAreaElement>(null)
   const waitlistRef = useRef<HTMLDivElement>(null)
-  const pricingRef = useRef<HTMLDivElement>(null)
   const [isSuccess, setIsSuccess] = useState(false)
+  const router = useRouter()
 
   const MAX_EMAIL_LENGTH = 40 // Set a reasonable maximum length for email addresses
 
@@ -179,7 +165,7 @@ export default function LandingPage() {
     },
     {
       question: "How does Prompt Enhancement work?",
-      answer: "Our Meta-Llama 3 (8B) or GPT-4o-mini models refine your prompts, unlocking more detailed, creative, and visually compelling outputs."
+      answer: "AI-powered prompt enhancement using models like Meta-Llama 3 (8B) or GPT-4o-mini refines prompts for more detailed and creative outputs."
     }
   ]
 
@@ -279,14 +265,6 @@ export default function LandingPage() {
         ease: 'easeOut'
       }
     }
-  }
-
-  const scrollToWaitlist = () => {
-    waitlistRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
-
-  const scrollToPricing = () => {
-    pricingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   const structuredData = {
@@ -436,7 +414,7 @@ export default function LandingPage() {
                 FAQ
               </Button>
               <Button
-                onClick={scrollToPricing}
+                onClick={() => router.push('/pricing')}
                 className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 <CreditCard className="mr-2 h-4 w-4" />
@@ -500,7 +478,7 @@ export default function LandingPage() {
                   </Button>
                   <Button
                     onClick={() => {
-                      scrollToPricing()
+                      router.push('/pricing')
                       document.body.click() // Close the sheet
                     }}
                     className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 justify-start"
@@ -542,54 +520,19 @@ export default function LandingPage() {
               className="flex justify-center my-16 px-4"
             >
               <div ref={waitlistRef} className="w-full max-w-md">
-                <h3 className="text-2xl font-bold mb-4 text-center">Join the Waitlist</h3>
-                <p className="text-gray-300 text-center mb-6">Be the first to experience the future of AI-powered image enhancement</p>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="relative">
-                    <Input 
-                      ref={emailInputRef}
-                      placeholder="Enter your email for early access" 
-                      value={email} 
-                      onChange={handleEmailChange}
-                      onKeyDown={handleKeyDown}
-                      maxLength={MAX_EMAIL_LENGTH}
-                      className={`w-full bg-gray-800 text-white border-purple-500 ${formError ? 'border-red-500' : ''}`}
-                      required
-                    />
-                    {formError && (
-                      <p className="text-red-400 text-sm mt-1">{formError}</p>
-                    )}
-                    <p className="text-gray-400 text-xs mt-1">
-                      {email.length}/{MAX_EMAIL_LENGTH}
-                    </p>
+                <h3 className="text-2xl font-bold mb-4 text-center">Experience AI-Powered Image Generation</h3>
+                <ShimmerButton 
+                  onClick={() => router.push('/generator')}
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded"
+                  shimmerColor="#8B5CF6"
+                  shimmerSize="0.1em"
+                  shimmerDuration="2s"
+                >
+                  <div className="flex items-center justify-center text-white">
+                    <span>Enter App</span>
+                    <ArrowRight className="ml-2 w-4 h-4" />
                   </div>
-                  <ShimmerButton 
-                    type="submit" 
-                    className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded"
-                    disabled={isSubmitting || isSuccess}
-                    shimmerColor="#8B5CF6"
-                    shimmerSize="0.1em"
-                    shimmerDuration="2s"
-                  >
-                    {isSubmitting ? (
-                      <span className="text-white">Joining...</span>
-                    ) : isSuccess ? (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 200, damping: 10 }}
-                        className="flex justify-center items-center"
-                      >
-                        <AnimatedCheckmark />
-                      </motion.div>
-                    ) : (
-                      <div className="flex items-center justify-center text-white">
-                        <span>Join Waitlist</span>
-                        <ArrowRight className="ml-2 w-4 h-4" />
-                      </div>
-                    )}
-                  </ShimmerButton>
-                </form>
+                </ShimmerButton>
               </div>
             </motion.div>
 
@@ -724,10 +667,10 @@ export default function LandingPage() {
                       Powered by FLUX.1, advanced AI model that transforms your ideas into stunning visuals.
                     </p>
                     <ShimmerButton 
-                      onClick={scrollToWaitlist}
+                      onClick={() => router.push('/generator')}
                       className="mt-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold"
                     >
-                      <span className="text-white">Join Waitlist for Image Generator</span>
+                      <span className="text-white">Try Image Generator Now</span>
                     </ShimmerButton>
                   </motion.div>
                 </div>
@@ -855,10 +798,10 @@ export default function LandingPage() {
                       Powered by Real-ESRGAN, an advanced AI model that enhances image quality and resolution.
                     </p>
                     <ShimmerButton 
-                      onClick={scrollToWaitlist}
+                      onClick={() => router.push('/upscaler')}
                       className="mt-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold"
                     >
-                      <span className="text-white">Join Waitlist for Image Upscaler</span>
+                      <span className="text-white">Try Image Upscaler Now</span>
                     </ShimmerButton>
                   </motion.div>
                 </div>
@@ -906,33 +849,14 @@ export default function LandingPage() {
               className="flex justify-center mb-16"
             >
               <ShimmerButton
-                onClick={scrollToWaitlist}
+                onClick={() => router.push('/generator')}
                 className="px-8 py-4 text-lg font-semibold bg-purple-600 hover:bg-purple-700 text-white rounded"
                 shimmerColor="#8B5CF6"
                 shimmerSize="0.1em"
                 shimmerDuration="2s"
               >
-                <span className="text-white">Join the AI Revolution</span>
+                <span className="text-white">Enter App</span>
               </ShimmerButton>
-            </motion.div>
-
-            {/* New Pricing Section with background override */}
-            <motion.div
-              ref={pricingRef}
-              variants={itemVariants}
-              className="mb-24 pt-16 px-4 sm:px-6 lg:px-8"
-            >
-              <h2 className="text-3xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center">
-                <AnimatedGradientText>
-                  Choose Your Plan
-                </AnimatedGradientText>
-              </h2>
-              <p className="text-lg sm:text-xl text-gray-300 text-center mb-8 sm:mb-12">
-                Unlock the full potential of AI-powered image tools
-              </p>
-              <PricingWrapper>
-                <PricingComponentComponent scrollToWaitlist={scrollToWaitlist} />
-              </PricingWrapper>
             </motion.div>
 
             <motion.footer

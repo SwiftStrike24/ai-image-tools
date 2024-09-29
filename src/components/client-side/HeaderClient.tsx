@@ -36,6 +36,13 @@ export default function HeaderClient() {
     router.push(path)
   }
 
+  const buttonVariants = {
+    initial: { opacity: 0, y: -20 },
+    animate: { opacity: 1, y: 0 },
+    hover: { scale: 1.05 },
+    tap: { scale: 0.95 },
+  }
+
   return (
     <header className="relative bg-gradient-to-br from-gray-900 to-purple-900 text-white p-2 md:p-3 overflow-hidden">
       <RetroGrid className="absolute inset-0 z-0 opacity-20" />
@@ -51,16 +58,23 @@ export default function HeaderClient() {
               />
             </Link>
             
-            <Link href="/pricing" passHref>
+            <motion.div
+              variants={buttonVariants}
+              initial="initial"
+              animate="animate"
+              whileHover="hover"
+              whileTap="tap"
+            >
               <ShimmerButton
-                className="px-4 py-2 text-sm font-medium rounded-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                onClick={() => router.push('/pricing')}
+                className="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full flex items-center justify-center"
+                shimmerColor="#ffffff33"
+                background="rgba(236, 72, 153, 0.5)"
               >
-                <div className="flex items-center justify-start">
-                  <CreditCard className="w-4 h-4 mr-2 flex-shrink-0" />
-                  <span className="text-white whitespace-nowrap">Pricing</span>
-                </div>
+                <CreditCard className="w-4 h-4 mr-2 flex-shrink-0" />
+                <span className="font-medium whitespace-nowrap">Pricing</span>
               </ShimmerButton>
-            </Link>
+            </motion.div>
           </div>
 
           <div className="flex items-center space-x-2 md:space-x-4">

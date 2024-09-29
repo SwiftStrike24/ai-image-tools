@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database.types'
 import { User } from '@clerk/nextjs/server'
 import { getRedisClient } from "./redis";
+import { clerkClient } from "@clerk/nextjs/server";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -22,32 +23,26 @@ export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseService
   }
 })
 
-export async function saveUserToSupabase(user: User) {
-  console.log('Attempting to save user to Supabase:', user.id);
+export async function saveUserToSupabase(userId: string) {
   try {
+    const user = await clerkClient.users.getUser(userId);
     const { data, error } = await supabaseAdmin
       .from('users')
       .upsert({
-        id: user.id, // Use Clerk's user ID as the primary key
+        id: user.id,
         clerk_id: user.id,
         email: user.emailAddresses[0]?.emailAddress || '',
         username: user.username || `${user.firstName} ${user.lastName}`.trim() || null,
-        // Remove created_at as it's likely managed by Supabase
         updated_at: new Date().toISOString(),
       }, {
         onConflict: 'clerk_id',
       })
       .select();
 
-    if (error) {
-      console.error('Error saving user to Supabase:', error);
-      throw error;
-    }
-
-    console.log('User saved successfully:', data);
+    if (error) throw error;
     return data;
   } catch (error) {
-    console.error('Unexpected error saving user to Supabase:', error);
+    console.error('Error saving user to Supabase:', error);
     throw error;
   }
 }
@@ -70,11 +65,16 @@ export async function getUserSubscription(userId: string) {
       .from('subscriptions')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle(); // Use maybeSingle() instead of single()
 
     if (error) {
       console.error('Error fetching user subscription:', error);
       return null;
+    }
+
+    // If no subscription is found, return a default "basic" plan
+    if (!data) {
+      return { plan: 'basic' };
     }
 
     return data;
@@ -106,7 +106,7 @@ export async function getUserUsage(userId: string) {
 
 export async function syncUserDataWithRedis(userId: string) {
   try {
-    const { data: user, error } = await supabase
+    const { data: user, error } = await supabaseAdmin
       .from('users')
       .select('*')
       .eq('id', userId)

@@ -25,19 +25,6 @@ export type SubscriptionTier = 'basic' | 'pro' | 'premium' | 'ultimate';
 
 const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
 
-async function getUserSubscription(userId: string): Promise<SubscriptionTier> {
-  const subscriptionKey = `${SUBSCRIPTION_KEY_PREFIX}${userId}`;
-  let subscription;
-  try {
-    const redisClient = await getRedisClient();
-    subscription = await redisClient.get(subscriptionKey);
-  } catch (redisError) {
-    console.error("Error accessing Redis for subscription:", redisError);
-    subscription = null;
-  }
-  return (subscription as SubscriptionTier) || "basic";
-}
-
 async function getUserId(): Promise<string | null> {
   try {
     const authResult = auth();
@@ -52,6 +39,21 @@ async function getUserId(): Promise<string | null> {
       return null;
     }
   }
+}
+
+async function getUserSubscription(userId: string | null): Promise<SubscriptionTier> {
+  if (!userId) return "basic";
+  
+  const subscriptionKey = `${SUBSCRIPTION_KEY_PREFIX}${userId}`;
+  let subscription;
+  try {
+    const redisClient = await getRedisClient();
+    subscription = await redisClient.get(subscriptionKey);
+  } catch (redisError) {
+    console.error("Error accessing Redis for subscription:", redisError);
+    subscription = null;
+  }
+  return (subscription as SubscriptionTier) || "basic";
 }
 
 export async function getLimitForTier(tier: SubscriptionTier, type: 'generator' | 'upscaler' | 'enhance_prompt'): Promise<number> {
@@ -78,7 +80,7 @@ export async function canGenerateImages(imagesToGenerate: number): Promise<{ can
   const userId = await getUserId();
   
   if (!userId) {
-    throw new Error("User not authenticated");
+    return { canProceed: false, usageCount: 0, resetsIn: "N/A" };
   }
 
   const subscription = await getUserSubscription(userId);
@@ -154,7 +156,7 @@ export async function canUpscaleImages(imagesToUpscale: number): Promise<{ canPr
   const userId = await getUserId();
   
   if (!userId) {
-    throw new Error("User not authenticated");
+    return { canProceed: false, usageCount: 0, resetsIn: "N/A" };
   }
 
   const subscription = await getUserSubscription(userId);
@@ -234,7 +236,7 @@ export async function getUpscalerUsage(): Promise<{ usageCount: number; resetsIn
   const userId = await getUserId();
   
   if (!userId) {
-    throw new Error("User not authenticated");
+    return { usageCount: 0, resetsIn: "N/A" };
   }
 
   const subscription = await getUserSubscription(userId);
@@ -267,7 +269,7 @@ export async function checkRateLimit(): Promise<{ canProceed: boolean; usageCoun
   const userId = await getUserId();
   
   if (!userId) {
-    throw new Error("User not authenticated");
+    return { canProceed: false, usageCount: 0, resetsIn: "N/A" };
   }
 
   const key = `${UPSCALER_KEY_PREFIX}${userId}`;
@@ -344,7 +346,7 @@ export async function getUserUsage(): Promise<{ usageCount: number; resetsIn: st
   const userId = await getUserId();
   
   if (!userId) {
-    throw new Error("User not authenticated");
+    return { usageCount: 0, resetsIn: "N/A" };
   }
 
   const subscription = await getUserSubscription(userId);
@@ -391,7 +393,7 @@ export async function getGeneratorUsage(): Promise<{ usageCount: number; resetsI
   const userId = await getUserId();
   
   if (!userId) {
-    throw new Error("User not authenticated");
+    return { usageCount: 0, resetsIn: "N/A", totalGenerated: 0 };
   }
 
   const subscription = await getUserSubscription(userId);
@@ -429,7 +431,7 @@ export async function canEnhancePrompt(): Promise<{ canProceed: boolean; usageCo
   const userId = await getUserId();
   
   if (!userId) {
-    throw new Error("User not authenticated");
+    return { canProceed: false, usageCount: 0, resetsIn: "N/A" };
   }
 
   const subscription = await getUserSubscription(userId);
@@ -511,7 +513,7 @@ export async function getEnhancePromptUsage(): Promise<{ usageCount: number; res
   const userId = await getUserId();
   
   if (!userId) {
-    throw new Error("User not authenticated");
+    return { usageCount: 0, resetsIn: "N/A", totalEnhanced: 0 };
   }
 
   const subscription = await getUserSubscription(userId);
@@ -548,7 +550,7 @@ export async function checkAndUpdateUpscalerLimit(imagesToUpscale: number): Prom
   const userId = await getUserId();
   
   if (!userId) {
-    throw new Error("User not authenticated");
+    return { canProceed: false, usageCount: 0, resetsIn: "N/A" };
   }
 
   const subscription = await getUserSubscription(userId);
