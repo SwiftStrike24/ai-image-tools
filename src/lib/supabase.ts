@@ -65,7 +65,7 @@ export async function getUserSubscription(userId: string) {
       .from('subscriptions')
       .select('*')
       .eq('user_id', userId)
-      .maybeSingle(); // Use maybeSingle() instead of single()
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching user subscription:', error);
@@ -76,6 +76,10 @@ export async function getUserSubscription(userId: string) {
     if (!data) {
       return { plan: 'basic' };
     }
+
+    // Sync with Redis
+    const redisClient = await getRedisClient();
+    await redisClient.set(`user_subscription:${userId}`, data.plan, { EX: 300 }); // Cache for 5 minutes
 
     return data;
   } catch (error) {
@@ -106,23 +110,12 @@ export async function getUserUsage(userId: string) {
 
 export async function syncUserDataWithRedis(userId: string) {
   try {
-    const { data: user, error } = await supabaseAdmin
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (error) throw error;
-
-    const redisClient = await getRedisClient();
-    await redisClient.hSet(`user:${userId}`, {
-      email: user.email,
-      username: user.username || '',
-      created_at: user.created_at || '',
-      updated_at: user.updated_at || '',
-    });
-
-    console.log('User data synced with Redis:', userId);
+    const subscription = await getUserSubscription(userId);
+    if (subscription) {
+      const redisClient = await getRedisClient();
+      await redisClient.set(`user_subscription:${userId}`, subscription.plan, { EX: 300 }); // Cache for 5 minutes
+      console.log(`User data synced with Redis: ${userId}`);
+    }
   } catch (error) {
     console.error('Error syncing user data with Redis:', error);
   }

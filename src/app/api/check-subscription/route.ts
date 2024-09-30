@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from "@clerk/nextjs/server";
 import { getRedisClient } from "@/lib/redis";
-import { getUserSubscription, syncUserDataWithRedis } from "@/lib/supabase";
+import { getUserSubscription } from "@/lib/supabase";
 
 const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
 const CACHE_DURATION = 300; // 5 minutes in seconds
@@ -14,12 +14,11 @@ export async function GET() {
 	}
 
 	try {
-		// Check subscription in Redis
-		const subscriptionKey = `${SUBSCRIPTION_KEY_PREFIX}${userId}`;
-		let subscription;
-		
 		const redisClient = await getRedisClient();
-		subscription = await redisClient.get(subscriptionKey);
+		const subscriptionKey = `${SUBSCRIPTION_KEY_PREFIX}${userId}`;
+		
+		// Check subscription in Redis
+		let subscription = await redisClient.get(subscriptionKey);
 
 		// If no subscription in Redis, check Supabase
 		if (!subscription) {
@@ -28,11 +27,13 @@ export async function GET() {
 				subscription = supabaseSubscription.plan;
 				// Update Redis with Supabase data
 				await redisClient.set(subscriptionKey, subscription, { EX: CACHE_DURATION });
-				// Sync user data with Redis
-				await syncUserDataWithRedis(userId);
-			} else {
-				subscription = "basic"; // Default to basic if no subscription found
 			}
+		}
+
+		// If still no subscription, default to basic
+		if (!subscription) {
+			subscription = "basic";
+			await redisClient.set(subscriptionKey, subscription, { EX: CACHE_DURATION });
 		}
 
 		const isPro = subscription === "pro";
@@ -44,7 +45,7 @@ export async function GET() {
 			isPro, 
 			isPremium, 
 			isUltimate, 
-			subscriptionType: subscription || "basic" 
+			subscriptionType: subscription 
 		});
 	} catch (error) {
 		console.error("Error checking subscription:", error);

@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { getRedisClient } from "@/lib/redis";
 import { SubscriptionTier } from '@/actions/rateLimit';
 import { headers } from 'next/headers';
+import { supabaseAdmin } from '@/lib/supabase'; // Add this import
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -14,11 +15,12 @@ const PROCESSED_EVENTS_KEY_PREFIX = "processed_event:";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Remove the config export as it's not needed in Next.js 13+ API routes
+// export const config = {
+//   api: {
+//     bodyParser: false,
+//   },
+// };
 
 export async function POST(req: Request) {
   const rawBody = await req.text();
@@ -33,11 +35,20 @@ export async function POST(req: Request) {
 
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    // Return a 200 response immediately
+    const response = NextResponse.json({ received: true }, { status: 200 });
+
+    // Process the event asynchronously
+    handleEvent(event).catch(console.error);
+
+    return response;
   } catch (err) {
     console.error(`Webhook signature verification failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
+}
 
+async function handleEvent(event: Stripe.Event) {
   const redisClient = await getRedisClient();
 
   // Check if this event has already been processed
@@ -45,7 +56,7 @@ export async function POST(req: Request) {
   const isProcessed = await redisClient.get(`${PROCESSED_EVENTS_KEY_PREFIX}${eventId}`);
   if (isProcessed) {
     console.log(`Event ${eventId} has already been processed. Skipping.`);
-    return NextResponse.json({ received: true });
+    return;
   }
 
   try {
@@ -225,6 +236,30 @@ async function updateUserSubscription(userId: string, subscription: Stripe.Subsc
   await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, subscriptionTier);
 
   console.log(`Updated subscription for user ${userId} to ${subscriptionTier}`);
+
+  // Pass both userId and clerkId
+  await updateSupabaseSubscription(userId, userId, subscriptionTier);
+}
+
+async function updateSupabaseSubscription(userId: string, clerkId: string, subscriptionTier: SubscriptionTier) {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('subscriptions')
+      .upsert({
+        user_id: userId,
+        clerk_id: clerkId,
+        plan: subscriptionTier,
+        status: 'active',
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'clerk_id',
+      });
+
+    if (error) throw error;
+    console.log(`Updated Supabase subscription for user ${clerkId} to ${subscriptionTier}`);
+  } catch (error) {
+    console.error('Error updating Supabase subscription:', error);
+  }
 }
 
 function getPlanIdFromName(planName: string): string | null {

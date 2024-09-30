@@ -9,6 +9,12 @@ const userSaveCache: { [key: string]: number } = {};
 export default async function middleware(req: NextRequest) {
   console.log('Middleware called for path:', req.nextUrl.pathname);
 
+  // Exclude the webhook route from middleware processing
+  if (req.nextUrl.pathname === '/api/webhooks/stripe') {
+    console.log('Skipping middleware for webhook route');
+    return NextResponse.next();
+  }
+
   // Run Clerk middleware
   const clerkResponse = clerkMiddleware()(req, { sourcePage: req.url } as NextFetchEvent);
 
@@ -42,15 +48,17 @@ export default async function middleware(req: NextRequest) {
 
   // Remove the admin authentication check for /upscaler and /generator routes
 
+  // Exclude the webhook route from middleware processing
+  if (req.nextUrl.pathname === '/api/webhooks/stripe') {
+    return NextResponse.next();
+  }
+
   // If no redirects or modifications are needed, proceed with the request
   return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes
-    '/(api|trpc)(.*)',
+    '/((?!api/webhooks/stripe|_next/static|_next/image|favicon.ico).*)',
   ],
 };
