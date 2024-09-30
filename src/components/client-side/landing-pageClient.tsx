@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { motion, useAnimation, AnimatePresence } from 'framer-motion'
+import { motion, useAnimation, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import { Input } from "@/components/ui/input"
 import { ArrowRight, Wand2, Maximize, Layout, Download, Sparkles, CreditCard, Menu, UserCheck } from 'lucide-react'
@@ -315,6 +315,63 @@ export default function LandingPage() {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  const { scrollY } = useScroll()
+
+  const featuresOpacity = useTransform(scrollY, [0, 300], [0, 1])
+  const featuresY = useTransform(scrollY, [0, 300], [100, 0])
+
+  const howItWorksOpacity = useTransform(scrollY, [300, 600], [0, 1])
+  const howItWorksY = useTransform(scrollY, [300, 600], [100, 0])
+
+  const beforeAfterOpacity = useTransform(scrollY, [600, 900], [0, 1])
+  const beforeAfterY = useTransform(scrollY, [600, 900], [100, 0])
+
+  const upscalingOpacity = useTransform(scrollY, [900, 1200], [0, 1])
+  const upscalingY = useTransform(scrollY, [900, 1200], [100, 0])
+
+  const faqOpacity = useTransform(scrollY, [1200, 1500], [0, 1])
+  const faqY = useTransform(scrollY, [1200, 1500], [100, 0])
+
+  // Add this useEffect at the top of your component
+  useEffect(() => {
+    // Scroll to the top of the page on component mount or refresh
+    window.scrollTo(0, 0)
+
+    // Optional: Disable scroll restoration
+    if ('scrollRestoration' in history) {
+      history.scrollRestoration = 'manual'
+    }
+  }, [])
+
+  const [imageGenVideoRef, imageGenVideoInView] = useInView({
+    threshold: 0.5,
+    triggerOnce: false,
+  })
+
+  const [upscaleVideoRef, upscaleVideoInView] = useInView({
+    threshold: 0.5,
+    triggerOnce: false,
+  })
+
+  useEffect(() => {
+    const imageGenVideo = document.getElementById('imageGenVideo') as HTMLVideoElement
+    const upscaleVideo = document.getElementById('upscaleVideo') as HTMLVideoElement
+
+    if (imageGenVideoInView && imageGenVideo) {
+      imageGenVideo.play()
+    } else if (imageGenVideo) {
+      imageGenVideo.pause()
+      imageGenVideo.currentTime = 0
+    }
+
+    if (upscaleVideoInView && upscaleVideo) {
+      upscaleVideo.play()
+    } else if (upscaleVideo) {
+      upscaleVideo.pause()
+      upscaleVideo.currentTime = 0
+    }
+  }, [imageGenVideoInView, upscaleVideoInView])
+
   return (
     <AnimatePresence>
       <motion.div
@@ -525,55 +582,60 @@ export default function LandingPage() {
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.section
               ref={featuresRef}
-              className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16 mt-24"
-              variants={itemVariants}
+              style={{ opacity: featuresOpacity, y: featuresY }}
+              className="py-20"
             >
-              {features.map((feature, index) => (
-                <motion.div 
-                  key={index}
-                  whileHover={{ scale: 1.05, zIndex: 1 }}
-                  transition={{ type: "spring", stiffness: 300 }}
-                >
-                  <Card className="bg-gradient-to-br from-gray-800 to-gray-900 border-purple-500 shadow-lg hover:shadow-purple-500/20 transition-all duration-300 group">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-xl font-semibold text-white">{feature.title}</CardTitle>
-                      <motion.div
-                        className="text-purple-400 relative w-8 h-8"
-                        whileHover={{ rotate: 360 }}
-                        transition={{ duration: 0.5 }}
-                      >
-                        <motion.div
-                          className="absolute inset-0 flex items-center justify-center"
-                          initial={{ scale: 1 }}
-                          whileHover={{ scale: 2 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          {feature.icon}
-                        </motion.div>
-                      </motion.div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-gray-400">{feature.description}</p>
-                      <Badge 
-                        variant="secondary" 
-                        className="mt-4 bg-gradient-to-r from-purple-700 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-500 transition-all duration-300 shadow-md hover:shadow-lg"
-                      >
-                        {feature.badge}
-                      </Badge>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </motion.div>
+              <div className="container mx-auto px-4">
+                <motion.h3 variants={itemVariants} className="text-3xl font-bold mb-10 text-center">
+                  Features
+                </motion.h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16 mt-24">
+                  {features.map((feature, index) => (
+                    <motion.div 
+                      key={index}
+                      whileHover={{ scale: 1.05, zIndex: 1 }}
+                      transition={{ type: "spring", stiffness: 300 }}
+                    >
+                      <Card className="bg-gradient-to-br from-gray-800 to-gray-900 border-purple-500 shadow-lg hover:shadow-purple-500/20 transition-all duration-300 group">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-xl font-semibold text-white">{feature.title}</CardTitle>
+                          <motion.div
+                            className="text-purple-400 relative w-8 h-8"
+                            whileHover={{ rotate: 360 }}
+                            transition={{ duration: 0.5 }}
+                          >
+                            <motion.div
+                              className="absolute inset-0 flex items-center justify-center"
+                              initial={{ scale: 1 }}
+                              whileHover={{ scale: 2 }}
+                              transition={{ duration: 0.3 }}
+                            >
+                              {feature.icon}
+                            </motion.div>
+                          </motion.div>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm text-gray-400">{feature.description}</p>
+                          <Badge 
+                            variant="secondary" 
+                            className="mt-4 bg-gradient-to-r from-purple-700 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-500 transition-all duration-300 shadow-md hover:shadow-lg"
+                          >
+                            {feature.badge}
+                          </Badge>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.section>
 
             {/* Updated How It Works section for Image Generator */}
             <motion.section
               ref={howItWorksRef}
-              initial="hidden"
-              animate={controls}
-              variants={containerVariants}
+              style={{ opacity: howItWorksOpacity, y: howItWorksY }}
               className="py-20"
             >
               <div className="container mx-auto px-4">
@@ -582,12 +644,13 @@ export default function LandingPage() {
                 </motion.h3>
                 <div className="flex flex-col md:flex-row items-center justify-center space-y-8 md:space-y-0 md:space-x-8">
                   <motion.div 
+                    ref={imageGenVideoRef}
                     variants={itemVariants} 
                     className="w-full md:w-1/2 relative aspect-video"
                   >
                     <video
+                      id="imageGenVideo"
                       src={ImageGenVideoUrl}
-                      autoPlay
                       loop
                       muted
                       playsInline
@@ -618,7 +681,7 @@ export default function LandingPage() {
 
             <motion.div
               ref={beforeAfterRef}
-              variants={itemVariants}
+              style={{ opacity: beforeAfterOpacity, y: beforeAfterY }}
               className="mb-16 p-8 rounded-lg max-w-5xl mx-auto"
             >
               <h3 className="text-2xl font-bold mb-4 text-center">See the Difference</h3>
@@ -653,9 +716,7 @@ export default function LandingPage() {
             {/* New section for How AI Image Upscaling Works */}
             <motion.section
               ref={upscalingRef}
-              initial="hidden"
-              animate={controls}
-              variants={containerVariants}
+              style={{ opacity: upscalingOpacity, y: upscalingY }}
               className="py-20"
             >
               <div className="container mx-auto px-4">
@@ -664,12 +725,13 @@ export default function LandingPage() {
                 </motion.h3>
                 <div className="flex flex-col md:flex-row items-center justify-center space-y-8 md:space-y-0 md:space-x-8">
                   <motion.div 
+                    ref={upscaleVideoRef}
                     variants={itemVariants} 
                     className="w-full md:w-1/2 relative aspect-video"
                   >
                     <video
+                      id="upscaleVideo"
                       src={UpscaleVideoUrl}
-                      autoPlay
                       loop
                       muted
                       playsInline
@@ -700,7 +762,7 @@ export default function LandingPage() {
 
             <motion.div
               ref={faqRef}
-              variants={itemVariants}
+              style={{ opacity: faqOpacity, y: faqY }}
               className="mb-16 p-8 rounded-lg max-w-4xl mx-auto"
             >
               <h3 className="text-3xl font-bold mb-8 text-center">Frequently Asked Questions</h3>
