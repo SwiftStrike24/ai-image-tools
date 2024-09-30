@@ -4,6 +4,7 @@ import { getRedisClient } from "@/lib/redis";
 import { SubscriptionTier } from '@/actions/rateLimit';
 import { headers } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase'; // Add this import
+import { clerkClient } from "@clerk/nextjs/server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -237,28 +238,34 @@ async function updateUserSubscription(userId: string, subscription: Stripe.Subsc
 
   console.log(`Updated subscription for user ${userId} to ${subscriptionTier}`);
 
-  // Pass both userId and clerkId
+  // Pass userId as both userId and clerkId (assuming userId is the Clerk ID)
   await updateSupabaseSubscription(userId, userId, subscriptionTier);
 }
 
 async function updateSupabaseSubscription(userId: string, clerkId: string, subscriptionTier: SubscriptionTier) {
   try {
+    // Fetch the user's information from Clerk
+    const user = await clerkClient().users.getUser(clerkId);
+    const username = user.username || `${user.firstName} ${user.lastName}`.trim() || null;
+
     const { data, error } = await supabaseAdmin
       .from('subscriptions')
       .upsert({
-        user_id: userId,
         clerk_id: clerkId,
+        username: username,
         plan: subscriptionTier,
         status: 'active',
         updated_at: new Date().toISOString(),
       }, {
         onConflict: 'clerk_id',
+        update: ['username', 'plan', 'status', 'updated_at']
       });
 
     if (error) throw error;
     console.log(`Updated Supabase subscription for user ${clerkId} to ${subscriptionTier}`);
   } catch (error) {
     console.error('Error updating Supabase subscription:', error);
+    throw error;
   }
 }
 

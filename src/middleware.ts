@@ -1,7 +1,7 @@
 import { clerkMiddleware, auth } from "@clerk/nextjs/server";
 import { NextResponse } from 'next/server';
 import type { NextRequest, NextFetchEvent } from 'next/server';
-import { saveUserToSupabase, syncUserDataWithRedis } from "@/lib/supabase";
+import { saveUserToSupabase, syncUserDataWithRedis, createBasicSubscription } from "@/lib/supabase";
 
 // Add a simple in-memory cache
 const userSaveCache: { [key: string]: number } = {};
@@ -32,6 +32,9 @@ export default async function middleware(req: NextRequest) {
       try {
         console.log('Attempting to save user to Supabase and sync with Redis:', userId);
         await saveUserToSupabase(userId);
+        // Wait for a short time to ensure the user is saved before creating the subscription
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await createBasicSubscription(userId);
         await syncUserDataWithRedis(userId);
         userSaveCache[userId] = currentTime;
         console.log('User saved successfully to Supabase and synced with Redis:', userId);

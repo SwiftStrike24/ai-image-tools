@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database.types'
-import { User } from '@clerk/nextjs/server'
-import { getRedisClient } from "./redis";
+import { getRedisClient } from "@/lib/redis";
 import { clerkClient } from "@clerk/nextjs/server";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -25,7 +24,7 @@ export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseService
 
 export async function saveUserToSupabase(userId: string) {
   try {
-    const user = await clerkClient.users.getUser(userId);
+    const user = await clerkClient().users.getUser(userId);
     const { data, error } = await supabaseAdmin
       .from('users')
       .upsert({
@@ -64,8 +63,8 @@ export async function getUserSubscription(userId: string) {
     const { data, error } = await supabaseAdmin
       .from('subscriptions')
       .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
+      .eq('clerk_id', userId)
+      .single();
 
     if (error) {
       console.error('Error fetching user subscription:', error);
@@ -74,7 +73,15 @@ export async function getUserSubscription(userId: string) {
 
     // If no subscription is found, return a default "basic" plan
     if (!data) {
-      return { plan: 'basic' };
+      // Fetch the user's information from Clerk
+      const user = await clerkClient().users.getUser(userId);
+      const username = user.username || `${user.firstName} ${user.lastName}`.trim() || null;
+
+      return { 
+        plan: 'basic', 
+        status: 'active',
+        username: username
+      };
     }
 
     // Sync with Redis
@@ -118,5 +125,34 @@ export async function syncUserDataWithRedis(userId: string) {
     }
   } catch (error) {
     console.error('Error syncing user data with Redis:', error);
+  }
+}
+
+export async function createBasicSubscription(userId: string) {
+  try {
+    const user = await clerkClient().users.getUser(userId);
+    const username = user.username || `${user.firstName} ${user.lastName}`.trim() || null;
+
+    // First, ensure the user exists in the users table
+    await saveUserToSupabase(userId);
+
+    const { data, error } = await supabaseAdmin
+      .from('subscriptions')
+      .upsert({
+        clerk_id: userId,
+        username: username,
+        plan: 'basic',
+        status: 'active',
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'clerk_id',
+      });
+
+    if (error) throw error;
+    console.log(`Created basic subscription for user ${userId}`);
+    return data;
+  } catch (error) {
+    console.error('Error creating basic subscription:', error);
+    // Don't throw the error here, just log it
   }
 }
