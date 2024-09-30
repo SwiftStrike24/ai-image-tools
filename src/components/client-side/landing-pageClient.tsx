@@ -24,6 +24,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import { useAuth } from "@clerk/nextjs"
 
 // Dynamically import components that are not needed immediately
 const BeforeAfterSlider = dynamic(() => import('@/components/BeforeAfterSlider'), { ssr: false })
@@ -130,6 +131,7 @@ export default function LandingPage() {
   const waitlistRef = useRef<HTMLDivElement>(null)
   const [isSuccess, setIsSuccess] = useState(false)
   const router = useRouter()
+  const { isLoaded, isSignedIn } = useAuth()
 
   const MAX_EMAIL_LENGTH = 40 // Set a reasonable maximum length for email addresses
 
@@ -387,6 +389,16 @@ export default function LandingPage() {
     }
   }, [imageGenVideoInView, upscaleVideoInView])
 
+  const handleEnterApp = (route: string) => {
+    if (isLoaded && !isSignedIn) {
+      // If not signed in, redirect to the custom sign-in page
+      router.push(`/sign-in?redirect=${route}`);
+    } else {
+      // If signed in or auth status not yet loaded, navigate to the app route
+      router.push(route);
+    }
+  };
+
   return (
     <AnimatePresence>
       <motion.div
@@ -583,7 +595,7 @@ export default function LandingPage() {
               <div ref={waitlistRef} className="w-full max-w-md">
                 <h3 className="text-2xl font-bold mb-4 text-center">Experience AI-Powered Image Generation</h3>
                 <ShimmerButton 
-                  onClick={() => router.push('/generator')}
+                  onClick={() => handleEnterApp('/generator')}
                   className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded"
                   shimmerColor="#8B5CF6"
                   shimmerSize="0.1em"
@@ -684,7 +696,7 @@ export default function LandingPage() {
                       Powered by FLUX.1, advanced AI model that transforms your ideas into stunning visuals.
                     </p>
                     <ShimmerButton 
-                      onClick={() => router.push('/generator')}
+                      onClick={() => handleEnterApp('/generator')}
                       className="mt-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold"
                     >
                       <span className="text-white">Try Image Generator Now</span>
@@ -765,7 +777,7 @@ export default function LandingPage() {
                       Powered by Real-ESRGAN, an advanced AI model that enhances image quality and resolution.
                     </p>
                     <ShimmerButton 
-                      onClick={() => router.push('/upscaler')}
+                      onClick={() => handleEnterApp('/upscaler')}
                       className="mt-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold"
                     >
                       <span className="text-white">Try Image Upscaler Now</span>
@@ -816,7 +828,7 @@ export default function LandingPage() {
               className="flex justify-center mb-16"
             >
               <ShimmerButton
-                onClick={() => router.push('/generator')}
+                onClick={() => handleEnterApp('/generator')}
                 className="px-8 py-4 text-lg font-semibold bg-purple-600 hover:bg-purple-700 text-white rounded"
                 shimmerColor="#8B5CF6"
                 shimmerSize="0.1em"

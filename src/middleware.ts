@@ -40,20 +40,7 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Redirection logic for admin-protected routes
-  if (
-    req.nextUrl.pathname.startsWith('/upscaler') ||
-    req.nextUrl.pathname.startsWith('/generator')
-  ) {
-    const adminAuthenticated = req.cookies.get('admin_authenticated')?.value;
-
-    // If not admin authenticated or user is not authenticated, redirect to admin login
-    if (adminAuthenticated !== 'true' || !userId) {
-      const loginUrl = new URL('/admin/login', req.url);
-      loginUrl.searchParams.set('redirect', req.nextUrl.pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-  }
+  // Remove the admin authentication check for /upscaler and /generator routes
 
   // If no redirects or modifications are needed, proceed with the request
   return NextResponse.next();

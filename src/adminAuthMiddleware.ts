@@ -4,17 +4,17 @@ import type { NextRequest } from 'next/server';
 export function adminAuthMiddleware(req: NextRequest) {
   const adminAuthenticated = req.cookies.get('admin_authenticated')?.value;
 
-  // If not admin authenticated, redirect to admin login
-  if (adminAuthenticated !== 'true') {
-    const loginUrl = new URL('/admin/login', req.url);
-    loginUrl.searchParams.set('redirect', req.nextUrl.pathname);
-    return NextResponse.redirect(loginUrl);
+  // Only check admin authentication for the admin waitlist API route
+  if (req.nextUrl.pathname.startsWith('/api/admin/waitlist')) {
+    if (adminAuthenticated !== 'true') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
   }
 
-  // If admin authenticated, allow the request to proceed
+  // Allow all other requests to proceed
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/upscaler/:path*', '/generator/:path*'],
+  matcher: ['/api/admin/waitlist/:path*'],
 };
