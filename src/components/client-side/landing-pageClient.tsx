@@ -292,9 +292,18 @@ export default function LandingPage() {
 
   const [beforeAfterImages, setBeforeAfterImages] = useState<{ before: string; after: string }[]>([])
 
+  const preloadImage = (src: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const img = document.createElement('img');
+      img.onload = () => resolve();
+      img.onerror = reject;
+      img.src = src;
+    });
+  };
+
   useEffect(() => {
     // Set up the before and after image pairs
-    setBeforeAfterImages([
+    const imagePairs = [
       { before: '/images/landing-page/before-after-images/before-image5.webp', after: '/images/landing-page/before-after-images/after-image5.jpg' },
       { before: '/images/landing-page/before-after-images/before-image2.webp', after: '/images/landing-page/before-after-images/after-image2.jpg' },
       { before: '/images/landing-page/before-after-images/before-image.jpg', after: '/images/landing-page/before-after-images/after-image.jpg' },
@@ -302,7 +311,13 @@ export default function LandingPage() {
       { before: '/images/landing-page/before-after-images/before-image4.webp', after: '/images/landing-page/before-after-images/after-image4.jpg' },
       { before: '/images/landing-page/before-after-images/before-image6.webp', after: '/images/landing-page/before-after-images/after-image6.jpg' },
       { before: '/images/landing-page/before-after-images/before-image7.webp', after: '/images/landing-page/before-after-images/after-image7.jpg' },
-    ])
+    ]
+
+    setBeforeAfterImages(imagePairs)
+
+    // Preload images
+    Promise.all(imagePairs.flatMap(pair => [preloadImage(pair.before), preloadImage(pair.after)]))
+      .catch(error => console.error('Failed to preload images:', error))
   }, [])
 
   const featuresRef = useRef<HTMLDivElement>(null)
