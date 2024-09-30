@@ -1,6 +1,6 @@
 "use client";
 
-import { SignIn } from "@clerk/nextjs";
+import { SignUp } from "@clerk/nextjs";
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import GridPattern from "@/components/magicui/animated-grid-pattern";
@@ -8,9 +8,8 @@ import AnimatedGradientText from "@/components/magicui/animated-gradient-text";
 import BlurFade from "@/components/magicui/blur-fade";
 import { MagicCard } from "@/components/magicui/magic-card";
 import { Card, CardContent } from "@/components/ui/card";
-import Link from 'next/link';
 
-export default function SignInPage() {
+export default function SignUpPage() {
   const searchParams = useSearchParams();
   const redirect = searchParams?.get('redirect') || '/';
 
@@ -62,7 +61,7 @@ export default function SignInPage() {
           <div className="flex justify-center items-center mb-8">
             <AnimatedGradientText className="text-3xl md:text-4xl font-bold mb-4 text-center">
               <div className="flex items-center justify-center">
-                <span className="text-white">Welcome Back</span>
+                <span className="text-white">Join FluxScale AI</span>
               </div>
             </AnimatedGradientText>
           </div>
@@ -72,19 +71,10 @@ export default function SignInPage() {
           <MagicCard className="w-full" gradientSize={250}>
             <Card className="w-full bg-gray-900/50 border-gray-800">
               <CardContent className="p-0">
-                <SignIn afterSignInUrl={redirect} />
+                <SignUp afterSignUpUrl={redirect} />
               </CardContent>
             </Card>
           </MagicCard>
-        </motion.div>
-        
-        <motion.div variants={itemVariants} className="mt-4 text-center">
-          <p className="text-gray-400">
-            Don&apos;t have an account?{' '}
-            <Link href={`/sign-up?redirect=${redirect}`} className="text-purple-400 hover:text-purple-300">
-              Sign up
-            </Link>
-          </p>
         </motion.div>
       </div>
     </motion.div>
