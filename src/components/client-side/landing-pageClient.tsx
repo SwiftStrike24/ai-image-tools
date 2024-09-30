@@ -28,6 +28,9 @@ import dynamic from 'next/dynamic'
 // Dynamically import components that are not needed immediately
 const BeforeAfterSlider = dynamic(() => import('@/components/BeforeAfterSlider'), { ssr: false })
 
+const ImageGenVideoUrl = "/videos/landingPage-HowTo/Howto-ImageGen.webm"
+const UpscaleVideoUrl = "/videos/landingPage-HowTo/Howto-Upscale.webm"
+
 const ImageCarousel = () => {
   const [images, setImages] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -312,14 +315,6 @@ export default function LandingPage() {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  // vercel storage"
-  // const ImageGenVideoUrl = "https://2k0gowvr1yoiaado.public.blob.vercel-storage.com/landingPage-HowTo/Howto-ImageGen-pKsOyDgJ4oR0CjvEEHdPQa1yj9oEFc.mp4"
-  // const UpscaleVideoUrl = "https://2k0gowvr1yoiaado.public.blob.vercel-storage.com/landingPage-HowTo/Howto-Upscale-2chZeXRFFoBIXXpEqWxtrmXbj7VpaB.mp4"
-
-  // local storage
-  const ImageGenVideoUrl = "/videos/landingPage-HowTo/Howto-ImageGen.webp"
-  const UpscaleVideoUrl = "/videos/landingPage-HowTo/Howto-Upscale.webp"
-
   return (
     <AnimatePresence>
       <motion.div
@@ -590,13 +585,13 @@ export default function LandingPage() {
                     variants={itemVariants} 
                     className="w-full md:w-1/2 relative aspect-video"
                   >
-                    <Image
+                    <video
                       src={ImageGenVideoUrl}
-                      alt="How AI Image Generation Works"
-                      layout="fill"
-                      objectFit="cover"
-                      className="rounded-lg"
-                      unoptimized
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="rounded-lg w-full h-full object-cover"
                     />
                   </motion.div>
                   <motion.div variants={itemVariants} className="w-full md:w-1/2 space-y-4">
@@ -672,13 +667,13 @@ export default function LandingPage() {
                     variants={itemVariants} 
                     className="w-full md:w-1/2 relative aspect-video"
                   >
-                    <Image
+                    <video
                       src={UpscaleVideoUrl}
-                      alt="How AI Image Upscaling Works"
-                      layout="fill"
-                      objectFit="cover"
-                      className="rounded-lg"
-                      unoptimized
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="rounded-lg w-full h-full object-cover"
                     />
                   </motion.div>
                   <motion.div variants={itemVariants} className="w-full md:w-1/2 space-y-4">
