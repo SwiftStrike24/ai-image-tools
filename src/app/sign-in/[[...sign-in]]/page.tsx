@@ -101,7 +101,11 @@ export default function SignInPage() {
                   <Shield className="w-4 h-4 mr-2 text-green-500" />
                   <span className="text-sm text-gray-300">Secured by Clerk</span>
                 </div>
-                <SignIn afterSignInUrl={redirect} appearance={appearance} />
+                <SignIn 
+                  afterSignInUrl={redirect} 
+                  redirectUrl={redirect}
+                  appearance={appearance} 
+                />
               </CardContent>
             </Card>
           </MagicCard>

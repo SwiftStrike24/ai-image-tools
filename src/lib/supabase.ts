@@ -24,22 +24,41 @@ export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseService
 
 export async function saveUserToSupabase(userId: string) {
   try {
-    const user = await clerkClient().users.getUser(userId);
-    const { data, error } = await supabaseAdmin
+    const user = await clerkClient.users.getUser(userId);
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .upsert({
         id: user.id,
         clerk_id: user.id,
         email: user.emailAddresses[0]?.emailAddress || '',
         username: user.username || `${user.firstName} ${user.lastName}`.trim() || null,
+        created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, {
         onConflict: 'clerk_id',
       })
       .select();
 
-    if (error) throw error;
-    return data;
+    if (userError) throw userError;
+    console.log('User saved/updated in Supabase:', userId);
+
+    const { data: subscriptionData, error: subscriptionError } = await supabaseAdmin
+      .from('subscriptions')
+      .upsert({
+        clerk_id: user.id,
+        username: user.username || `${user.firstName} ${user.lastName}`.trim() || null,
+        plan: 'basic',
+        status: 'active',
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'clerk_id',
+      })
+      .select();
+
+    if (subscriptionError) throw subscriptionError;
+    console.log('Subscription created/updated for user:', userId);
+
+    return { user: userData[0], subscription: subscriptionData[0] };
   } catch (error) {
     console.error('Error saving user to Supabase:', error);
     throw error;
@@ -67,31 +86,24 @@ export async function getUserSubscription(userId: string) {
       .single();
 
     if (error) {
+      if (error.code === 'PGRST116') {
+        // No subscription found, return a default basic subscription
+        console.log(`No subscription found for user ${userId}, returning default basic subscription`);
+        return {
+          clerk_id: userId,
+          plan: 'basic',
+          status: 'active',
+          username: null
+        };
+      }
       console.error('Error fetching user subscription:', error);
-      return null;
+      throw error;
     }
-
-    // If no subscription is found, return a default "basic" plan
-    if (!data) {
-      // Fetch the user's information from Clerk
-      const user = await clerkClient().users.getUser(userId);
-      const username = user.username || `${user.firstName} ${user.lastName}`.trim() || null;
-
-      return { 
-        plan: 'basic', 
-        status: 'active',
-        username: username
-      };
-    }
-
-    // Sync with Redis
-    const redisClient = await getRedisClient();
-    await redisClient.set(`user_subscription:${userId}`, data.plan, { EX: 300 }); // Cache for 5 minutes
 
     return data;
   } catch (error) {
     console.error('Unexpected error fetching user subscription:', error);
-    return null;
+    throw error;
   }
 }
 
@@ -143,6 +155,7 @@ export async function createBasicSubscription(userId: string): Promise<{ plan: s
         username: username,
         plan: 'basic',
         status: 'active',
+        created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, {
         onConflict: 'clerk_id',
@@ -150,10 +163,10 @@ export async function createBasicSubscription(userId: string): Promise<{ plan: s
       .select();
 
     if (error) throw error;
-    console.log(`Created basic subscription for user ${userId}`);
+    console.log(`Created/updated basic subscription for user ${userId}`);
     return data[0] || null;
   } catch (error) {
-    console.error('Error creating basic subscription:', error);
+    console.error('Error creating/updating basic subscription:', error);
     return null;
   }
 }

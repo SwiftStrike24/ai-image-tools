@@ -133,7 +133,7 @@ export default function LandingPage() {
   const waitlistRef = useRef<HTMLDivElement>(null)
   const [isSuccess, setIsSuccess] = useState(false)
   const router = useRouter()
-  const { isLoaded, isSignedIn } = useAuth()
+  const { isSignedIn, isLoaded } = useAuth()
 
   const MAX_EMAIL_LENGTH = 40 // Set a reasonable maximum length for email addresses
 
@@ -397,15 +397,15 @@ export default function LandingPage() {
     }
   }, [imageGenVideoInView, upscaleVideoInView])
 
-  const handleEnterApp = (route: string) => {
-    if (isLoaded && !isSignedIn) {
-      // If not signed in, redirect to the custom sign-in page
-      router.push(`/sign-in?redirect=${route}`);
-    } else {
-      // If signed in or auth status not yet loaded, navigate to the app route
-      router.push(route);
+  const handleEnterApp = useCallback((path: string) => {
+    if (isLoaded) {
+      if (isSignedIn) {
+        router.push(path)
+      } else {
+        router.push(`/sign-in?redirect=${encodeURIComponent(path)}`)
+      }
     }
-  };
+  }, [isLoaded, isSignedIn, router])
 
   return (
     <AnimatePresence>

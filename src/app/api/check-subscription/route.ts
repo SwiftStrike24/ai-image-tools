@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from "@clerk/nextjs/server";
 import { getRedisClient } from "@/lib/redis";
-import { getUserSubscription, createBasicSubscription, saveUserToSupabase } from "@/lib/supabase";
+import { getUserSubscription, saveUserToSupabase } from "@/lib/supabase";
 
 const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
 const CACHE_DURATION = 300; // 5 minutes in seconds
@@ -17,39 +17,20 @@ export async function GET() {
 		const redisClient = await getRedisClient();
 		const subscriptionKey = `${SUBSCRIPTION_KEY_PREFIX}${userId}`;
 		
-		// Check subscription in Redis
 		let subscription = await redisClient.get(subscriptionKey);
 		let username: string | null = null;
 
-		// If no subscription in Redis, check Supabase
 		if (!subscription) {
 			let supabaseSubscription = await getUserSubscription(userId);
 			
-			// If no subscription in Supabase, create a basic one
-			if (!supabaseSubscription) {
-				await saveUserToSupabase(userId); // Ensure user exists before creating subscription
-				const basicSubscription = await createBasicSubscription(userId);
-				if (basicSubscription) {
-					supabaseSubscription = basicSubscription;
-				} else {
-					// Handle the case where createBasicSubscription fails
-					console.error("Failed to create basic subscription for user:", userId);
-					supabaseSubscription = { plan: "basic", status: "active", username: null };
-				}
+			if (!supabaseSubscription || supabaseSubscription.plan === 'basic') {
+				// Ensure user and subscription exist in Supabase
+				const { subscription: newSubscription } = await saveUserToSupabase(userId);
+				supabaseSubscription = newSubscription;
 			}
 
-			if (supabaseSubscription) {
-				subscription = supabaseSubscription.plan;
-				username = supabaseSubscription.username;
-				// Update Redis with Supabase data
-				await redisClient.set(subscriptionKey, subscription);
-				await redisClient.expire(subscriptionKey, CACHE_DURATION);
-			}
-		}
-
-		// If still no subscription, default to basic (this should never happen now)
-		if (!subscription) {
-			subscription = "basic";
+			subscription = supabaseSubscription.plan;
+			username = supabaseSubscription.username;
 			await redisClient.set(subscriptionKey, subscription);
 			await redisClient.expire(subscriptionKey, CACHE_DURATION);
 		}

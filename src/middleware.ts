@@ -1,17 +1,11 @@
 import { clerkMiddleware, auth } from "@clerk/nextjs/server";
 import { NextResponse } from 'next/server';
 import type { NextRequest, NextFetchEvent } from 'next/server';
-import { saveUserToSupabase, syncUserDataWithRedis, createBasicSubscription } from "@/lib/supabase";
-
-// Add a simple in-memory cache
-const userSaveCache: { [key: string]: number } = {};
+import { saveUserToSupabase, syncUserDataWithRedis, getUserSubscription } from "@/lib/supabase";
 
 export default async function middleware(req: NextRequest) {
-  console.log('Middleware called for path:', req.nextUrl.pathname);
-
   // Exclude the webhook route from middleware processing
   if (req.nextUrl.pathname === '/api/webhooks/stripe') {
-    console.log('Skipping middleware for webhook route');
     return NextResponse.next();
   }
 
@@ -25,35 +19,36 @@ export default async function middleware(req: NextRequest) {
 
   const { userId } = auth();
 
-  // Save user data to Supabase and sync with Redis if authenticated and not recently saved
+  // Save user data to Supabase and sync with Redis if authenticated
   if (userId) {
-    const currentTime = Date.now();
-    if (!userSaveCache[userId] || currentTime - userSaveCache[userId] > 300000) { // 5 minutes
-      try {
-        console.log('Attempting to save user to Supabase and sync with Redis:', userId);
+    try {
+      // Check if the user exists in Supabase
+      const existingSubscription = await getUserSubscription(userId);
+      
+      if (!existingSubscription) {
+        // If the user doesn't exist in Supabase, save them
         await saveUserToSupabase(userId);
-        // Wait for a short time to ensure the user is saved before creating the subscription
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        await createBasicSubscription(userId);
-        await syncUserDataWithRedis(userId);
-        userSaveCache[userId] = currentTime;
-        console.log('User saved successfully to Supabase and synced with Redis:', userId);
-      } catch (error) {
-        console.error('Error in middleware while saving user to Supabase and syncing with Redis:', error);
+        console.log(`New user ${userId} saved to Supabase`);
+      } else {
+        // If the user exists, update their data
+        await saveUserToSupabase(userId);
+        console.log(`Existing user ${userId} updated in Supabase`);
       }
+
+      // Sync user data with Redis
+      await syncUserDataWithRedis(userId);
+      console.log(`User ${userId} synced with Redis`);
+
+      // Add the redirect URL to the response headers
+      const redirectUrl = req.nextUrl.searchParams.get('redirect');
+      if (redirectUrl) {
+        const response = NextResponse.next();
+        response.headers.set('X-Auth-Redirect-Url', redirectUrl);
+        return response;
+      }
+    } catch (error) {
+      console.error(`Error processing user ${userId}:`, error);
     }
-  }
-
-  // Allow access to sign-in page without redirection
-  if (req.nextUrl.pathname.startsWith('/sign-in')) {
-    return NextResponse.next();
-  }
-
-  // Remove the admin authentication check for /upscaler and /generator routes
-
-  // Exclude the webhook route from middleware processing
-  if (req.nextUrl.pathname === '/api/webhooks/stripe') {
-    return NextResponse.next();
   }
 
   // If no redirects or modifications are needed, proceed with the request
