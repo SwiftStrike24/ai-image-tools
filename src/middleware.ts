@@ -4,8 +4,8 @@ import type { NextRequest, NextFetchEvent } from 'next/server';
 import { saveUserToSupabase, syncUserDataWithRedis, getUserSubscription } from "@/lib/supabase";
 
 export default async function middleware(req: NextRequest) {
-  // Exclude the webhook route from middleware processing
-  if (req.nextUrl.pathname === '/api/webhooks/stripe') {
+  // Exclude the webhook routes from middleware processing
+  if (req.nextUrl.pathname === '/api/webhooks/stripe' || req.nextUrl.pathname === '/api/webhooks/clerk') {
     return NextResponse.next();
   }
 
@@ -48,6 +48,8 @@ export default async function middleware(req: NextRequest) {
       }
     } catch (error) {
       console.error(`Error processing user ${userId}:`, error);
+      // Instead of throwing an error, we'll log it and continue
+      // This prevents the middleware from blocking the request
     }
   }
 
@@ -57,6 +59,6 @@ export default async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api/webhooks/stripe|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api/webhooks/stripe|api/webhooks/clerk|_next/static|_next/image|favicon.ico).*)',
   ],
 };

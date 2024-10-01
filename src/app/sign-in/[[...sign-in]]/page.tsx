@@ -108,7 +108,10 @@ export default function SignInPage() {
                 <SignIn 
                   afterSignInUrl={redirect} 
                   redirectUrl={redirect}
-                  appearance={appearance} 
+                  appearance={appearance}
+                  path="/sign-in"
+                  routing="path"
+                  signUpUrl="/sign-up"
                 />
               </CardContent>
             </Card>

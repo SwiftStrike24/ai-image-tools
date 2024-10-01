@@ -25,28 +25,61 @@ export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseService
 export async function saveUserToSupabase(userId: string) {
   try {
     const user = await clerkClient.users.getUser(userId);
-    const { data: userData, error: userError } = await supabaseAdmin
+    const email = user.emailAddresses[0]?.emailAddress || '';
+    const username = user.username || `${user.firstName} ${user.lastName}`.trim() || null;
+
+    // Check if user already exists by email
+    const { data: existingUser, error: fetchError } = await supabaseAdmin
       .from('users')
-      .upsert({
-        id: user.id,
-        clerk_id: user.id,
-        email: user.emailAddresses[0]?.emailAddress || '',
-        username: user.username || `${user.firstName} ${user.lastName}`.trim() || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'clerk_id',
-      })
-      .select();
+      .select('*')
+      .eq('email', email)
+      .single();
 
-    if (userError) throw userError;
-    console.log('User saved/updated in Supabase:', userId);
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      throw fetchError;
+    }
 
+    let userData;
+    if (!existingUser) {
+      // Insert new user
+      const { data, error: insertError } = await supabaseAdmin
+        .from('users')
+        .insert({
+          id: user.id,
+          clerk_id: user.id,
+          email: email,
+          username: username,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select();
+
+      if (insertError) throw insertError;
+      userData = data[0];
+      console.log('New user saved in Supabase:', userId);
+    } else {
+      // Update existing user
+      const { data, error: updateError } = await supabaseAdmin
+        .from('users')
+        .update({
+          clerk_id: user.id,
+          username: username,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('email', email)
+        .select();
+
+      if (updateError) throw updateError;
+      userData = data[0];
+      console.log('Existing user updated in Supabase:', userId);
+    }
+
+    // Upsert subscription
     const { data: subscriptionData, error: subscriptionError } = await supabaseAdmin
       .from('subscriptions')
       .upsert({
         clerk_id: user.id,
-        username: user.username || `${user.firstName} ${user.lastName}`.trim() || null,
+        username: username,
         plan: 'basic',
         status: 'active',
         updated_at: new Date().toISOString(),
@@ -58,7 +91,7 @@ export async function saveUserToSupabase(userId: string) {
     if (subscriptionError) throw subscriptionError;
     console.log('Subscription created/updated for user:', userId);
 
-    return { user: userData[0], subscription: subscriptionData[0] };
+    return { user: userData, subscription: subscriptionData[0] };
   } catch (error) {
     console.error('Error saving user to Supabase:', error);
     throw error;
@@ -87,23 +120,20 @@ export async function getUserSubscription(userId: string) {
 
     if (error) {
       if (error.code === 'PGRST116') {
-        // No subscription found, return a default basic subscription
-        console.log(`No subscription found for user ${userId}, returning default basic subscription`);
-        return {
-          clerk_id: userId,
-          plan: 'basic',
-          status: 'active',
-          username: null
-        };
+        // No subscription found, create a default basic subscription
+        console.log(`No subscription found for user ${userId}, creating default basic subscription`);
+        return createBasicSubscription(userId);
       }
       console.error('Error fetching user subscription:', error);
-      throw error;
+      // Instead of throwing, return null or a default subscription
+      return { plan: 'basic', status: 'active', username: null };
     }
 
     return data;
   } catch (error) {
     console.error('Unexpected error fetching user subscription:', error);
-    throw error;
+    // Instead of throwing, return null or a default subscription
+    return { plan: 'basic', status: 'active', username: null };
   }
 }
 
@@ -144,10 +174,25 @@ export async function createBasicSubscription(userId: string): Promise<{ plan: s
   try {
     const user = await clerkClient().users.getUser(userId);
     const username = user.username || `${user.firstName} ${user.lastName}`.trim() || null;
+    const email = user.emailAddresses[0]?.emailAddress || '';
 
-    // First, ensure the user exists in the users table
-    await saveUserToSupabase(userId);
+    // Check if user already exists
+    const { data: existingUser, error: fetchError } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
 
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      throw fetchError;
+    }
+
+    if (!existingUser) {
+      // If user doesn't exist, create new user
+      await saveUserToSupabase(userId);
+    }
+
+    // Upsert subscription
     const { data, error } = await supabaseAdmin
       .from('subscriptions')
       .upsert({
@@ -155,7 +200,6 @@ export async function createBasicSubscription(userId: string): Promise<{ plan: s
         username: username,
         plan: 'basic',
         status: 'active',
-        created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, {
         onConflict: 'clerk_id',
@@ -168,5 +212,32 @@ export async function createBasicSubscription(userId: string): Promise<{ plan: s
   } catch (error) {
     console.error('Error creating/updating basic subscription:', error);
     return null;
+  }
+}
+
+export async function deleteUserFromSupabase(clerkId: string) {
+  try {
+    console.log(`Attempting to delete user ${clerkId} from Supabase`);
+
+    // Delete from subscriptions table
+    const { error: subError } = await supabaseAdmin.from('subscriptions').delete().eq('clerk_id', clerkId);
+    if (subError) {
+      console.error('Error deleting from subscriptions:', subError);
+    } else {
+      console.log(`Deleted user ${clerkId} from subscriptions table`);
+    }
+    
+    // Delete from users table
+    const { error: userError } = await supabaseAdmin.from('users').delete().eq('clerk_id', clerkId);
+    if (userError) {
+      console.error('Error deleting from users:', userError);
+    } else {
+      console.log(`Deleted user ${clerkId} from users table`);
+    }
+    
+    console.log(`User ${clerkId} and related data deleted from Supabase`);
+  } catch (error) {
+    console.error('Error deleting user from Supabase:', error);
+    throw error;
   }
 }

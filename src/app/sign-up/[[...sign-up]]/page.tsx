@@ -110,6 +110,9 @@ export default function SignUpPage() {
                   afterSignUpUrl={redirect}
                   redirectUrl={redirect}
                   appearance={appearance}
+                  path="/sign-up"
+                  routing="path"
+                  signInUrl="/sign-in"
                 />
               </CardContent>
             </Card>
