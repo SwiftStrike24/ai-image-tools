@@ -531,8 +531,7 @@ export default function FluxAIImageGenerator() {
   }
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-b from-purple-900 via-purple-800 to-purple-900 text-white">
-      <GlobalStyles />
+    <div className="relative min-h-screen bg-gray-900 text-white overflow-hidden">
       <RetroGrid className="absolute inset-0 z-0 opacity-50" />
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 via-purple-900/50 to-gray-900/90 z-10" />
       <div className="relative z-20 container mx-auto px-4 py-6 md:py-8">

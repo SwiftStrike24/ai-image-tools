@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, useAnimation, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import { Input } from "@/components/ui/input"
-import { ArrowRight, Wand2, Maximize, Layout, Download, Sparkles, CreditCard, Menu, UserCheck, SplitSquareVertical } from 'lucide-react'
+import { ArrowRight, Wand2, Maximize, Layout, Download, Sparkles, Menu, UserCheck, SplitSquareVertical } from 'lucide-react'
 import Image from 'next/image'
 import { addToWaitlist } from '@/actions/waitlist-actions'
 import { useToast } from "@/hooks/use-toast"
@@ -25,7 +25,7 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useAuth } from "@clerk/nextjs"
 import { Dock, DockIcon } from "@/components/ui/dock"
-import { Home, Zap, Image as ImageIcon, ArrowUpCircle, HelpCircle } from 'lucide-react'
+import { Home, Zap, Image as ImageIcon, ArrowUpCircle, HelpCircle, CreditCard } from 'lucide-react' 
 
 // Dynamically import components that are not needed immediately
 const BeforeAfterSlider = dynamic(() => import('@/components/BeforeAfterSlider'), { ssr: false })
@@ -414,6 +414,8 @@ export default function LandingPage() {
     { icon: ArrowUpCircle, label: "Upscaling", onClick: () => scrollToSection(upscalingRef) },
     { icon: HelpCircle, label: "FAQ", onClick: () => scrollToSection(faqRef) },
     { icon: CreditCard, label: "Pricing", onClick: () => router.push('/pricing') },
+    { icon: 'separator', label: '' },
+    { icon: Sparkles, label: "Enter App", onClick: () => handleEnterApp('/generator'), isSpecial: true },
   ]
 
   return (
@@ -747,9 +749,25 @@ export default function LandingPage() {
         </div>
         <Dock className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
           {dockItems.map((item, index) => (
-            <DockIcon key={index} onClick={item.onClick} label={item.label}>
-              <item.icon className="w-8 h-8 text-white" />
-            </DockIcon>
+            item.icon === 'separator' ? (
+              <div key={index} className="w-px h-8 bg-gray-600 mx-2" />
+            ) : (
+              <DockIcon 
+                key={index} 
+                onClick={item.onClick} 
+                label={item.label}
+                className={item.isSpecial ? 'relative' : ''}
+              >
+                {item.isSpecial ? (
+                  <>
+                    <div className="absolute inset-0 bg-purple-500 rounded-full animate-pulse opacity-50" />
+                    <item.icon className="w-8 h-8 text-white relative z-10" />
+                  </>
+                ) : (
+                  <item.icon className="w-8 h-8 text-white" />
+                )}
+              </DockIcon>
+            )
           ))}
         </Dock>
       </motion.div>
