@@ -2,5 +2,6 @@
   "extends": "next/core-web-vitals",
   "rules": {
     "react-hooks/exhaustive-deps": "warn"
-  }
+  },
+  "ignorePatterns": ["src/types/database.types.ts"]
 }
