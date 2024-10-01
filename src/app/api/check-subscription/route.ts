@@ -28,14 +28,21 @@ export async function GET() {
 			// If no subscription in Supabase, create a basic one
 			if (!supabaseSubscription) {
 				await saveUserToSupabase(userId); // Ensure user exists before creating subscription
-				supabaseSubscription = await createBasicSubscription(userId);
+				const basicSubscription = await createBasicSubscription(userId);
+				if (basicSubscription) {
+					supabaseSubscription = basicSubscription;
+				} else {
+					// Handle the case where createBasicSubscription fails
+					console.error("Failed to create basic subscription for user:", userId);
+					supabaseSubscription = { plan: "basic", status: "active", username: null };
+				}
 			}
 
 			if (supabaseSubscription) {
 				subscription = supabaseSubscription.plan;
 				username = supabaseSubscription.username;
 				// Update Redis with Supabase data
-				await redisClient.set(subscriptionKey, subscription || "");
+				await redisClient.set(subscriptionKey, subscription);
 				await redisClient.expire(subscriptionKey, CACHE_DURATION);
 			}
 		}

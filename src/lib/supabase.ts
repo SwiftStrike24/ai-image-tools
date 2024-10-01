@@ -128,7 +128,7 @@ export async function syncUserDataWithRedis(userId: string) {
   }
 }
 
-export async function createBasicSubscription(userId: string) {
+export async function createBasicSubscription(userId: string): Promise<{ plan: string; status: string; username: string | null; } | null> {
   try {
     const user = await clerkClient().users.getUser(userId);
     const username = user.username || `${user.firstName} ${user.lastName}`.trim() || null;
@@ -146,13 +146,14 @@ export async function createBasicSubscription(userId: string) {
         updated_at: new Date().toISOString(),
       }, {
         onConflict: 'clerk_id',
-      });
+      })
+      .select();
 
     if (error) throw error;
     console.log(`Created basic subscription for user ${userId}`);
-    return data;
+    return data[0] || null;
   } catch (error) {
     console.error('Error creating basic subscription:', error);
-    // Don't throw the error here, just log it
+    return null;
   }
 }
