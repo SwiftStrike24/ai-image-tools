@@ -20,7 +20,6 @@ import BlurFade from "@/components/magicui/blur-fade"
 import AnimatedGradientText from "@/components/magicui/animated-gradient-text"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
@@ -407,6 +406,16 @@ export default function LandingPage() {
     }
   }, [isLoaded, isSignedIn, router])
 
+  const dockItems = [
+    { icon: Home, label: "Home", onClick: () => window.scrollTo({top: 0, behavior: 'smooth'}) },
+    { icon: Zap, label: "Features", onClick: () => scrollToSection(featuresRef) },
+    { icon: ImageIcon, label: "How It Works", onClick: () => scrollToSection(howItWorksRef) },
+    { icon: SplitSquareVertical, label: "Before & After", onClick: () => scrollToSection(beforeAfterRef) },
+    { icon: ArrowUpCircle, label: "Upscaling", onClick: () => scrollToSection(upscalingRef) },
+    { icon: HelpCircle, label: "FAQ", onClick: () => scrollToSection(faqRef) },
+    { icon: CreditCard, label: "Pricing", onClick: () => router.push('/pricing') },
+  ]
+
   return (
     <AnimatePresence>
       <motion.div
@@ -444,132 +453,14 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 2, ease: "easeOut" }}
             >
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 2, ease: "easeOut" }}
-              >
-                <HyperText
-                  text="FluxScale AI"
-                  className="text-2xl font-bold text-purple-500"
-                  duration={2000} // Adjust the duration (in milliseconds) here
-                />
-              </motion.div>
+              <HyperText
+                text="FluxScale AI"
+                className="text-2xl font-bold text-purple-500"
+                duration={2000}
+              />
             </motion.div>
             
-            {/* Update Desktop navigation */}
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.5 }}
-              className="hidden md:flex space-x-4"
-            >
-              <Button
-                onClick={() => scrollToSection(featuresRef)}
-                className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                Features
-              </Button>
-              <Button
-                onClick={() => scrollToSection(howItWorksRef)}
-                className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                AI Image Generation
-              </Button>
-              <Button
-                onClick={() => scrollToSection(beforeAfterRef)}
-                className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                Before/After
-              </Button>
-              <Button
-                onClick={() => scrollToSection(upscalingRef)}
-                className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                AI Image Upscaling
-              </Button>
-              <Button
-                onClick={() => scrollToSection(faqRef)}
-                className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                FAQ
-              </Button>
-              <Button
-                onClick={() => router.push('/pricing')}
-                className="bg-black hover:bg-gray-900 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                <CreditCard className="mr-2 h-4 w-4" />
-                Pricing
-              </Button>
-            </motion.div>
-
-            {/* Update Mobile navigation */}
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button className="md:hidden bg-black hover:bg-gray-900 text-white">
-                  <Menu className="h-6 w-6" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-gray-900 text-white border-l border-purple-500">
-                <nav className="flex flex-col space-y-4 mt-8">
-                  <Button
-                    onClick={() => {
-                      scrollToSection(featuresRef)
-                      document.body.click() // Close the sheet
-                    }}
-                    className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 justify-start"
-                  >
-                    Features
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      scrollToSection(howItWorksRef)
-                      document.body.click() // Close the sheet
-                    }}
-                    className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 justify-start"
-                  >
-                    AI Image Generation
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      scrollToSection(beforeAfterRef)
-                      document.body.click() // Close the sheet
-                    }}
-                    className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 justify-start"
-                  >
-                    Before/After
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      scrollToSection(upscalingRef)
-                      document.body.click() // Close the sheet
-                    }}
-                    className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 justify-start"
-                  >
-                    AI Image Upscaling
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      scrollToSection(faqRef)
-                      document.body.click() // Close the sheet
-                    }}
-                    className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 justify-start"
-                  >
-                    FAQ
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      router.push('/pricing')
-                      document.body.click() // Close the sheet
-                    }}
-                    className="bg-black hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 justify-start"
-                  >
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Pricing
-                  </Button>
-                </nav>
-              </SheetContent>
-            </Sheet>
+            {/* Remove the entire Sheet component */}
           </motion.nav>
           
           <main className="container mx-auto px-4 py-16 pt-24">
@@ -855,27 +746,11 @@ export default function LandingPage() {
           </main>
         </div>
         <Dock className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-          <DockIcon onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
-            <Home className="w-8 h-8 text-white" />
-          </DockIcon>
-          <DockIcon onClick={() => scrollToSection(featuresRef)}>
-            <Zap className="w-8 h-8 text-white" />
-          </DockIcon>
-          <DockIcon onClick={() => scrollToSection(howItWorksRef)}>
-            <ImageIcon className="w-8 h-8 text-white" />
-          </DockIcon>
-          <DockIcon onClick={() => scrollToSection(beforeAfterRef)}>
-            <SplitSquareVertical className="w-8 h-8 text-white" />
-          </DockIcon>
-          <DockIcon onClick={() => scrollToSection(upscalingRef)}>
-            <ArrowUpCircle className="w-8 h-8 text-white" />
-          </DockIcon>
-          <DockIcon onClick={() => scrollToSection(faqRef)}>
-            <HelpCircle className="w-8 h-8 text-white" />
-          </DockIcon>
-          <DockIcon onClick={() => router.push('/pricing')}>
-            <CreditCard className="w-8 h-8 text-white" />
-          </DockIcon>
+          {dockItems.map((item, index) => (
+            <DockIcon key={index} onClick={item.onClick} label={item.label}>
+              <item.icon className="w-8 h-8 text-white" />
+            </DockIcon>
+          ))}
         </Dock>
       </motion.div>
     </AnimatePresence>

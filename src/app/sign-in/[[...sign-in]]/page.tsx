@@ -62,6 +62,10 @@ export default function SignInPage() {
     },
   };
 
+  const dockItems = [
+    { icon: Home, label: "Home", onClick: () => router.push('/') },
+  ];
+
   return (
     <motion.div
       className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 text-white relative overflow-hidden flex items-center justify-center"
@@ -122,9 +126,11 @@ export default function SignInPage() {
       </div>
       
       <Dock className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-        <DockIcon onClick={() => router.push('/')}>
-          <Home className="w-8 h-8 text-white" />
-        </DockIcon>
+        {dockItems.map((item, index) => (
+          <DockIcon key={index} onClick={item.onClick} label={item.label}>
+            <item.icon className="w-8 h-8 text-white" />
+          </DockIcon>
+        ))}
       </Dock>
     </motion.div>
   );

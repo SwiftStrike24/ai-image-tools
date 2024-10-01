@@ -35,6 +35,12 @@ export default function PricingPage() {
     },
   }
 
+  const dockItems = [
+    { icon: Home, label: "Home", onClick: () => router.push('/') },
+    { icon: Sparkles, label: "Generator", onClick: () => router.push('/generator') },
+    { icon: Zap, label: "Upscaler", onClick: () => router.push('/upscaler') },
+  ]
+
   return (
     <motion.div
       className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 text-white relative overflow-hidden"
@@ -79,15 +85,11 @@ export default function PricingPage() {
       </div>
       
       <Dock className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-        <DockIcon onClick={() => router.push('/')}>
-          <Home className="w-8 h-8 text-white" />
-        </DockIcon>
-        <DockIcon onClick={() => router.push('/generator')}>
-          <Sparkles className="w-8 h-8 text-white" />
-        </DockIcon>
-        <DockIcon onClick={() => router.push('/upscaler')}>
-          <Zap className="w-8 h-8 text-white" />
-        </DockIcon>
+        {dockItems.map((item, index) => (
+          <DockIcon key={index} onClick={item.onClick} label={item.label}>
+            <item.icon className="w-8 h-8 text-white" />
+          </DockIcon>
+        ))}
       </Dock>
     </motion.div>
   )
