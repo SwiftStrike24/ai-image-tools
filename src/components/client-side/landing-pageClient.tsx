@@ -409,7 +409,7 @@ export default function LandingPage() {
   const dockItems = [
     { icon: Home, label: "Home", onClick: () => window.scrollTo({top: 0, behavior: 'smooth'}) },
     { icon: Zap, label: "Features", onClick: () => scrollToSection(featuresRef) },
-    { icon: ImageIcon, label: "How It Works", onClick: () => scrollToSection(howItWorksRef) },
+    { icon: ImageIcon, label: "Generating", onClick: () => scrollToSection(howItWorksRef) },
     { icon: SplitSquareVertical, label: "Before & After", onClick: () => scrollToSection(beforeAfterRef) },
     { icon: ArrowUpCircle, label: "Upscaling", onClick: () => scrollToSection(upscalingRef) },
     { icon: HelpCircle, label: "FAQ", onClick: () => scrollToSection(faqRef) },
