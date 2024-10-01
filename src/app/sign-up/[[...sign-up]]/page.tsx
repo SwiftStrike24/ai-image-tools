@@ -1,7 +1,7 @@
 "use client";
 
 import { SignUp } from "@clerk/nextjs";
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import GridPattern from "@/components/magicui/animated-grid-pattern";
 import AnimatedGradientText from "@/components/magicui/animated-gradient-text";
@@ -9,11 +9,13 @@ import BlurFade from "@/components/magicui/blur-fade";
 import { MagicCard } from "@/components/magicui/magic-card";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from 'next/link';
-import { Shield } from 'lucide-react';
+import { Shield, Home, ArrowLeft } from 'lucide-react';
 import { Theme } from "@clerk/types";
+import { Dock, DockIcon } from "@/components/ui/dock";
 
 export default function SignUpPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const redirect = searchParams?.get('redirect') || '/';
 
   const containerVariants = {
@@ -118,6 +120,15 @@ export default function SignUpPage() {
           </p>
         </motion.div>
       </div>
+      
+      <Dock className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+        <DockIcon onClick={() => router.push('/')}>
+          <Home className="w-8 h-8 text-white" />
+        </DockIcon>
+        <DockIcon onClick={() => router.back()}>
+          <ArrowLeft className="w-8 h-8 text-white" />
+        </DockIcon>
+      </Dock>
     </motion.div>
   );
 }

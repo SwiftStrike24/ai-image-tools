@@ -5,9 +5,9 @@ import { motion } from 'framer-motion'
 import GridPattern from "@/components/magicui/animated-grid-pattern"
 import AnimatedGradientText from "@/components/magicui/animated-gradient-text"
 import BlurFade from "@/components/magicui/blur-fade"
-import ShimmerButton from "@/components/magicui/shimmer-button"
 import { Home, Sparkles, Zap } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { Dock, DockIcon } from "@/components/ui/dock"
 
 export default function PricingPage() {
   const router = useRouter()
@@ -33,13 +33,6 @@ export default function PricingPage() {
         stiffness: 100,
       },
     },
-  }
-
-  const buttonVariants = {
-    initial: { opacity: 0, y: -20 },
-    animate: { opacity: 1, y: 0 },
-    hover: { scale: 1.05 },
-    tap: { scale: 0.95 },
   }
 
   return (
@@ -85,64 +78,17 @@ export default function PricingPage() {
         </motion.div>
       </div>
       
-      <div className="absolute top-4 right-4 flex space-x-4 z-50">
-        <motion.div
-          variants={buttonVariants}
-          initial="initial"
-          animate="animate"
-          whileHover="hover"
-          whileTap="tap"
-          className="w-full"
-        >
-          <ShimmerButton
-            onClick={() => router.push('/')}
-            className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-full flex items-center justify-center"
-            shimmerColor="#ffffff33"
-            background="rgba(22, 163, 74, 0.5)"
-          >
-            <Home className="w-4 h-4 mr-2" />
-            <span className="font-medium">Home</span>
-          </ShimmerButton>
-        </motion.div>
-
-        <motion.div
-          variants={buttonVariants}
-          initial="initial"
-          animate="animate"
-          whileHover="hover"
-          whileTap="tap"
-          className="w-full"
-        >
-          <ShimmerButton
-            onClick={() => router.push('/generator')}
-            className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full flex items-center justify-center"
-            shimmerColor="#ffffff33"
-            background="rgba(124, 58, 237, 0.5)"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            <span className="font-medium">Generator</span>
-          </ShimmerButton>
-        </motion.div>
-        
-        <motion.div
-          variants={buttonVariants}
-          initial="initial"
-          animate="animate"
-          whileHover="hover"
-          whileTap="tap"
-          className="w-full"
-        >
-          <ShimmerButton
-            onClick={() => router.push('/upscaler')}
-            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center"
-            shimmerColor="#ffffff33"
-            background="rgba(37, 99, 235, 0.5)"
-          >
-            <Zap className="w-4 h-4 mr-2" />
-            <span className="font-medium">Upscaler</span>
-          </ShimmerButton>
-        </motion.div>
-      </div>
+      <Dock className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+        <DockIcon onClick={() => router.push('/')}>
+          <Home className="w-8 h-8 text-white" />
+        </DockIcon>
+        <DockIcon onClick={() => router.push('/generator')}>
+          <Sparkles className="w-8 h-8 text-white" />
+        </DockIcon>
+        <DockIcon onClick={() => router.push('/upscaler')}>
+          <Zap className="w-8 h-8 text-white" />
+        </DockIcon>
+      </Dock>
     </motion.div>
   )
 }

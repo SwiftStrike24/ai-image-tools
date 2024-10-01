@@ -257,9 +257,9 @@ async function updateSupabaseSubscription(userId: string, clerkId: string, subsc
         status: 'active',
         updated_at: new Date().toISOString(),
       }, {
-        onConflict: 'clerk_id',
-        update: ['username', 'plan', 'status', 'updated_at']
-      });
+        onConflict: 'clerk_id'
+      })
+      .select();
 
     if (error) throw error;
     console.log(`Updated Supabase subscription for user ${clerkId} to ${subscriptionTier}`);
