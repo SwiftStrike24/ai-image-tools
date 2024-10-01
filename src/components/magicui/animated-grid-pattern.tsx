@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useId, useRef, useState, useMemo } from "react";
+import { motion, useAnimation } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface GridPatternProps {
@@ -31,31 +31,31 @@ export function GridPattern({
   ...props
 }: GridPatternProps) {
   const id = useId();
-  const containerRef = useRef(null);
+  const containerRef = useRef<SVGSVGElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const [squares, setSquares] = useState(() => generateSquares(numSquares));
+  const [hoveredSquare, setHoveredSquare] = useState<number | null>(null);
 
-  function getPos() {
-    return [
-      Math.floor(Math.random() * (dimensions.width / width)),
-      Math.floor(Math.random() * (dimensions.height / height)),
-    ];
-  }
+  const getPos = useMemo(() => () => [
+    Math.floor(Math.random() * (dimensions.width / width)),
+    Math.floor(Math.random() * (dimensions.height / height)),
+  ], [dimensions.width, dimensions.height, width, height]);
 
-  function generateSquares(count: number) {
-    return Array.from({ length: count }, (_, i) => ({
+  const generateSquares = useMemo(() => (count: number) => 
+    Array.from({ length: count }, (_, i) => ({
       id: i,
       pos: getPos(),
-      delay: Math.random() * 4, // Random delay between 0 and 4 seconds
-      duration: 2 + Math.random() * 2, // Random duration between 2 and 4 seconds
-    }));
-  }
+      delay: Math.random() * 4,
+      duration: 2 + Math.random() * 2,
+    }))
+  , [getPos]);
+
+  const [squares, setSquares] = useState(() => generateSquares(numSquares));
 
   useEffect(() => {
     if (dimensions.width && dimensions.height) {
       setSquares(generateSquares(numSquares));
     }
-  }, [dimensions, numSquares]);
+  }, [dimensions, numSquares, generateSquares]);
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver((entries) => {
@@ -76,7 +76,7 @@ export function GridPattern({
         resizeObserver.unobserve(containerRef.current);
       }
     };
-  }, [containerRef]);
+  }, []);
 
   return (
     <div className="absolute inset-0 w-full h-full overflow-hidden">
@@ -112,21 +112,27 @@ export function GridPattern({
           {squares.map(({ pos: [x, y], id, delay, duration }) => (
             <motion.rect
               initial={{ opacity: 0 }}
-              animate={{ opacity: [0, maxOpacity, 0] }}
+              animate={{ 
+                opacity: hoveredSquare === id ? [0, 1, 0] : [0, maxOpacity, 0],
+                scale: hoveredSquare === id ? [1, 1.2, 1] : 1,
+              }}
               transition={{
-                duration: duration,
+                duration: hoveredSquare === id ? duration / 2 : duration,
                 repeat: Infinity,
                 repeatDelay: delay,
                 ease: "easeInOut",
-                times: [0, 0.5, 1], // Ensures smooth fade in and out
+                times: [0, 0.5, 1],
               }}
               key={`${x}-${y}-${id}`}
               width={width - 1}
               height={height - 1}
               x={x * width + 1}
               y={y * height + 1}
-              fill="rgba(255, 255, 255, 0.1)"
+              fill={hoveredSquare === id ? "rgba(255, 255, 255, 0.3)" : "rgba(255, 255, 255, 0.1)"}
               strokeWidth="0"
+              onMouseEnter={() => setHoveredSquare(id)}
+              onMouseLeave={() => setHoveredSquare(null)}
+              style={{ pointerEvents: "all" }}
             />
           ))}
         </svg>
