@@ -72,7 +72,7 @@ export default function HeaderClient() {
                 background="rgba(236, 72, 153, 0.5)"
               >
                 <CreditCard className="w-4 h-4 mr-2 flex-shrink-0" />
-                <span className="font-medium whitespace-nowrap">Pricing</span>
+                <span className="font-medium whitespace-nowrap">My Subscription</span>
               </ShimmerButton>
             </motion.div>
           </div>

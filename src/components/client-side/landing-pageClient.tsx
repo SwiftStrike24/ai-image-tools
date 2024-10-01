@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, useAnimation, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import { Input } from "@/components/ui/input"
-import { ArrowRight, Wand2, Maximize, Layout, Download, Sparkles, CreditCard, Menu, UserCheck } from 'lucide-react'
+import { ArrowRight, Wand2, Maximize, Layout, Download, Sparkles, CreditCard, Menu, UserCheck, SplitSquareVertical } from 'lucide-react'
 import Image from 'next/image'
 import { addToWaitlist } from '@/actions/waitlist-actions'
 import { useToast } from "@/hooks/use-toast"
@@ -25,6 +25,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { useAuth } from "@clerk/nextjs"
+import { Dock, DockIcon } from "@/components/ui/dock"
+import { Home, Zap, Image as ImageIcon, ArrowUpCircle, HelpCircle } from 'lucide-react'
 
 // Dynamically import components that are not needed immediately
 const BeforeAfterSlider = dynamic(() => import('@/components/BeforeAfterSlider'), { ssr: false })
@@ -329,7 +331,13 @@ export default function LandingPage() {
   const upscalingRef = useRef<HTMLDivElement>(null)
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
-    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (ref.current) {
+      const yOffset = -80; // Adjust this value based on your header height
+      const element = ref.current;
+      const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+
+      window.scrollTo({top: y, behavior: 'smooth'});
+    }
   }
 
   const { scrollY } = useScroll()
@@ -846,6 +854,29 @@ export default function LandingPage() {
             </motion.footer>
           </main>
         </div>
+        <Dock className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+          <DockIcon onClick={() => window.scrollTo({top: 0, behavior: 'smooth'})}>
+            <Home className="w-8 h-8 text-white" />
+          </DockIcon>
+          <DockIcon onClick={() => scrollToSection(featuresRef)}>
+            <Zap className="w-8 h-8 text-white" />
+          </DockIcon>
+          <DockIcon onClick={() => scrollToSection(howItWorksRef)}>
+            <ImageIcon className="w-8 h-8 text-white" />
+          </DockIcon>
+          <DockIcon onClick={() => scrollToSection(beforeAfterRef)}>
+            <SplitSquareVertical className="w-8 h-8 text-white" />
+          </DockIcon>
+          <DockIcon onClick={() => scrollToSection(upscalingRef)}>
+            <ArrowUpCircle className="w-8 h-8 text-white" />
+          </DockIcon>
+          <DockIcon onClick={() => scrollToSection(faqRef)}>
+            <HelpCircle className="w-8 h-8 text-white" />
+          </DockIcon>
+          <DockIcon onClick={() => router.push('/pricing')}>
+            <CreditCard className="w-8 h-8 text-white" />
+          </DockIcon>
+        </Dock>
       </motion.div>
     </AnimatePresence>
   )
