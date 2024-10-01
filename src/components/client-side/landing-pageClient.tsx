@@ -413,8 +413,8 @@ export default function LandingPage() {
     { icon: SplitSquareVertical, label: "Before & After", onClick: () => scrollToSection(beforeAfterRef) },
     { icon: ArrowUpCircle, label: "Upscaling", onClick: () => scrollToSection(upscalingRef) },
     { icon: HelpCircle, label: "FAQ", onClick: () => scrollToSection(faqRef) },
-    { icon: CreditCard, label: "Pricing", onClick: () => router.push('/pricing') },
     { icon: 'separator', label: '' },
+    { icon: CreditCard, label: "Pricing", onClick: () => router.push('/pricing') },
     { icon: Sparkles, label: "Enter App", onClick: () => handleEnterApp('/generator'), isSpecial: true },
   ]
 
