@@ -46,7 +46,7 @@ export default function FluxAIImageGenerator() {
   const [generatedAspectRatio, setGeneratedAspectRatio] = useState("1:1")
   const [numOutputs, setNumOutputs] = useState(1)
   const [outputFormat, setOutputFormat] = useState("webp")
-  const [outputQuality, setOutputQuality] = useState(80)
+  const [outputQuality, setOutputQuality] = useState(100)
   const [isEnhancePromptEnabled, setIsEnhancePromptEnabled] = useState(false)
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)

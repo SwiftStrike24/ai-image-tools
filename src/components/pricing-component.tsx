@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { CheckIcon, SparklesIcon } from 'lucide-react'
 import ShineBorder from '@/components/magicui/shine-border'
 import { MagicCard } from '@/components/magicui/magic-card'
-import { loadStripe } from '@stripe/stripe-js'
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter } from 'next/navigation'
@@ -13,8 +12,6 @@ import { useSubscription } from '@/hooks/useSubscription'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 const plans = [
   {
@@ -82,23 +79,6 @@ const featureComparison = [
   },
   { name: 'AI model choice', free: 'Yes', pro: 'Yes', premium: 'Yes', ultimate: 'Yes + GPT-4o' },
 ]
-
-// Add this custom component for the Stripe Buy Button
-const StripeBuyButton = ({ buyButtonId, publishableKey }: { buyButtonId: string; publishableKey: string }) => {
-  return (
-    <div
-      dangerouslySetInnerHTML={{
-        __html: `
-          <stripe-buy-button
-            buy-button-id="${buyButtonId}"
-            publishable-key="${publishableKey}"
-          >
-          </stripe-buy-button>
-        `
-      }}
-    />
-  )
-}
 
 export function PricingComponentComponent() {
   const [isMonthly, setIsMonthly] = useState(true)
