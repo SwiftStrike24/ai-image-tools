@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { Webhook, WebhookRequiredHeaders } from 'svix';
 import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
-import { deleteUserFromSupabase } from '@/lib/supabase';
-import { getRedisClient } from "@/lib/redis";
+import { createUserInSupabase, updateUserInSupabase, deleteUserFromSupabase, logSessionCreated } from '@/lib/supabase';
 
 const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
 
@@ -15,11 +14,11 @@ export async function POST(req: Request) {
   const svixSignature = headerPayload.get("svix-signature");
 
   if (!svixId || !svixTimestamp || !svixSignature) {
-    return NextResponse.json({ error: 'Error occurred -- no svix headers' }, { status: 400 });
+    return NextResponse.json({ error: 'Missing svix headers' }, { status: 400 });
   }
 
   if (!webhookSecret) {
-    return NextResponse.json({ error: 'Error occurred -- no webhook secret' }, { status: 400 });
+    return NextResponse.json({ error: 'Missing webhook secret' }, { status: 400 });
   }
 
   const svixHeaders: WebhookRequiredHeaders = {
@@ -34,36 +33,44 @@ export async function POST(req: Request) {
   try {
     evt = wh.verify(JSON.stringify(payload), svixHeaders) as WebhookEvent;
   } catch (err) {
-    console.error('Error verifying webhook:', err);
-    return NextResponse.json({ error: 'Error occurred' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
   const eventType = evt.type;
 
-  if (eventType === 'user.deleted') {
-    const { id } = evt.data;
-    if (typeof id === 'string') {
-      try {
-        // Delete user data from Supabase
-        await deleteUserFromSupabase(id);
-        console.log(`User ${id} and related data deleted from Supabase`);
+  try {
+    switch (eventType) {
+      case 'user.created':
+        const { id, email_addresses, username } = evt.data;
+        const primaryEmail = email_addresses[0]?.email_address;
+        if (id && primaryEmail) {
+          await createUserInSupabase(id, primaryEmail, username || '');
+        }
+        break;
 
-        // Delete user data from Redis
-        const redisClient = await getRedisClient();
-        await redisClient.del(`user_subscription:${id}`);
-        await redisClient.del(`stripe_customer:${id}`);
-        console.log(`User ${id} data deleted from Redis`);
+      case 'user.updated':
+        const updatedUser = evt.data;
+        const updatedEmail = updatedUser.email_addresses[0]?.email_address;
+        if (updatedUser.id && updatedEmail) {
+          await updateUserInSupabase(updatedUser.id, updatedEmail, updatedUser.username || '');
+        }
+        break;
 
-        return NextResponse.json({ message: 'User deleted successfully from Supabase and Redis' }, { status: 200 });
-      } catch (error) {
-        console.error('Error deleting user data:', error);
-        return NextResponse.json({ error: 'Error deleting user data' }, { status: 500 });
-      }
-    } else {
-      console.error('Invalid user ID in webhook payload');
-      return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
+      case 'user.deleted':
+        if (typeof evt.data.id === 'string') {
+          await deleteUserFromSupabase(evt.data.id);
+        }
+        break;
+
+      case 'session.created':
+        if (typeof evt.data.user_id === 'string') {
+          await logSessionCreated(evt.data.user_id);
+        }
+        break;
     }
-  }
 
-  return NextResponse.json({ message: 'Webhook received' }, { status: 200 });
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    return NextResponse.json({ error: 'Error processing webhook' }, { status: 500 });
+  }
 }
