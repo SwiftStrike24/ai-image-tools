@@ -2,6 +2,9 @@
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 10
+    },
+    "src/app/api/webhooks/clerk/**/*.ts": {
+      "maxDuration": 60
     }
   }
 }
