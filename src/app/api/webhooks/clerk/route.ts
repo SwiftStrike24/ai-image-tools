@@ -9,7 +9,10 @@ const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
 export async function POST(req: Request) {
   console.log('[INFO] Webhook received');
   try {
-    const payload = await req.json();
+    // Get the raw body as a string
+    const rawBody = await req.text();
+    console.log('[DEBUG] Raw body:', rawBody.substring(0, 100) + '...');
+
     const headerPayload = headers();
     const svixId = headerPayload.get("svix-id");
     const svixTimestamp = headerPayload.get("svix-timestamp");
@@ -38,7 +41,7 @@ export async function POST(req: Request) {
     let evt: WebhookEvent;
 
     try {
-      evt = wh.verify(JSON.stringify(payload), svixHeaders) as WebhookEvent;
+      evt = wh.verify(rawBody, svixHeaders) as WebhookEvent;
       console.log('[INFO] Webhook signature verified successfully');
     } catch (err) {
       console.error('[ERROR] Invalid signature:', err);
