@@ -13,6 +13,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
 const STRIPE_CUSTOMER_KEY_PREFIX = "stripe_customer:";
 const PROCESSED_EVENTS_KEY_PREFIX = "processed_event:";
+const NEXT_BILLING_DATE_KEY_PREFIX = "next_billing_date:";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -96,38 +97,43 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   const subscriptionId = session.subscription as string;
   const customerId = session.customer as string;
 
-  if (userId && subscriptionId && customerId) {
-    try {
-      const redisClient = await getRedisClient();
-      await redisClient.set(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`, customerId);
+  if (!userId || !subscriptionId || !customerId) {
+    console.error('Missing userId, subscriptionId, or customerId in checkout session', { userId, subscriptionId, customerId });
+    return;
+  }
 
-      // Update Stripe customer metadata
-      await stripe.customers.update(customerId, {
-        metadata: {
-          userId: userId,
-        },
-      });
+  try {
+    const redisClient = await getRedisClient();
+    await redisClient.set(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`, customerId);
 
-      let subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    // Get the customer's name from the checkout session
+    const customerName = session.customer_details?.name || 'Unknown';
 
-      // Check if this is an update to an existing subscription
-      if (session.metadata?.action === 'update_subscription' && session.metadata?.subscription_id) {
-        const oldSubscriptionId = session.metadata.subscription_id;
-        if (oldSubscriptionId !== subscriptionId) {
-          // Cancel the old subscription
-          await stripe.subscriptions.cancel(oldSubscriptionId);
-          console.log(`Canceled old subscription ${oldSubscriptionId} for user ${userId}`);
-        }
+    // Update Stripe customer metadata and name
+    await stripe.customers.update(customerId, {
+      metadata: {
+        userId: userId,
+      },
+      name: customerName,
+    });
+
+    let subscription = await stripe.subscriptions.retrieve(subscriptionId);
+
+    // Check if this is an update to an existing subscription
+    if (session.metadata?.action === 'update_subscription' && session.metadata?.subscription_id) {
+      const oldSubscriptionId = session.metadata.subscription_id;
+      if (oldSubscriptionId !== subscriptionId) {
+        // Cancel the old subscription
+        await stripe.subscriptions.cancel(oldSubscriptionId);
+        console.log(`Canceled old subscription ${oldSubscriptionId} for user ${userId}`);
       }
-
-      await updateUserSubscription(userId, subscription);
-
-      console.log(`Updated Stripe customer ${customerId} for user ${userId}`);
-    } catch (error) {
-      console.error('Error updating subscription or customer after checkout:', error);
     }
-  } else {
-    console.error('Missing userId, subscriptionId, or customerId in checkout session');
+
+    await updateUserSubscription(userId, subscription);
+
+    console.log(`Updated Stripe customer ${customerId} for user ${userId} with name: ${customerName}`);
+  } catch (error) {
+    console.error('Error updating subscription or customer after checkout:', error);
   }
 }
 
@@ -140,6 +146,12 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   }
 
   await updateUserSubscription(userId, subscription);
+
+  // Add this new section to handle the next billing date
+  const redisClient = await getRedisClient();
+  const nextBillingDate = new Date(subscription.current_period_end * 1000).toISOString();
+  await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
+  console.log(`Updated next billing date for user ${userId} to ${nextBillingDate}`);
 }
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {

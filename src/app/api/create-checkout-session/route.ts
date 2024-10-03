@@ -133,8 +133,8 @@ export async function POST(req: Request) {
         },
         success_url: successUrl,
         cancel_url: cancelUrl,
-        // Instead of passing the subscription directly, use metadata
         metadata: {
+          userId,
           subscription_id: currentSubscription.id,
           action: 'update_subscription'
         }
@@ -150,6 +150,7 @@ export async function POST(req: Request) {
         subscription_data: {
           metadata: { userId },
         },
+        metadata: { userId }
       });
     }
 

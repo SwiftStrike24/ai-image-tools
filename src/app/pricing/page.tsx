@@ -1,16 +1,20 @@
 "use client"
 
 import { PricingComponentComponent } from '@/components/pricing-component'
-import { motion } from 'framer-motion'
+import { motion, useAnimation } from 'framer-motion'
 import GridPattern from "@/components/magicui/animated-grid-pattern"
 import AnimatedGradientText from "@/components/magicui/animated-gradient-text"
 import BlurFade from "@/components/magicui/blur-fade"
-import { Home, Sparkles, Zap } from 'lucide-react'
+import { Home, Sparkles, Zap, LogIn } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Dock, DockIcon } from "@/components/ui/dock"
+import { useAuth, UserButton } from "@clerk/nextjs"
+import ShimmerButton from "@/components/magicui/shimmer-button"
 
 export default function PricingPage() {
   const router = useRouter()
+  const { isLoaded, isSignedIn } = useAuth()
+  const controls = useAnimation()
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -41,6 +45,18 @@ export default function PricingPage() {
     { icon: Zap, label: "Upscaler", onClick: () => router.push('/upscaler') },
   ]
 
+  const handleLoginClick = async () => {
+    // Start the animation
+    await controls.start({
+      scale: [1, 0.9, 1.1, 1],
+      rotate: [0, -10, 10, 0],
+      transition: { duration: 0.4 }
+    })
+
+    // After animation completes, navigate to sign-in page
+    router.push('/sign-in')
+  }
+
   return (
     <motion.div
       className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-gray-800 text-white relative overflow-hidden"
@@ -62,6 +78,48 @@ export default function PricingPage() {
       />
       
       <div className="relative z-20 container mx-auto px-4 py-16 pt-24">
+        <div className="absolute top-4 right-4">
+          {isLoaded && !isSignedIn ? (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                animate={controls}
+              >
+                <ShimmerButton
+                  onClick={handleLoginClick}
+                  className="px-6 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-full flex items-center justify-center overflow-hidden relative"
+                  shimmerColor="#ffffff33"
+                  background="rgba(124, 58, 237, 0.5)"
+                >
+                  <motion.div
+                    className="absolute inset-0 bg-white opacity-0"
+                    whileTap={{ opacity: 0.3, transition: { duration: 0.1 } }}
+                  />
+                  <motion.div className="flex items-center justify-center relative z-10">
+                    <LogIn className="w-4 h-4 mr-2" />
+                    <span className="font-medium">Login</span>
+                  </motion.div>
+                </ShimmerButton>
+              </motion.div>
+            </motion.div>
+          ) : (
+            <UserButton 
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  avatarBox: "h-10 w-10",
+                  userButtonAvatarBox: "h-10 w-10",
+                },
+              }}
+            />
+          )}
+        </div>
+
         <BlurFade>
           <div className="flex justify-center items-center mb-12">
             <AnimatedGradientText className="text-4xl md:text-6xl font-bold mb-4 text-center">

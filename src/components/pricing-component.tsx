@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckIcon, SparklesIcon } from 'lucide-react'
 import ShineBorder from '@/components/magicui/shine-border'
@@ -82,7 +82,27 @@ const featureComparison = [
 
 export function PricingComponentComponent() {
   const [isMonthly, setIsMonthly] = useState(true)
-  const { subscriptionType } = useSubscription('generator'); // Use the generator type, but it doesn't matter which one we use here
+  const { subscriptionType } = useSubscription('generator')
+  const { isLoaded, isSignedIn } = useAuth()
+  const [nextBillingDate, setNextBillingDate] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (isSignedIn && subscriptionType !== 'basic') {
+      fetchNextBillingDate()
+    }
+  }, [isSignedIn, subscriptionType])
+
+  const fetchNextBillingDate = async () => {
+    try {
+      const response = await fetch('/api/get-next-billing-date')
+      if (response.ok) {
+        const data = await response.json()
+        setNextBillingDate(data.nextBillingDate)
+      }
+    } catch (error) {
+      console.error('Error fetching next billing date:', error)
+    }
+  }
 
   // Helper function to determine button text and style
   const getButtonProps = (planName: string) => {
@@ -104,6 +124,30 @@ export function PricingComponentComponent() {
   return (
     <div className="bg-transparent text-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
+        {isLoaded && isSignedIn && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mb-8"
+          >
+            <MagicCard
+              gradientSize={200}
+              gradientColor="#8B5CF6"
+              gradientOpacity={0.2}
+              className="rounded-xl"
+            >
+              <div className="p-6">
+                <h3 className="text-xl font-bold mb-2">Your Plan Details</h3>
+                <p className="text-lg mb-2">Current Plan: <span className="font-semibold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">{subscriptionType.charAt(0).toUpperCase() + subscriptionType.slice(1)}</span></p>
+                {subscriptionType !== 'basic' && nextBillingDate && (
+                  <p className="text-sm">Next billing date: {new Date(nextBillingDate).toLocaleDateString()}</p>
+                )}
+              </div>
+            </MagicCard>
+          </motion.div>
+        )}
+
         <div className="mt-12 space-y-4 sm:mt-16 sm:space-y-0 grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 sm:gap-6 lg:max-w-4xl lg:mx-auto xl:max-w-none xl:mx-0">
           {plans.map((plan, index) => (
             <motion.div

@@ -86,7 +86,7 @@ Custom Components and Features
 - Use GridPattern for background visual effects.
 - Implement BlurFade for smooth transitions between sections.
 - Use MagicCard for visually appealing card components.
-- Implement shadcn or magicui components for interactive and visually engaging buttons and other UI elements.
+- Implement shadcn or magicui components for interactive and visually engaging buttons and other UI elements, like shimmer button, animated checkmark, etc.
 
 Pricing and Subscription
 - Use Stripe for handling payments and subscriptions.
