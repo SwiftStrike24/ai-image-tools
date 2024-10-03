@@ -68,6 +68,8 @@ async function handleEvent(event: Stripe.Event) {
         break;
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
+        await handleSubscriptionChange(event.data.object as Stripe.Subscription);
+        break;
       case 'customer.subscription.deleted':
         await handleSubscriptionChange(event.data.object as Stripe.Subscription);
         break;
@@ -106,34 +108,12 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     const redisClient = await getRedisClient();
     await redisClient.set(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`, customerId);
 
-    // Get the customer's name from the checkout session
-    const customerName = session.customer_details?.name || 'Unknown';
-
-    // Update Stripe customer metadata and name
-    await stripe.customers.update(customerId, {
-      metadata: {
-        userId: userId,
-      },
-      name: customerName,
-    });
-
-    let subscription = await stripe.subscriptions.retrieve(subscriptionId);
-
-    // Check if this is an update to an existing subscription
-    if (session.metadata?.action === 'update_subscription' && session.metadata?.subscription_id) {
-      const oldSubscriptionId = session.metadata.subscription_id;
-      if (oldSubscriptionId !== subscriptionId) {
-        // Cancel the old subscription
-        await stripe.subscriptions.cancel(oldSubscriptionId);
-        console.log(`Canceled old subscription ${oldSubscriptionId} for user ${userId}`);
-      }
-    }
-
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
     await updateUserSubscription(userId, subscription);
 
-    console.log(`Updated Stripe customer ${customerId} for user ${userId} with name: ${customerName}`);
+    console.log(`Updated subscription for user ${userId} after checkout`);
   } catch (error) {
-    console.error('Error updating subscription or customer after checkout:', error);
+    console.error('Error updating subscription after checkout:', error);
   }
 }
 
@@ -146,12 +126,6 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   }
 
   await updateUserSubscription(userId, subscription);
-
-  // Add this new section to handle the next billing date
-  const redisClient = await getRedisClient();
-  const nextBillingDate = new Date(subscription.current_period_end * 1000).toISOString();
-  await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
-  console.log(`Updated next billing date for user ${userId} to ${nextBillingDate}`);
 }
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
@@ -222,39 +196,43 @@ async function handleCustomerDeleted(customer: Stripe.Customer) {
 async function updateUserSubscription(userId: string, subscription: Stripe.Subscription) {
   const redisClient = await getRedisClient();
   
-  if (subscription.status === 'canceled') {
+  if (subscription.status === 'active') {
+    const productId = subscription.items.data[0].price.product as string;
+    const product = await stripe.products.retrieve(productId);
+    let subscriptionTier: SubscriptionTier = 'basic';
+
+    switch (product.name.toLowerCase()) {
+      case 'pro':
+        subscriptionTier = 'pro';
+        break;
+      case 'premium':
+        subscriptionTier = 'premium';
+        break;
+      case 'ultimate':
+        subscriptionTier = 'ultimate';
+        break;
+    }
+
+    await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, subscriptionTier);
+    console.log(`Updated subscription for user ${userId} to ${subscriptionTier}`);
+
+    // Update next billing date
+    const nextBillingDate = new Date(subscription.current_period_end * 1000).toISOString();
+    await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
+
+    // Clear any pending downgrades
+    await redisClient.del(`${SUBSCRIPTION_KEY_PREFIX}${userId}:pending_downgrade`);
+
+    // Update Supabase
+    await updateSupabaseSubscription(userId, userId, subscriptionTier, null);
+  } else if (subscription.status === 'canceled') {
     await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, 'basic');
     console.log(`Reset subscription for user ${userId} to basic due to cancellation`);
-    return;
+    await updateSupabaseSubscription(userId, userId, 'basic', null);
   }
-
-  const productId = subscription.items.data[0].price.product as string;
-  const product = await stripe.products.retrieve(productId);
-  let subscriptionTier: SubscriptionTier = 'basic';
-
-  switch (product.name.toLowerCase()) {
-    case 'pro':
-      subscriptionTier = 'pro';
-      break;
-    case 'premium':
-      subscriptionTier = 'premium';
-      break;
-    case 'ultimate':
-      subscriptionTier = 'ultimate';
-      break;
-    default:
-      subscriptionTier = 'basic';
-  }
-
-  await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, subscriptionTier);
-
-  console.log(`Updated subscription for user ${userId} to ${subscriptionTier}`);
-
-  // Pass userId as both userId and clerkId (assuming userId is the Clerk ID)
-  await updateSupabaseSubscription(userId, userId, subscriptionTier);
 }
 
-async function updateSupabaseSubscription(userId: string, clerkId: string, subscriptionTier: SubscriptionTier) {
+async function updateSupabaseSubscription(userId: string, clerkId: string, subscriptionTier: SubscriptionTier, pendingDowngrade: string | null) {
   try {
     // Fetch the user's information from Clerk
     const user = await clerkClient().users.getUser(clerkId);
@@ -267,6 +245,7 @@ async function updateSupabaseSubscription(userId: string, clerkId: string, subsc
         username: username,
         plan: subscriptionTier,
         status: 'active',
+        pending_downgrade: pendingDowngrade,
         updated_at: new Date().toISOString(),
       }, {
         onConflict: 'clerk_id'
@@ -274,7 +253,7 @@ async function updateSupabaseSubscription(userId: string, clerkId: string, subsc
       .select();
 
     if (error) throw error;
-    console.log(`Updated Supabase subscription for user ${clerkId} to ${subscriptionTier}`);
+    console.log(`Updated Supabase subscription for user ${clerkId} to ${subscriptionTier}${pendingDowngrade ? ` with pending downgrade to ${pendingDowngrade}` : ''}`);
   } catch (error) {
     console.error('Error updating Supabase subscription:', error);
     throw error;

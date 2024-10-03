@@ -92,6 +92,7 @@ export function PricingComponentComponent() {
   const [cancellationDate, setCancellationDate] = useState<string | null>(null)
   const { toast } = useToast()
   const [isRenewing, setIsRenewing] = useState(false)
+  const [pendingDowngrade, setPendingDowngrade] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchDates = async () => {
@@ -101,6 +102,7 @@ export function PricingComponentComponent() {
           const data = await response.json();
           setNextBillingDate(data.nextBillingDate);
           setCancellationDate(data.cancellationDate);
+          setPendingDowngrade(data.pendingDowngrade);
         }
       } catch (error) {
         console.error('Error fetching dates:', error);
@@ -184,6 +186,41 @@ export function PricingComponentComponent() {
     }
   }
 
+  const handleDowngrade = async (planName: string) => {
+    try {
+      const response = await fetch('/api/downgrade-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ planName }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'An error occurred');
+      }
+
+      const data = await response.json();
+      
+      toast({
+        title: "Downgrade Scheduled",
+        description: `Your subscription will be downgraded to ${planName} on ${new Date(data.nextBillingDate).toLocaleDateString()}.`,
+        variant: "default",
+      });
+
+      setPendingDowngrade(planName);
+      setNextBillingDate(data.nextBillingDate);
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="bg-transparent text-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -207,7 +244,9 @@ export function PricingComponentComponent() {
                     <p className="text-lg mb-2">Current Plan: <span className="font-semibold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">{subscriptionType.charAt(0).toUpperCase() + subscriptionType.slice(1)}</span></p>
                     {subscriptionType !== 'basic' && (
                       <>
-                        {cancellationDate ? (
+                        {pendingDowngrade ? (
+                          <p className="text-sm">Downgrade to {pendingDowngrade} scheduled for: {new Date(nextBillingDate!).toLocaleDateString()}</p>
+                        ) : cancellationDate ? (
                           <p className="text-sm">Subscription ends on: {new Date(cancellationDate).toLocaleDateString()}</p>
                         ) : (
                           nextBillingDate && (
@@ -412,9 +451,7 @@ function PlanContent({ plan, isMonthly, buttonProps }: { plan: any; isMonthly: b
       });
       return;
     }
-
-    if (buttonProps.text.startsWith('Downgrade') && plan.name !== 'Basic') {
-      // Open confirmation modal only for paid plan downgrades
+    if (buttonProps.text.startsWith('Downgrade')) {
       setIsDowngradeModalOpen(true);
       return;
     }
@@ -471,7 +508,7 @@ function PlanContent({ plan, isMonthly, buttonProps }: { plan: any; isMonthly: b
       
       toast({
         title: "Downgrade Scheduled",
-        description: `Your subscription will be downgraded to ${plan.name} at the end of your current billing period.`,
+        description: `Your subscription will be downgraded to ${plan.name} on ${new Date(data.nextBillingDate).toLocaleDateString()}.`,
         variant: "default",
       });
 

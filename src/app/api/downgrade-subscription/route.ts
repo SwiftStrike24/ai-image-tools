@@ -27,11 +27,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Already subscribed to this plan' }, { status: 400 });
     }
 
-    // Get the customer's Stripe ID
     const stripeCustomerId = await redisClient.get(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
 
     if (stripeCustomerId) {
-      // Get the customer's active subscription
       const subscriptions = await stripe.subscriptions.list({
         customer: stripeCustomerId,
         status: 'active',
@@ -40,20 +38,30 @@ export async function POST(req: Request) {
 
       if (subscriptions.data.length > 0) {
         const subscription = subscriptions.data[0];
-
-        // Schedule the downgrade at the end of the current billing period
         const newPlanId = getPlanIdFromName(planName);
         if (!newPlanId) {
           return NextResponse.json({ error: 'Invalid plan name' }, { status: 400 });
         }
 
-        await stripe.subscriptions.update(subscription.id, {
-          cancel_at_period_end: false,
-          proration_behavior: 'always_invoice',
-          items: [{
-            id: subscription.items.data[0].id,
-            price: newPlanId,
-          }],
+        // Create a subscription schedule
+        const schedule = await stripe.subscriptionSchedules.create({
+          from_subscription: subscription.id,
+        });
+
+        // Update the schedule with the new plan
+        await stripe.subscriptionSchedules.update(schedule.id, {
+          end_behavior: 'release',
+          phases: [
+            {
+              start_date: subscription.current_period_start,
+              end_date: subscription.current_period_end,
+              items: [{ price: subscription.items.data[0].price.id, quantity: 1 }],
+            },
+            {
+              start_date: subscription.current_period_end,
+              items: [{ price: newPlanId, quantity: 1 }],
+            },
+          ],
         });
 
         // Store the pending downgrade in Redis
