@@ -10,6 +10,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
 const STRIPE_CUSTOMER_KEY_PREFIX = "stripe_customer:";
 const NEXT_BILLING_DATE_KEY_PREFIX = "next_billing_date:";
+const PENDING_DOWNGRADE_KEY_PREFIX = "pending_downgrade:";
 
 export async function POST(req: Request) {
   try {
@@ -65,15 +66,19 @@ export async function POST(req: Request) {
         });
 
         // Store the pending downgrade in Redis
-        await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}:pending_downgrade`, planName);
+        await redisClient.set(`${PENDING_DOWNGRADE_KEY_PREFIX}${userId}`, planName);
 
         // Get the next billing date
         const nextBillingDate = new Date(subscription.current_period_end * 1000).toISOString();
         await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
 
+        // Ensure we're not changing the current subscription until the downgrade takes effect
+        // await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, planName);
+
         return NextResponse.json({ 
           message: `Downgrade to ${planName} scheduled successfully`,
-          nextBillingDate
+          nextBillingDate,
+          pendingDowngrade: planName
         });
       }
     }

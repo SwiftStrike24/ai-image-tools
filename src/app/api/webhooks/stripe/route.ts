@@ -14,6 +14,7 @@ const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
 const STRIPE_CUSTOMER_KEY_PREFIX = "stripe_customer:";
 const PROCESSED_EVENTS_KEY_PREFIX = "processed_event:";
 const NEXT_BILLING_DATE_KEY_PREFIX = "next_billing_date:";
+const PENDING_DOWNGRADE_KEY_PREFIX = "pending_downgrade:";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -128,7 +129,19 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
     return;
   }
 
-  await updateUserSubscription(userId, subscription);
+  try {
+    const redisClient = await getRedisClient();
+
+    // Check if there was a pending downgrade and remove it
+    const pendingDowngrade = await redisClient.get(`${PENDING_DOWNGRADE_KEY_PREFIX}${userId}`);
+    if (pendingDowngrade) {
+      await redisClient.del(`${PENDING_DOWNGRADE_KEY_PREFIX}${userId}`);
+    }
+
+    await updateUserSubscription(userId, subscription);
+  } catch (error) {
+    console.error('Error handling subscription change:', error);
+  }
 }
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {

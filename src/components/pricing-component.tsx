@@ -94,6 +94,7 @@ export function PricingComponentComponent() {
   const [isRenewing, setIsRenewing] = useState(false)
   const [pendingDowngrade, setPendingDowngrade] = useState<string | null>(null)
   const [isDowngradeInProgress, setIsDowngradeInProgress] = useState(false)
+  const [currentSubscription, setCurrentSubscription] = useState<string>('basic')
 
   useEffect(() => {
     const fetchDates = async () => {
@@ -102,9 +103,11 @@ export function PricingComponentComponent() {
         if (response.ok) {
           const data = await response.json();
           setNextBillingDate(data.nextBillingDate);
-          setCancellationDate(data.cancellationDate);
           setPendingDowngrade(data.pendingDowngrade);
           setIsDowngradeInProgress(!!data.pendingDowngrade);
+          setCurrentSubscription(data.currentSubscription || 'basic');
+        } else {
+          console.error('Failed to fetch billing date:', await response.text());
         }
       } catch (error) {
         console.error('Error fetching dates:', error);
@@ -211,7 +214,7 @@ export function PricingComponentComponent() {
         variant: "default",
       });
 
-      setPendingDowngrade(planName);
+      setPendingDowngrade(data.pendingDowngrade);
       setNextBillingDate(data.nextBillingDate);
       setIsDowngradeInProgress(true);
     } catch (error) {
@@ -276,9 +279,9 @@ export function PricingComponentComponent() {
                   <div>
                     <h3 className="text-xl font-bold mb-2">Your Plan Details</h3>
                     <p className="text-lg mb-2">
-                      Current Plan: <span className="font-semibold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">{subscriptionType.charAt(0).toUpperCase() + subscriptionType.slice(1)}</span>
+                      Current Plan: <span className="font-semibold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">{currentSubscription.charAt(0).toUpperCase() + currentSubscription.slice(1)}</span>
                     </p>
-                    {subscriptionType !== 'basic' && (
+                    {currentSubscription !== 'basic' && (
                       <>
                         {pendingDowngrade ? (
                           <div className="flex flex-col space-y-2">
@@ -318,7 +321,7 @@ export function PricingComponentComponent() {
                       </Button>
                     )}
                   </div>
-                  {subscriptionType !== 'basic' && !pendingDowngrade && (
+                  {currentSubscription !== 'basic' && !pendingDowngrade && (
                     <div>
                       {cancellationDate ? (
                         <Button
@@ -594,6 +597,19 @@ function PlanContent({
     }
   };
 
+  const getButtonStyle = () => {
+    if (plan.name === 'Basic') {
+      return 'bg-gray-500 cursor-not-allowed opacity-50';
+    }
+    if (isDowngradeInProgress && pendingDowngrade && pendingDowngrade.toLowerCase() === plan.name.toLowerCase()) {
+      return 'bg-gray-500 cursor-not-allowed';
+    }
+    if (buttonProps.text === 'Current Plan') {
+      return 'bg-purple-700 cursor-not-allowed';
+    }
+    return buttonProps.style;
+  };
+
   return (
     <div className="flex flex-col h-full rounded-2xl p-4 sm:p-6 bg-opacity-60 bg-gray-800 backdrop-blur-md">
       <div className="flex justify-between items-center mb-4">
@@ -622,11 +638,11 @@ function PlanContent({
       </ul>
       <div className="mt-auto">
         <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={{ scale: buttonProps.text === 'Current Plan' || plan.name === 'Basic' || isDowngradeInProgress ? 1 : 1.05 }}
+          whileTap={{ scale: buttonProps.text === 'Current Plan' || plan.name === 'Basic' || isDowngradeInProgress ? 1 : 0.95 }}
           onClick={handleSubscribe}
           className={`w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-100 ${
-            buttonProps.style
+            getButtonStyle()
           } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200`}
           disabled={buttonProps.text === 'Current Plan' || plan.name === 'Basic' || isDowngradeInProgress || (pendingDowngrade !== null && pendingDowngrade.toLowerCase() === plan.name.toLowerCase())}
         >

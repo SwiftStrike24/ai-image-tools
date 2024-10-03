@@ -12,6 +12,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const STRIPE_CUSTOMER_KEY_PREFIX = "stripe_customer:";
 const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
 const NEXT_BILLING_DATE_KEY_PREFIX = "next_billing_date:";
+const PENDING_DOWNGRADE_KEY_PREFIX = "pending_downgrade:";
 
 export async function POST() {
   const { userId } = auth();
@@ -55,7 +56,7 @@ export async function POST() {
       }
 
       // Remove the pending downgrade from Redis
-      await redisClient.del(`${SUBSCRIPTION_KEY_PREFIX}${userId}:pending_downgrade`);
+      await redisClient.del(`${PENDING_DOWNGRADE_KEY_PREFIX}${userId}`);
 
       return NextResponse.json({ message: 'Downgrade cancelled successfully' });
     } else {
@@ -88,7 +89,6 @@ export async function POST() {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
-
 async function updateUserSubscription(userId: string, subscription: Stripe.Subscription) {
   const redisClient = await getRedisClient();
   
@@ -116,3 +116,4 @@ async function updateUserSubscription(userId: string, subscription: Stripe.Subsc
 
   console.log(`Updated subscription for user ${userId} to ${subscriptionTier}`);
 }
+
