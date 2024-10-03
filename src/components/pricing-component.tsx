@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { XCircle } from 'lucide-react'
+import { CalendarIcon, AlertTriangleIcon } from 'lucide-react'
 
 const plans = [
   {
@@ -366,6 +367,23 @@ function PlanContent({ plan, isMonthly, buttonProps }: { plan: any; isMonthly: b
   const router = useRouter()
   const [isDowngradeModalOpen, setIsDowngradeModalOpen] = useState(false)
   const { subscriptionType } = useSubscription('generator');
+  const [nextBillingDate, setNextBillingDate] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchNextBillingDate = async () => {
+      try {
+        const response = await fetch('/api/get-next-billing-date');
+        if (response.ok) {
+          const data = await response.json();
+          setNextBillingDate(data.nextBillingDate);
+        }
+      } catch (error) {
+        console.error('Error fetching next billing date:', error);
+      }
+    };
+
+    fetchNextBillingDate();
+  }, []);
 
   const handleSubscribe = async () => {
     if (plan.name === 'Basic') {
@@ -453,7 +471,7 @@ function PlanContent({ plan, isMonthly, buttonProps }: { plan: any; isMonthly: b
       
       toast({
         title: "Downgrade Scheduled",
-        description: `Your subscription has been downgraded to ${plan.name}.`,
+        description: `Your subscription will be downgraded to ${plan.name} at the end of your current billing period.`,
         variant: "default",
       });
 
@@ -518,35 +536,50 @@ function PlanContent({ plan, isMonthly, buttonProps }: { plan: any; isMonthly: b
 
       <AnimatePresence>
         {isDowngradeModalOpen && plan.name !== 'Basic' && (
-          <Dialog open={isDowngradeModalOpen} onOpenChange={setIsDowngradeModalOpen}>
-            <DialogContent className="sm:max-w-[425px] bg-gray-800 text-gray-100">
-              <DialogHeader>
-                <DialogTitle>Confirm Downgrade</DialogTitle>
-                <DialogDescription>
+          <AlertDialog open={isDowngradeModalOpen} onOpenChange={setIsDowngradeModalOpen}>
+            <AlertDialogContent className="bg-gray-800 text-gray-100 border border-gray-700">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-2xl font-bold">Confirm Downgrade</AlertDialogTitle>
+                <AlertDialogDescription className="text-gray-300">
                   Are you sure you want to downgrade from the {subscriptionType} plan to the {plan.name} plan?
-                </DialogDescription>
-              </DialogHeader>
-              <div className="mt-4">
-                <p className="text-sm text-gray-300">
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="mt-4 space-y-4">
+                <div className="flex items-start space-x-2">
+                  <CalendarIcon className="w-5 h-5 text-blue-400 mt-0.5" />
+                  <p className="text-sm text-gray-300">
+                    Your new plan will take effect at the end of your current billing period:
+                    <span className="block font-semibold text-white mt-1">
+                      {nextBillingDate ? new Date(nextBillingDate).toLocaleDateString() : 'Loading...'}
+                    </span>
+                  </p>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <AlertTriangleIcon className="w-5 h-5 text-yellow-400 mt-0.5" />
+                  <p className="text-sm text-gray-300">
+                    Tip: To maximize your current plan&apos;s benefits, consider waiting until the end of your billing period before downgrading.
+                  </p>
+                </div>
+                <p className="text-sm text-gray-300 font-semibold">
                   You will lose access to the following features:
                 </p>
-                <ScrollArea className="h-[200px] mt-2">
-                  <ul className="space-y-2">
-                    {getLostFeatures(subscriptionType, plan.name).map((feature: string, index: number) => (
-                      <li key={index} className="flex items-start">
-                        <CheckIcon className="h-5 w-5 text-red-500 flex-shrink-0 mr-2" aria-hidden="true" />
-                        <span className="text-xs text-gray-300">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </ScrollArea>
+                <ul className="space-y-2 max-h-40 overflow-y-auto">
+                  {getLostFeatures(subscriptionType, plan.name).map((feature: string, index: number) => (
+                    <li key={index} className="flex items-start text-sm">
+                      <span className="text-red-400 mr-2">•</span>
+                      <span className="text-gray-300">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div className="mt-4 flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsDowngradeModalOpen(false)}>Cancel</Button>
-                <Button onClick={handleDowngrade}>Confirm Downgrade</Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              <AlertDialogFooter className="mt-6">
+                <AlertDialogCancel className="bg-gray-700 text-gray-100 hover:bg-gray-600">Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDowngrade} className="bg-purple-600 text-white hover:bg-purple-700">
+                  Confirm Downgrade
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </AnimatePresence>
     </div>

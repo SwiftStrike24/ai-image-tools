@@ -6,6 +6,8 @@ Code Style and Structure
 - Prefer iteration and modularization over code duplication.
 - Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError).
 - Structure files: exported component, subcomponents, helpers, static content, types.
+- Prioritize using existing files, especially for API routes in src/app/api folder, unless a new file is absolutely necessary for maintainability or separation of concerns.
+- Always consider maintainability, manageability, and scalability when organizing code and creating new files or components.
 
 Naming Conventions
 - Use lowercase with dashes for directories (e.g., components/auth-wizard).
@@ -20,6 +22,7 @@ Syntax and Formatting
 - Use the "function" keyword for pure functions.
 - Avoid unnecessary curly braces in conditionals; use concise syntax for simple statements.
 - Use declarative JSX.
+- Escape single quotes in JSX with &apos;, &lsquo;, &#39;, or &rsquo;.
 
 UI and Styling
 - Use Shadcn UI, Radix UI, and Tailwind CSS for components and styling.

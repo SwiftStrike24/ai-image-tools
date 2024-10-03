@@ -9,6 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
 const STRIPE_CUSTOMER_KEY_PREFIX = "stripe_customer:";
+const NEXT_BILLING_DATE_KEY_PREFIX = "next_billing_date:";
 
 export async function POST(req: Request) {
   try {
@@ -40,40 +41,32 @@ export async function POST(req: Request) {
       if (subscriptions.data.length > 0) {
         const subscription = subscriptions.data[0];
 
-        if (planName.toLowerCase() === 'basic') {
-          // Cancel the subscription at period end
-          await stripe.subscriptions.update(subscription.id, {
-            cancel_at_period_end: true,
-          });
-
-          // Store the pending downgrade in Redis
-          await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}:pending_downgrade`, 'basic');
-
-          return NextResponse.json({ message: 'Downgrade to Basic scheduled successfully' });
-        } else {
-          // Downgrade to a paid lower-tier plan
-          const newPlanId = getPlanIdFromName(planName);
-          if (!newPlanId) {
-            return NextResponse.json({ error: 'Invalid plan name' }, { status: 400 });
-          }
-
-          // Update the subscription to switch to the new plan at period end
-          await stripe.subscriptions.update(subscription.id, {
-            cancel_at_period_end: false,
-            items: [{
-              id: subscription.items.data[0].id,
-              price: newPlanId,
-            }],
-            proration_behavior: 'none',
-            billing_cycle_anchor: 'unchanged',
-            pending_invoice_item_interval: null,
-          });
-
-          // Store the pending downgrade in Redis
-          await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}:pending_downgrade`, planName);
-
-          return NextResponse.json({ message: `Downgrade to ${planName} scheduled successfully` });
+        // Schedule the downgrade at the end of the current billing period
+        const newPlanId = getPlanIdFromName(planName);
+        if (!newPlanId) {
+          return NextResponse.json({ error: 'Invalid plan name' }, { status: 400 });
         }
+
+        await stripe.subscriptions.update(subscription.id, {
+          cancel_at_period_end: false,
+          proration_behavior: 'always_invoice',
+          items: [{
+            id: subscription.items.data[0].id,
+            price: newPlanId,
+          }],
+        });
+
+        // Store the pending downgrade in Redis
+        await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}:pending_downgrade`, planName);
+
+        // Get the next billing date
+        const nextBillingDate = new Date(subscription.current_period_end * 1000).toISOString();
+        await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
+
+        return NextResponse.json({ 
+          message: `Downgrade to ${planName} scheduled successfully`,
+          nextBillingDate
+        });
       }
     }
 
