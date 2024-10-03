@@ -79,6 +79,9 @@ async function handleEvent(event: Stripe.Event) {
       case 'customer.deleted':
         await handleCustomerDeleted(event.data.object as Stripe.Customer);
         break;
+      case 'subscription_schedule.canceled':
+        await handleSubscriptionScheduleCanceled(event.data.object as Stripe.SubscriptionSchedule);
+        break;
       default:
         console.log(`Received ${event.type} event, no action needed`);
     }
@@ -190,6 +193,41 @@ async function handleCustomerDeleted(customer: Stripe.Customer) {
     }
   } else {
     console.error('Missing userId in customer metadata');
+  }
+}
+
+async function handleSubscriptionScheduleCanceled(schedule: Stripe.SubscriptionSchedule) {
+  console.log('Handling subscription_schedule.canceled event');
+  const userId = schedule.metadata?.userId;
+  if (!userId) {
+    console.error('Missing userId in subscription schedule metadata');
+    return;
+  }
+
+  try {
+    const redisClient = await getRedisClient();
+    
+    // Remove the pending downgrade from Redis
+    await redisClient.del(`${SUBSCRIPTION_KEY_PREFIX}${userId}:pending_downgrade`);
+
+    // Fetch the current active subscription
+    const subscriptions = await stripe.subscriptions.list({
+      customer: schedule.customer as string,
+      status: 'active',
+      limit: 1,
+    });
+
+    if (subscriptions.data.length > 0) {
+      const subscription = subscriptions.data[0];
+      // Update the subscription in Redis and Supabase to reflect the current active plan
+      await updateUserSubscription(userId, subscription);
+    } else {
+      console.error('No active subscription found after canceling schedule');
+    }
+
+    console.log(`Cancelled downgrade for user ${userId}`);
+  } catch (error) {
+    console.error('Error handling subscription schedule cancellation:', error);
   }
 }
 

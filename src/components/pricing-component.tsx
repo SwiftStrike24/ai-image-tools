@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { XCircle } from 'lucide-react'
-import { CalendarIcon, AlertTriangleIcon } from 'lucide-react'
+import { CalendarIcon, AlertTriangleIcon, ArrowDownIcon } from 'lucide-react'
 
 const plans = [
   {
@@ -93,6 +93,7 @@ export function PricingComponentComponent() {
   const { toast } = useToast()
   const [isRenewing, setIsRenewing] = useState(false)
   const [pendingDowngrade, setPendingDowngrade] = useState<string | null>(null)
+  const [isDowngradeInProgress, setIsDowngradeInProgress] = useState(false)
 
   useEffect(() => {
     const fetchDates = async () => {
@@ -103,6 +104,7 @@ export function PricingComponentComponent() {
           setNextBillingDate(data.nextBillingDate);
           setCancellationDate(data.cancellationDate);
           setPendingDowngrade(data.pendingDowngrade);
+          setIsDowngradeInProgress(!!data.pendingDowngrade);
         }
       } catch (error) {
         console.error('Error fetching dates:', error);
@@ -211,6 +213,38 @@ export function PricingComponentComponent() {
 
       setPendingDowngrade(planName);
       setNextBillingDate(data.nextBillingDate);
+      setIsDowngradeInProgress(true);
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCancelDowngrade = async () => {
+    try {
+      const response = await fetch('/api/cancel-downgrade', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'An error occurred');
+      }
+
+      const data = await response.json();
+      
+      toast({
+        title: "Downgrade Cancelled",
+        description: "Your subscription will continue as normal.",
+        variant: "default",
+      });
+
+      setPendingDowngrade(null);
+      setIsDowngradeInProgress(false);
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -241,22 +275,50 @@ export function PricingComponentComponent() {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="text-xl font-bold mb-2">Your Plan Details</h3>
-                    <p className="text-lg mb-2">Current Plan: <span className="font-semibold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">{subscriptionType.charAt(0).toUpperCase() + subscriptionType.slice(1)}</span></p>
+                    <p className="text-lg mb-2">
+                      Current Plan: <span className="font-semibold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">{subscriptionType.charAt(0).toUpperCase() + subscriptionType.slice(1)}</span>
+                    </p>
                     {subscriptionType !== 'basic' && (
                       <>
                         {pendingDowngrade ? (
-                          <p className="text-sm">Downgrade to {pendingDowngrade} scheduled for: {new Date(nextBillingDate!).toLocaleDateString()}</p>
+                          <div className="flex flex-col space-y-2">
+                            <div className="flex items-center space-x-2 text-yellow-400">
+                              <AlertTriangleIcon className="w-5 h-5" />
+                              <p className="text-sm">Downgrade in progress</p>
+                            </div>
+                            <div className="flex items-center space-x-2 text-gray-300">
+                              <ArrowDownIcon className="w-5 h-5" />
+                              <p className="text-sm">New Plan: <span className="font-semibold">{pendingDowngrade.charAt(0).toUpperCase() + pendingDowngrade.slice(1)}</span></p>
+                            </div>
+                            <div className="flex items-center space-x-2 text-gray-300">
+                              <CalendarIcon className="w-5 h-5" />
+                              <p className="text-sm">Changes take effect on: {new Date(nextBillingDate!).toLocaleDateString()}</p>
+                            </div>
+                          </div>
                         ) : cancellationDate ? (
                           <p className="text-sm">Subscription ends on: {new Date(cancellationDate).toLocaleDateString()}</p>
                         ) : (
                           nextBillingDate && (
-                            <p className="text-sm">Next billing date: {new Date(nextBillingDate).toLocaleDateString()}</p>
+                            <div className="flex items-center space-x-2">
+                              <CalendarIcon className="w-5 h-5 text-blue-400" />
+                              <p className="text-sm">Next billing date: {new Date(nextBillingDate).toLocaleDateString()}</p>
+                            </div>
                           )
                         )}
                       </>
                     )}
+                    {pendingDowngrade && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 text-white bg-red-600 hover:bg-red-700"
+                        onClick={handleCancelDowngrade}
+                      >
+                        Cancel Downgrade
+                      </Button>
+                    )}
                   </div>
-                  {subscriptionType !== 'basic' && (
+                  {subscriptionType !== 'basic' && !pendingDowngrade && (
                     <div>
                       {cancellationDate ? (
                         <Button
@@ -322,10 +384,24 @@ export function PricingComponentComponent() {
                     color={["#8B5CF6", "#6366F1", "#EC4899"]}
                     className="h-full"
                   >
-                    <PlanContent plan={plan} isMonthly={isMonthly} buttonProps={getButtonProps(plan.name)} />
+                    <PlanContent 
+                      plan={plan} 
+                      isMonthly={isMonthly} 
+                      buttonProps={getButtonProps(plan.name)} 
+                      isDowngradeInProgress={isDowngradeInProgress}
+                      pendingDowngrade={pendingDowngrade}
+                      handleDowngrade={handleDowngrade}
+                    />
                   </ShineBorder>
                 ) : (
-                  <PlanContent plan={plan} isMonthly={isMonthly} buttonProps={getButtonProps(plan.name)} />
+                  <PlanContent 
+                    plan={plan} 
+                    isMonthly={isMonthly} 
+                    buttonProps={getButtonProps(plan.name)} 
+                    isDowngradeInProgress={isDowngradeInProgress}
+                    pendingDowngrade={pendingDowngrade}
+                    handleDowngrade={handleDowngrade}
+                  />
                 )}
               </MagicCard>
             </motion.div>
@@ -400,7 +476,21 @@ export function PricingComponentComponent() {
   )
 }
 
-function PlanContent({ plan, isMonthly, buttonProps }: { plan: any; isMonthly: boolean; buttonProps: { text: string; style: string } }) {
+function PlanContent({ 
+  plan, 
+  isMonthly, 
+  buttonProps, 
+  isDowngradeInProgress, 
+  pendingDowngrade,
+  handleDowngrade 
+}: { 
+  plan: any; 
+  isMonthly: boolean; 
+  buttonProps: { text: string; style: string };
+  isDowngradeInProgress: boolean;
+  pendingDowngrade: string | null;
+  handleDowngrade: (planName: string) => Promise<void>;
+}) {
   const { toast } = useToast()
   const { isLoaded, isSignedIn } = useAuth()
   const router = useRouter()
@@ -489,29 +579,9 @@ function PlanContent({ plan, isMonthly, buttonProps }: { plan: any; isMonthly: b
     }
   };
 
-  const handleDowngrade = async () => {
+  const handleDowngradeClick = async () => {
     try {
-      const response = await fetch('/api/downgrade-subscription', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ planName: plan.name }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'An error occurred');
-      }
-
-      const data = await response.json();
-      
-      toast({
-        title: "Downgrade Scheduled",
-        description: `Your subscription will be downgraded to ${plan.name} on ${new Date(data.nextBillingDate).toLocaleDateString()}.`,
-        variant: "default",
-      });
-
+      await handleDowngrade(plan.name);
       setIsDowngradeModalOpen(false);
       router.refresh();
     } catch (error) {
@@ -525,14 +595,7 @@ function PlanContent({ plan, isMonthly, buttonProps }: { plan: any; isMonthly: b
   };
 
   return (
-    <div 
-      className="flex flex-col h-full rounded-2xl p-4 sm:p-6"
-      style={{
-        background: 'rgba(30, 30, 30, 0.6)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-      }}
-    >
+    <div className="flex flex-col h-full rounded-2xl p-4 sm:p-6 bg-opacity-60 bg-gray-800 backdrop-blur-md">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg sm:text-xl font-extrabold text-gray-100">
           {plan.name}
@@ -565,9 +628,13 @@ function PlanContent({ plan, isMonthly, buttonProps }: { plan: any; isMonthly: b
           className={`w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-100 ${
             buttonProps.style
           } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200`}
-          disabled={buttonProps.text === 'Current Plan' || plan.name === 'Basic'}
+          disabled={buttonProps.text === 'Current Plan' || plan.name === 'Basic' || isDowngradeInProgress || (pendingDowngrade !== null && pendingDowngrade.toLowerCase() === plan.name.toLowerCase())}
         >
-          {plan.name === 'Basic' ? 'Free Plan' : buttonProps.text}
+          {isDowngradeInProgress && pendingDowngrade && pendingDowngrade.toLowerCase() === plan.name.toLowerCase()
+            ? 'Downgrade in Progress'
+            : plan.name === 'Basic' 
+            ? 'Free Plan' 
+            : buttonProps.text}
         </motion.button>
       </div>
 
@@ -611,7 +678,10 @@ function PlanContent({ plan, isMonthly, buttonProps }: { plan: any; isMonthly: b
               </div>
               <AlertDialogFooter className="mt-6">
                 <AlertDialogCancel className="bg-gray-700 text-gray-100 hover:bg-gray-600">Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDowngrade} className="bg-purple-600 text-white hover:bg-purple-700">
+                <AlertDialogAction onClick={(e) => {
+                  e.preventDefault();
+                  handleDowngradeClick();
+                }} className="bg-purple-600 text-white hover:bg-purple-700">
                   Confirm Downgrade
                 </AlertDialogAction>
               </AlertDialogFooter>
