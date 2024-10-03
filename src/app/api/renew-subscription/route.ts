@@ -9,6 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 const STRIPE_CUSTOMER_KEY_PREFIX = "stripe_customer:";
 const NEXT_BILLING_DATE_KEY_PREFIX = "next_billing_date:";
+const CANCELLATION_DATE_KEY_PREFIX = "cancellation_date:";
 
 export async function POST() {
   const { userId } = auth();
@@ -46,6 +47,9 @@ export async function POST() {
 
     // Update Redis with the new next billing date
     await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
+
+    // Remove the cancellation date from Redis
+    await redisClient.del(`${CANCELLATION_DATE_KEY_PREFIX}${userId}`);
 
     return NextResponse.json({ nextBillingDate });
   } catch (error) {

@@ -93,22 +93,21 @@ export function PricingComponentComponent() {
   const [isRenewing, setIsRenewing] = useState(false)
 
   useEffect(() => {
-    if (isSignedIn && subscriptionType !== 'basic') {
-      fetchNextBillingDate()
-    }
-  }, [isSignedIn, subscriptionType])
-
-  const fetchNextBillingDate = async () => {
-    try {
-      const response = await fetch('/api/get-next-billing-date')
-      if (response.ok) {
-        const data = await response.json()
-        setNextBillingDate(data.nextBillingDate)
+    const fetchDates = async () => {
+      try {
+        const response = await fetch('/api/get-next-billing-date');
+        if (response.ok) {
+          const data = await response.json();
+          setNextBillingDate(data.nextBillingDate);
+          setCancellationDate(data.cancellationDate);
+        }
+      } catch (error) {
+        console.error('Error fetching dates:', error);
       }
-    } catch (error) {
-      console.error('Error fetching next billing date:', error)
-    }
-  }
+    };
+
+    fetchDates();
+  }, []);
 
   // Helper function to determine button text and style
   const getButtonProps = (planName: string) => {
@@ -370,11 +369,9 @@ function PlanContent({ plan, isMonthly, buttonProps }: { plan: any; isMonthly: b
 
   const handleSubscribe = async () => {
     if (plan.name === 'Basic') {
-      // Instead of scrolling, we'll handle the Basic plan subscription here
-      // For now, let's just show a toast message
       toast({
         title: "Basic Plan",
-        description: "You've selected the Basic plan. No further action needed.",
+        description: "You're already on the Basic plan or can access these features for free.",
         variant: "default",
       });
       return;
@@ -398,8 +395,8 @@ function PlanContent({ plan, isMonthly, buttonProps }: { plan: any; isMonthly: b
       return;
     }
 
-    if (buttonProps.text.startsWith('Downgrade')) {
-      // Open confirmation modal
+    if (buttonProps.text.startsWith('Downgrade') && plan.name !== 'Basic') {
+      // Open confirmation modal only for paid plan downgrades
       setIsDowngradeModalOpen(true);
       return;
     }
@@ -434,9 +431,6 @@ function PlanContent({ plan, isMonthly, buttonProps }: { plan: any; isMonthly: b
           variant: "destructive",
         });
       }
-    } else {
-      // Handle downgrading to Basic plan
-      setIsDowngradeModalOpen(true);
     }
   };
 
@@ -516,14 +510,14 @@ function PlanContent({ plan, isMonthly, buttonProps }: { plan: any; isMonthly: b
           className={`w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-100 ${
             buttonProps.style
           } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200`}
-          disabled={buttonProps.text === 'Current Plan'}
+          disabled={buttonProps.text === 'Current Plan' || plan.name === 'Basic'}
         >
-          {buttonProps.text}
+          {plan.name === 'Basic' ? 'Free Plan' : buttonProps.text}
         </motion.button>
       </div>
 
       <AnimatePresence>
-        {isDowngradeModalOpen && (
+        {isDowngradeModalOpen && plan.name !== 'Basic' && (
           <Dialog open={isDowngradeModalOpen} onOpenChange={setIsDowngradeModalOpen}>
             <DialogContent className="sm:max-w-[425px] bg-gray-800 text-gray-100">
               <DialogHeader>

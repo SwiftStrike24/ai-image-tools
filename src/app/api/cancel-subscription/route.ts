@@ -8,6 +8,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 const STRIPE_CUSTOMER_KEY_PREFIX = "stripe_customer:";
+const CANCELLATION_DATE_KEY_PREFIX = "cancellation_date:";
+const NEXT_BILLING_DATE_KEY_PREFIX = "next_billing_date:";
 
 export async function POST() {
   const { userId } = auth();
@@ -42,7 +44,8 @@ export async function POST() {
     const cancellationDate = new Date(updatedSubscription.current_period_end * 1000).toISOString();
 
     // Update Redis with cancellation date
-    await redisClient.set(`next_billing_date:${userId}`, cancellationDate);
+    await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, cancellationDate);
+    await redisClient.set(`${CANCELLATION_DATE_KEY_PREFIX}${userId}`, cancellationDate);
 
     return NextResponse.json({ cancellationDate });
   } catch (error) {
