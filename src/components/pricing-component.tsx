@@ -12,6 +12,8 @@ import { useSubscription } from '@/hooks/useSubscription'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { XCircle } from 'lucide-react'
 
 const plans = [
   {
@@ -85,6 +87,9 @@ export function PricingComponentComponent() {
   const { subscriptionType } = useSubscription('generator')
   const { isLoaded, isSignedIn } = useAuth()
   const [nextBillingDate, setNextBillingDate] = useState<string | null>(null)
+  const [isCancelling, setIsCancelling] = useState(false)
+  const [cancellationDate, setCancellationDate] = useState<string | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     if (isSignedIn && subscriptionType !== 'basic') {
@@ -121,6 +126,34 @@ export function PricingComponentComponent() {
     }
   };
 
+  const handleCancelSubscription = async () => {
+    setIsCancelling(true)
+    try {
+      const response = await fetch('/api/cancel-subscription', {
+        method: 'POST',
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setCancellationDate(data.cancellationDate)
+        toast({
+          title: "Subscription Cancelled",
+          description: `Your subscription will end on ${new Date(data.cancellationDate).toLocaleDateString()}`,
+        })
+      } else {
+        throw new Error('Failed to cancel subscription')
+      }
+    } catch (error) {
+      console.error('Error cancelling subscription:', error)
+      toast({
+        title: "Error",
+        description: "Failed to cancel subscription. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCancelling(false)
+    }
+  }
+
   return (
     <div className="bg-transparent text-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -138,11 +171,45 @@ export function PricingComponentComponent() {
               className="rounded-xl"
             >
               <div className="p-6">
-                <h3 className="text-xl font-bold mb-2">Your Plan Details</h3>
-                <p className="text-lg mb-2">Current Plan: <span className="font-semibold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">{subscriptionType.charAt(0).toUpperCase() + subscriptionType.slice(1)}</span></p>
-                {subscriptionType !== 'basic' && nextBillingDate && (
-                  <p className="text-sm">Next billing date: {new Date(nextBillingDate).toLocaleDateString()}</p>
-                )}
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="text-xl font-bold mb-2">Your Plan Details</h3>
+                    <p className="text-lg mb-2">Current Plan: <span className="font-semibold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">{subscriptionType.charAt(0).toUpperCase() + subscriptionType.slice(1)}</span></p>
+                    {subscriptionType !== 'basic' && (
+                      <>
+                        {cancellationDate ? (
+                          <p className="text-sm">Subscription ends on: {new Date(cancellationDate).toLocaleDateString()}</p>
+                        ) : (
+                          nextBillingDate && (
+                            <p className="text-sm">Next billing date: {new Date(nextBillingDate).toLocaleDateString()}</p>
+                          )
+                        )}
+                      </>
+                    )}
+                  </div>
+                  {subscriptionType !== 'basic' && !cancellationDate && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm" className="mt-2" disabled={isCancelling}>
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Cancel Subscription
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you sure you want to cancel?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Your subscription will remain active until the end of your current billing period. After that, you'll be downgraded to the Basic plan.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>No, keep my subscription</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleCancelSubscription}>Yes, cancel my subscription</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
               </div>
             </MagicCard>
           </motion.div>
