@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckIcon, SparklesIcon } from 'lucide-react'
+import { CheckIcon, SparklesIcon, RefreshCw } from 'lucide-react'
 import ShineBorder from '@/components/magicui/shine-border'
 import { MagicCard } from '@/components/magicui/magic-card'
 import { useToast } from "@/hooks/use-toast"
@@ -90,6 +90,7 @@ export function PricingComponentComponent() {
   const [isCancelling, setIsCancelling] = useState(false)
   const [cancellationDate, setCancellationDate] = useState<string | null>(null)
   const { toast } = useToast()
+  const [isRenewing, setIsRenewing] = useState(false)
 
   useEffect(() => {
     if (isSignedIn && subscriptionType !== 'basic') {
@@ -154,6 +155,35 @@ export function PricingComponentComponent() {
     }
   }
 
+  const handleRenewSubscription = async () => {
+    setIsRenewing(true)
+    try {
+      const response = await fetch('/api/renew-subscription', {
+        method: 'POST',
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setNextBillingDate(data.nextBillingDate)
+        setCancellationDate(null)
+        toast({
+          title: "Subscription Renewed",
+          description: "Your subscription has been successfully renewed.",
+        })
+      } else {
+        throw new Error('Failed to renew subscription')
+      }
+    } catch (error) {
+      console.error('Error renewing subscription:', error)
+      toast({
+        title: "Error",
+        description: "Failed to renew subscription. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsRenewing(false)
+    }
+  }
+
   return (
     <div className="bg-transparent text-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -187,27 +217,42 @@ export function PricingComponentComponent() {
                       </>
                     )}
                   </div>
-                  {subscriptionType !== 'basic' && !cancellationDate && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm" className="mt-2" disabled={isCancelling}>
-                          <XCircle className="w-4 h-4 mr-2" />
-                          Cancel Subscription
+                  {subscriptionType !== 'basic' && (
+                    <div>
+                      {cancellationDate ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="mt-2 text-black"
+                          onClick={handleRenewSubscription}
+                          disabled={isRenewing}
+                        >
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Renew Subscription
                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you sure you want to cancel?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Your subscription will remain active until the end of your current billing period. After that, you'll be downgraded to the Basic plan.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>No, keep my subscription</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleCancelSubscription}>Yes, cancel my subscription</AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                      ) : (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm" className="mt-2" disabled={isCancelling}>
+                              <XCircle className="w-4 h-4 mr-2" />
+                              Cancel Subscription
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure you want to cancel?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Your subscription will remain active until the end of your current billing period. After that, you&apos;ll be downgraded to the Basic plan.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>No, keep my subscription</AlertDialogCancel>
+                              <AlertDialogAction onClick={handleCancelSubscription}>Yes, cancel my subscription</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
