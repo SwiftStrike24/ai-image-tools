@@ -102,3 +102,77 @@ Landing Page
 - Include sections for features, how-to guides, and FAQs.
 
 Follow Next.js docs for Data Fetching, Rendering, and Routing.
+
+Subscription and Pricing:
+- Robust subscription management with Stripe API
+- Redis for caching subscription data and managing pending downgrades
+- Clear UI for subscription information
+- Proper handling of subscription changes
+- Stripe webhooks for data synchronization
+
+State Management and Data Persistence:
+- React hooks for local state, Redis for server-side persistence
+- Error handling and loading states for API calls and state updates
+- Supabase for long-term data storage
+
+Authentication and Authorization:
+- Clerk for user authentication and authorization
+- Proper access control and handling of unauthenticated states
+
+API Routes and Server Actions:
+- Logical organization of API routes
+- Use of server actions for data mutations
+- Consistent error handling and response formatting
+
+UI Components:
+- Shadcn UI and Radix UI for consistent design
+- Responsive designs with Tailwind CSS
+- Framer Motion for animations
+
+Performance Optimization:
+- Efficient caching with Redis
+- React Server Components
+- Optimized API calls and database queries
+
+Testing and Error Handling:
+- Comprehensive error handling
+- User-friendly error messages
+- Unit tests for critical logic
+
+Webhook Handling:
+- Robust handling of Stripe events
+- Idempotency in webhook processing
+- Logging of webhook events
+
+Code Organization:
+- Centralized subscription logic
+- Consistent naming conventions
+- Reusable helper functions
+
+Security:
+- Proper authentication and authorization
+- Use of environment variables
+- Rate limiting on API routes
+
+Logging and Monitoring:
+- Comprehensive logging
+- Error tracking services
+
+Additional Performance Optimization
+- Use dynamic imports for non-critical components to reduce initial bundle size.
+- Implement lazy loading for images and videos to improve initial load time.
+- Use React.memo() for components that don't need frequent re-renders.
+- Implement debouncing for input handlers to reduce unnecessary state updates.
+- Preload key assets using <link rel="preload"> to improve rendering time.
+- Minimize main thread blocking operations, especially during initial load.
+- Analyze and optimize JavaScript bundle size, importing only necessary parts of libraries.
+- Use the useCallback hook for functions passed as props to child components.
+
+Enhanced Component Design
+- Create modular, reusable components to improve maintainability and reduce code duplication.
+- Use custom hooks to extract complex logic from components.
+- Implement proper prop typing for all components.
+
+Continuous Optimization
+- Always prioritize performance, user experience, and code maintainability when implementing new features or components.
+- Regularly review and optimize existing code to ensure the app remains fast and efficient as it grows.

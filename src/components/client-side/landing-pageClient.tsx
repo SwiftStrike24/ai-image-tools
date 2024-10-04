@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, useAnimation, AnimatePresence, useScroll, useTransform } from 'framer-motion'
 import { useInView } from 'react-intersection-observer'
 import { Input } from "@/components/ui/input"
@@ -9,15 +9,9 @@ import Image from 'next/image'
 import { addToWaitlist } from '@/actions/waitlist-actions'
 import { useToast } from "@/hooks/use-toast"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import ShimmerButton from "@/components/magicui/shimmer-button"
-import AnimatedCheckmark from '@/components/AnimatedCheckmark'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Head from 'next/head'
-import GridPattern from "@/components/magicui/animated-grid-pattern"
-import HyperText from "@/components/magicui/hyper-text"
-import BlurFade from "@/components/magicui/blur-fade"
-import AnimatedGradientText from "@/components/magicui/animated-gradient-text"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { Button } from "@/components/ui/button"
 import Link from 'next/link'
@@ -27,100 +21,17 @@ import { useAuth } from "@clerk/nextjs"
 import { Dock, DockIcon } from "@/components/ui/dock"
 import { Home, Zap, Image as ImageIcon, ArrowUpCircle, HelpCircle, CreditCard } from 'lucide-react' 
 
-// Dynamically import components that are not needed immediately
+// Dynamically import components
 const BeforeAfterSlider = dynamic(() => import('@/components/BeforeAfterSlider'), { ssr: false })
+const ImageCarousel = dynamic(() => import('@/components/ImageCarousel'), { ssr: false })
+const AnimatedGradientText = dynamic(() => import('@/components/magicui/animated-gradient-text'), { ssr: false })
+const BlurFade = dynamic(() => import('@/components/magicui/blur-fade'), { ssr: false })
+const ShimmerButton = dynamic(() => import('@/components/magicui/shimmer-button'), { ssr: false })
+const GridPattern = dynamic(() => import('@/components/magicui/animated-grid-pattern'), { ssr: false })
+const HyperText = dynamic(() => import('@/components/magicui/hyper-text'), { ssr: false })
 
 const ImageGenVideoUrl = "/videos/landingPage-HowTo/Howto-ImageGen.webm"
 const UpscaleVideoUrl = "/videos/landingPage-HowTo/Howto-Upscale.webm"
-
-const ImageCarousel = () => {
-  const [images, setImages] = useState<string[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const controls = useAnimation()
-  const carouselRef = useRef<HTMLDivElement>(null)
-
-  // You can adjust this value to change the speed of the carousel
-  // Lower values will make it faster, higher values will make it slower
-  const CAROUSEL_DURATION_PER_IMAGE = 2 // seconds
-
-  const shuffleArray = useCallback((array: string[]) => {
-    const shuffled = [...array]
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-    }
-    return shuffled
-  }, [])
-
-  useEffect(() => {
-    const fetchImages = async () => {
-      try {
-        const res = await fetch('/api/getImages')
-        const data = await res.json()
-        setImages(shuffleArray(data.images))
-      } catch (error) {
-        console.error('Failed to fetch images:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchImages()
-  }, [shuffleArray])
-
-  useEffect(() => {
-    if (!isLoading && images.length > 0 && carouselRef.current) {
-      const animate = async () => {
-        const carouselWidth = carouselRef.current!.scrollWidth / 2
-        await controls.start({
-          x: [-carouselWidth, 0],
-          transition: {
-            x: {
-              repeat: Infinity,
-              repeatType: "loop",
-              duration: images.length * CAROUSEL_DURATION_PER_IMAGE,
-              ease: "linear",
-            },
-          },
-        })
-      }
-      animate()
-    }
-  }, [isLoading, images, controls])
-
-  if (isLoading || images.length === 0) return null
-
-  // Duplicate the images array to create a seamless loop
-  const extendedImages = [...images, ...images]
-
-  return (
-    <div className="w-full overflow-hidden py-8">
-      <motion.div
-        ref={carouselRef}
-        className="flex"
-        animate={controls}
-        style={{ width: `${extendedImages.length * 160}px` }}
-      >
-        {extendedImages.map((src, index) => (
-          <motion.div
-            key={`${src}-${index}`}
-            className="flex-shrink-0 w-40 h-40 mx-2"
-            whileHover={{ scale: 1.05 }}
-            transition={{ type: "spring", stiffness: 300 }}
-          >
-            <Image
-              src={src}
-              alt={`AI Generated Image ${(index % images.length) + 1}`}
-              width={200}
-              height={200}
-              className="rounded-lg object-cover w-full h-full"
-              loading="lazy"
-            />
-          </motion.div>
-        ))}
-      </motion.div>
-    </div>
-  )
-}
 
 export default function LandingPage() {
   const [email, setEmail] = useState('')
@@ -214,11 +125,21 @@ export default function LandingPage() {
     }
   };
 
-  const handleEmailChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newEmail = e.target.value.slice(0, MAX_EMAIL_LENGTH) // Limit the input length
+  const debounce = (func: Function, delay: number) => {
+    let timer: NodeJS.Timeout;
+    return function(this: any, ...args: any[]) {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        func.apply(this, args);
+      }, delay);
+    };
+  };
+
+  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newEmail = e.target.value.slice(0, MAX_EMAIL_LENGTH)
     setEmail(newEmail)
     setFormError(null)
-  }
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter') {
@@ -358,8 +279,10 @@ export default function LandingPage() {
 
   // Add this useEffect at the top of your component
   useEffect(() => {
-    // Scroll to the top of the page on component mount or refresh
-    window.scrollTo(0, 0)
+    // Delay scrolling to top
+    setTimeout(() => {
+      window.scrollTo(0, 0)
+    }, 500);
 
     // Optional: Disable scroll restoration
     if ('scrollRestoration' in history) {
@@ -427,6 +350,10 @@ export default function LandingPage() {
         animate="visible"
         variants={containerVariants}
       >
+        <Head>
+          <link rel="preload" href={ImageGenVideoUrl} as="video" type="video/webm" />
+          <link rel="preload" href="/images/landing-page/before-after-images/before-image.jpg" as="image" />
+        </Head>
         <GridPattern
           width={60}
           height={60}
