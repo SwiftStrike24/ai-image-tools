@@ -184,28 +184,23 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 }
 
 async function handleCustomerDeleted(customer: Stripe.Customer) {
-  console.log('Handling customer.deleted event');
   const userId = customer.metadata.userId;
   if (userId) {
-    try {
-      const redisClient = await getRedisClient();
-      
-      // Remove the Stripe customer ID from Redis
-      await redisClient.del(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
-      
-      // Set the subscription to 'basic'
-      await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, 'basic');
-      
-      console.log(`Removed Stripe customer ID and reset subscription for user ${userId} to basic in Redis`);
-      
-      // Optionally, you can add more cleanup or notification logic here
-      // For example, you might want to notify the user that their subscription has been canceled
-      
-    } catch (error) {
-      console.error(`Error handling customer deletion for user ${userId}:`, error);
-    }
-  } else {
-    console.error('Missing userId in customer metadata');
+    const redisClient = await getRedisClient();
+    await redisClient.del(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
+    await redisClient.del(`${SUBSCRIPTION_KEY_PREFIX}${userId}`);
+
+    // Update Supabase
+    await supabaseAdmin
+      .from('subscriptions')
+      .update({
+        status: 'inactive',
+        plan: 'basic',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('clerk_id', userId);
+
+    console.log(`Customer deleted, updated Redis and Supabase for user ${userId}`);
   }
 }
 

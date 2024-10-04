@@ -95,84 +95,87 @@ Pricing and Subscription
 - Use Stripe for handling payments and subscriptions.
 - Implement a clear pricing structure with feature comparisons.
 - Use dialogs for confirming subscription changes or downgrades.
+- Handle immediate upgrades with prorated charges.
+- Implement a two-step process for upgrades: calculate prorated amount, then confirm upgrade.
+- Allow direct checkout for users on the basic (free) plan.
+- Handle various scenarios in subscription management, including customer deletion and recreation.
+- Implement robust error handling for all subscription-related operations.
+- Use separate API routes for different subscription actions (upgrade, downgrade, cancel, etc.).
+- Ensure proper handling of Stripe webhook events for real-time updates.
+- Offer users the option to upgrade immediately or schedule for the next billing cycle:
+  - Use a dual button layout: one for immediate upgrade, one for scheduled upgrade.
+  - Keep the immediate upgrade button more prominent (e.g., purple), and the scheduled upgrade button less prominent (e.g., gray or lighter purple).
+  - Show a confirmation modal for scheduled upgrades, explaining when the upgrade will occur.
+  - Example layout:
+    [Upgrade to Ultimate]  (Immediate Upgrade)
+    [Schedule Upgrade for Next Billing Cycle]  (Less prominent color)
+- Maintain clear visual hierarchy and distinction between immediate and scheduled upgrade options.
+- Provide clear explanations in confirmation modals for both immediate and scheduled upgrades.
 
-Landing Page
-- Implement a visually appealing and informative landing page.
-- Use animations and transitions to enhance user experience.
-- Include sections for features, how-to guides, and FAQs.
+Subscription Management
+- Implement robust subscription management with Stripe API.
+- Use Redis for caching subscription data and managing pending downgrades.
+- Provide clear UI for subscription information and changes.
+- Handle subscription upgrades, downgrades, and cancellations.
+- Implement Stripe webhooks for real-time data synchronization.
+- Ensure proper handling of edge cases, such as deleted Stripe customers.
+- Implement a two-step upgrade process: first calculate prorated amount, then confirm upgrade.
+- Allow direct checkout for users on the basic (free) plan without showing upgrade confirmation.
+- Handle subscription changes in both the frontend and backend consistently.
+- Support both immediate and scheduled upgrades, updating the UI and backend logic accordingly.
 
-Follow Next.js docs for Data Fetching, Rendering, and Routing.
+State Management and Data Persistence
+- Use React hooks for local state, Redis for server-side persistence.
+- Implement error handling and loading states for API calls and state updates.
+- Use Supabase for long-term data storage and subscription tracking.
+- Ensure consistency between Redis, Supabase, and Stripe data.
 
-Subscription and Pricing:
-- Robust subscription management with Stripe API
-- Redis for caching subscription data and managing pending downgrades
-- Clear UI for subscription information
-- Proper handling of subscription changes
-- Stripe webhooks for data synchronization
+API Routes and Server Actions
+- Organize API routes logically in the src/app/api folder.
+- Implement server actions for data mutations and subscription changes.
+- Ensure consistent error handling and response formatting across all API routes.
+- Use separate routes for different subscription actions (e.g., upgrade, downgrade, cancel).
+- Implement proper authentication and authorization checks in all routes.
 
-State Management and Data Persistence:
-- React hooks for local state, Redis for server-side persistence
-- Error handling and loading states for API calls and state updates
-- Supabase for long-term data storage
+Webhook Handling
+- Implement robust handling of Stripe events in the webhook route.
+- Ensure idempotency in webhook processing to prevent duplicate actions.
+- Log webhook events for debugging and auditing purposes.
+- Handle various Stripe events including checkout completion, subscription changes, and customer deletion.
+- Update Redis and Supabase data based on webhook events to maintain data consistency.
 
-Authentication and Authorization:
-- Clerk for user authentication and authorization
-- Proper access control and handling of unauthenticated states
+Code Organization
+- Centralize subscription logic in dedicated files or hooks.
+- Maintain consistent naming conventions across the project.
+- Create reusable helper functions for common operations.
+- Use clear and descriptive variable names, especially for subscription-related data.
 
-API Routes and Server Actions:
-- Logical organization of API routes
-- Use of server actions for data mutations
-- Consistent error handling and response formatting
+Security
+- Implement proper authentication and authorization checks in all routes.
+- Use environment variables for sensitive information, including Stripe API keys and webhook secrets.
+- Implement rate limiting on API routes to prevent abuse.
+- Ensure secure handling of user data and payment information.
 
-UI Components:
-- Shadcn UI and Radix UI for consistent design
-- Responsive designs with Tailwind CSS
-- Framer Motion for animations
-
-Performance Optimization:
-- Efficient caching with Redis
-- React Server Components
-- Optimized API calls and database queries
-
-Testing and Error Handling:
-- Comprehensive error handling
-- User-friendly error messages
-- Unit tests for critical logic
-
-Webhook Handling:
-- Robust handling of Stripe events
-- Idempotency in webhook processing
-- Logging of webhook events
-
-Code Organization:
-- Centralized subscription logic
-- Consistent naming conventions
-- Reusable helper functions
-
-Security:
-- Proper authentication and authorization
-- Use of environment variables
-- Rate limiting on API routes
-
-Logging and Monitoring:
-- Comprehensive logging
-- Error tracking services
-
-Additional Performance Optimization
-- Use dynamic imports for non-critical components to reduce initial bundle size.
-- Implement lazy loading for images and videos to improve initial load time.
-- Use React.memo() for components that don't need frequent re-renders.
-- Implement debouncing for input handlers to reduce unnecessary state updates.
-- Preload key assets using <link rel="preload"> to improve rendering time.
-- Minimize main thread blocking operations, especially during initial load.
-- Analyze and optimize JavaScript bundle size, importing only necessary parts of libraries.
-- Use the useCallback hook for functions passed as props to child components.
-
-Enhanced Component Design
-- Create modular, reusable components to improve maintainability and reduce code duplication.
-- Use custom hooks to extract complex logic from components.
-- Implement proper prop typing for all components.
+Logging and Monitoring
+- Implement comprehensive logging for debugging and monitoring.
+- Use error tracking services to catch and diagnose issues in production.
+- Log important events in subscription management for auditing purposes.
 
 Continuous Optimization
-- Always prioritize performance, user experience, and code maintainability when implementing new features or components.
-- Regularly review and optimize existing code to ensure the app remains fast and efficient as it grows.
+- Regularly review and optimize existing code for performance and maintainability.
+- Stay updated with the latest best practices in Next.js, React, and Stripe integration.
+- Continuously improve error handling and edge case management in subscription flows.
+
+User Experience
+- Provide clear and informative messages to users during subscription changes.
+- Implement loading states and proper error handling in the UI for subscription actions.
+- Ensure responsive design for pricing and subscription management components.
+- Use modals or dialogs for important subscription-related confirmations.
+- Offer clear options for immediate upgrades and scheduled upgrades at the next billing cycle.
+- Use visual cues (like button colors and placement) to differentiate between upgrade options.
+- Provide detailed information in confirmation modals about when changes will take effect.
+- For scheduled upgrades:
+  - Show a confirmation modal explaining that the upgrade will occur on the next billing date.
+  - Include any applicable terms or changes in the confirmation modal.
+  - Ensure users can easily differentiate between immediate and scheduled upgrade options.
+

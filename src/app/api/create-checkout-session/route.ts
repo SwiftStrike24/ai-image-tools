@@ -10,7 +10,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 const STRIPE_CUSTOMER_KEY_PREFIX = "stripe_customer:";
 const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
 
-// Helper function to get the base URL
 function getBaseUrl() {
   if (process.env.NEXT_PUBLIC_APP_URL) {
     return process.env.NEXT_PUBLIC_APP_URL;
@@ -29,6 +28,9 @@ export async function POST(req: Request) {
     }
 
     const { priceId } = await req.json();
+    if (!priceId) {
+      return NextResponse.json({ error: 'Price ID is required' }, { status: 400 });
+    }
 
     const redisClient = await getRedisClient();
     let stripeCustomerId = await redisClient.get(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
@@ -105,9 +107,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Check the current subscription tier
-    const currentTier = await redisClient.get(`${SUBSCRIPTION_KEY_PREFIX}${userId}`);
-
     const baseUrl = getBaseUrl();
     const successUrl = `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${baseUrl}/pricing`;
@@ -157,8 +156,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ url: session.url });
   } catch (error) {
     console.error('Error in create-checkout-session:', error);
-    if (error instanceof Error) {
-      return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
+    if (error instanceof Stripe.errors.StripeError) {
+      return NextResponse.json({ error: `Stripe error: ${error.message}` }, { status: 400 });
     }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

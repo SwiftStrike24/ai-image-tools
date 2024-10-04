@@ -498,8 +498,11 @@ function PlanContent({
   const { isLoaded, isSignedIn } = useAuth()
   const router = useRouter()
   const [isDowngradeModalOpen, setIsDowngradeModalOpen] = useState(false)
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false)
+  const [proratedAmount, setProratedAmount] = useState<number | null>(null)
   const { subscriptionType } = useSubscription('generator');
   const [nextBillingDate, setNextBillingDate] = useState<string | null>(null)
+  const [isConfirmingUpgrade, setIsConfirmingUpgrade] = useState(false)
 
   useEffect(() => {
     const fetchNextBillingDate = async () => {
@@ -517,6 +520,21 @@ function PlanContent({
     fetchNextBillingDate();
   }, []);
 
+  const handleUpgradeOrSubscribe = async () => {
+    if (!isSignedIn) {
+      router.push('/sign-in?redirect=/pricing');
+      return;
+    }
+
+    if (subscriptionType === 'basic') {
+      // If the user is on the basic plan, proceed directly to checkout
+      await handleSubscribe();
+    } else {
+      // For users on paid plans, show the upgrade confirmation
+      await handleUpgradeClick();
+    }
+  };
+
   const handleSubscribe = async () => {
     if (plan.name === 'Basic') {
       toast({
@@ -528,24 +546,6 @@ function PlanContent({
     }
 
     if (!isLoaded) {
-      return;
-    }
-
-    if (!isSignedIn) {
-      router.push('/sign-in?redirect=/pricing');
-      return;
-    }
-
-    if (buttonProps.text === 'Current Plan') {
-      toast({
-        title: "Current Plan",
-        description: "You are already subscribed to this plan.",
-        variant: "default",
-      });
-      return;
-    }
-    if (buttonProps.text.startsWith('Downgrade')) {
-      setIsDowngradeModalOpen(true);
       return;
     }
 
@@ -579,6 +579,75 @@ function PlanContent({
           variant: "destructive",
         });
       }
+    }
+  };
+
+  const handleUpgradeClick = async () => {
+    if (!isSignedIn) {
+      router.push('/sign-in?redirect=/pricing');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/upgrade-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ newPlanId: plan.priceId, action: 'calculate' }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'An error occurred');
+      }
+
+      const data = await response.json();
+      setProratedAmount(data.proratedAmount);
+      setIsUpgradeModalOpen(true);
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const confirmUpgrade = async () => {
+    setIsConfirmingUpgrade(true);
+    try {
+      const response = await fetch('/api/upgrade-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ newPlanId: plan.priceId, action: 'confirm' }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'An error occurred');
+      }
+
+      const data = await response.json();
+      toast({
+        title: "Subscription Upgraded",
+        description: `Your subscription has been upgraded to ${plan.name}. You've been charged $${proratedAmount?.toFixed(2)} for the remainder of your billing cycle.`,
+        variant: "default",
+      });
+      setIsUpgradeModalOpen(false);
+      router.refresh();
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConfirmingUpgrade(false);
     }
   };
 
@@ -640,7 +709,7 @@ function PlanContent({
         <motion.button
           whileHover={{ scale: buttonProps.text === 'Current Plan' || plan.name === 'Basic' || isDowngradeInProgress ? 1 : 1.05 }}
           whileTap={{ scale: buttonProps.text === 'Current Plan' || plan.name === 'Basic' || isDowngradeInProgress ? 1 : 0.95 }}
-          onClick={handleSubscribe}
+          onClick={handleUpgradeOrSubscribe}
           className={`w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-100 ${
             getButtonStyle()
           } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200`}
@@ -705,6 +774,53 @@ function PlanContent({
           </AlertDialog>
         )}
       </AnimatePresence>
+
+      {/* Upgrade Confirmation Modal */}
+      <AlertDialog open={isUpgradeModalOpen} onOpenChange={setIsUpgradeModalOpen}>
+        <AlertDialogContent className="bg-gray-800 text-gray-100 border border-gray-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl font-bold">Confirm Upgrade</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              Are you sure you want to upgrade from the {subscriptionType} plan to the {plan.name} plan?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="mt-4 space-y-4">
+            <div className="flex items-start space-x-2">
+              <CalendarIcon className="w-5 h-5 text-blue-400 mt-0.5" />
+              <p className="text-sm text-gray-300">
+                Your new plan will take effect immediately.
+              </p>
+            </div>
+            <div className="flex items-start space-x-2">
+              <AlertTriangleIcon className="w-5 h-5 text-yellow-400 mt-0.5" />
+              <p className="text-sm text-gray-300">
+                You will be charged a prorated amount of ${proratedAmount?.toFixed(2)} for the remainder of your current billing cycle.
+              </p>
+            </div>
+            <p className="text-sm text-gray-300 font-semibold">
+              You will gain access to the following features:
+            </p>
+            <ul className="space-y-2 max-h-40 overflow-y-auto">
+              {getNewFeatures(subscriptionType, plan.name).map((feature: string, index: number) => (
+                <li key={index} className="flex items-start text-sm">
+                  <span className="text-green-400 mr-2">•</span>
+                  <span className="text-gray-300">{feature}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <AlertDialogFooter className="mt-6">
+            <AlertDialogCancel className="bg-gray-700 text-gray-100 hover:bg-gray-600">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmUpgrade} 
+              className="bg-purple-600 text-white hover:bg-purple-700"
+              disabled={isConfirmingUpgrade}
+            >
+              {isConfirmingUpgrade ? 'Upgrading...' : 'Confirm Upgrade'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -725,4 +841,22 @@ function getLostFeatures(currentPlan: string, newPlan: string) {
   // Remove duplicates and features that are still available in the new plan
   const newPlanFeatures = new Set(plans[newPlanIndex].features);
   return [...new Set(lostFeatures.filter(feature => !newPlanFeatures.has(feature)))];
+}
+
+// Helper function to get new features when upgrading
+function getNewFeatures(currentPlan: string, newPlan: string) {
+  const planOrder = ['basic', 'pro', 'premium', 'ultimate'];
+  const currentPlanIndex = planOrder.indexOf(currentPlan.toLowerCase());
+  const newPlanIndex = planOrder.indexOf(newPlan.toLowerCase());
+
+  if (newPlanIndex <= currentPlanIndex) return [];
+
+  const newFeatures = [];
+  for (let i = currentPlanIndex + 1; i <= newPlanIndex; i++) {
+    newFeatures.push(...plans[i].features);
+  }
+
+  // Remove duplicates and features that are already available in the current plan
+  const currentPlanFeatures = new Set(plans[currentPlanIndex].features);
+  return [...new Set(newFeatures.filter(feature => !currentPlanFeatures.has(feature)))];
 }
