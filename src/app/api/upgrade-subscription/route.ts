@@ -11,6 +11,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 const STRIPE_CUSTOMER_KEY_PREFIX = "stripe_customer:";
 const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
+const PENDING_UPGRADE_KEY_PREFIX = "pending_upgrade:";
+const NEXT_BILLING_DATE_KEY_PREFIX = "next_billing_date:";
 
 export async function POST(req: Request) {
   const { userId } = auth();
@@ -30,57 +32,32 @@ export async function POST(req: Request) {
 
     console.log(`Stripe Customer ID for user ${userId}: ${stripeCustomerId}`);
 
-    // Check if the customer exists in Stripe
-    let customer;
-    if (stripeCustomerId) {
-      try {
-        customer = await stripe.customers.retrieve(stripeCustomerId);
-        if ((customer as Stripe.DeletedCustomer).deleted) {
-          console.log(`Customer ${stripeCustomerId} was deleted in Stripe`);
-          customer = null;
-          stripeCustomerId = null;
-          await redisClient.del(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
-        }
-      } catch (error) {
-        if (error instanceof Stripe.errors.StripeError && error.code === 'resource_missing') {
-          console.log(`Customer ${stripeCustomerId} not found in Stripe`);
-          customer = null;
-          stripeCustomerId = null;
-          await redisClient.del(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
-        } else {
-          throw error;
-        }
-      }
-    }
-
-    // If customer doesn't exist, create a new one
-    if (!customer) {
-      console.log(`Creating new Stripe customer for user ${userId}`);
-      customer = await stripe.customers.create({
-        metadata: { userId },
-      });
-      stripeCustomerId = customer.id;
-      await redisClient.set(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`, stripeCustomerId);
+    if (!stripeCustomerId) {
+      return NextResponse.json({ error: 'No Stripe customer found' }, { status: 400 });
     }
 
     // Check for active subscriptions
     console.log(`Checking for active subscriptions for customer ${stripeCustomerId}`);
     const subscriptions = await stripe.subscriptions.list({
-      customer: stripeCustomerId as string,
+      customer: stripeCustomerId,
       status: 'active',
       limit: 1,
     });
 
     let subscription = subscriptions.data[0];
 
+    if (!subscription) {
+      return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
+    }
+
     if (action === 'calculate') {
       // Calculate prorated amount
       console.log(`Calculating prorated amount for potential upgrade to ${newPlanId}`);
       const invoice = await stripe.invoices.retrieveUpcoming({
-        customer: stripeCustomerId as string,
-        subscription: subscription?.id,
+        customer: stripeCustomerId,
+        subscription: subscription.id,
         subscription_items: [{ 
-          id: subscription?.items.data[0]?.id, 
+          id: subscription.items.data[0].id, 
           price: newPlanId 
         }],
       });
@@ -89,27 +66,14 @@ export async function POST(req: Request) {
 
       return NextResponse.json({ 
         proratedAmount,
-        currentPlanId: subscription?.items.data[0]?.price.id
+        currentPlanId: subscription.items.data[0].price.id
       });
     } else if (action === 'confirm') {
-      if (!subscription) {
-        // If no active subscription, create a new one
-        if (stripeCustomerId) {
-          subscription = await stripe.subscriptions.create({
-            customer: stripeCustomerId,
-            items: [{ price: newPlanId }],
-            metadata: { userId },
-          });
-        } else {
-          throw new Error('Stripe customer ID is null');
-        }
-      } else {
-        // Update existing subscription
-        subscription = await stripe.subscriptions.update(subscription.id, {
-          items: [{ id: subscription.items.data[0].id, price: newPlanId }],
-          proration_behavior: 'always_invoice',
-        });
-      }
+      // Update existing subscription
+      subscription = await stripe.subscriptions.update(subscription.id, {
+        items: [{ id: subscription.items.data[0].id, price: newPlanId }],
+        proration_behavior: 'always_invoice',
+      });
 
       // Update Redis and Supabase
       console.log(`Updating Redis and Supabase for user ${userId}`);
@@ -147,6 +111,89 @@ export async function POST(req: Request) {
       return NextResponse.json({ 
         message: 'Subscription upgraded successfully',
         newSubscriptionTier: subscriptionTier
+      });
+    } else if (action === 'schedule') {
+      const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+      
+      // Check if there's an existing schedule
+      const schedules = await stripe.subscriptionSchedules.list({
+        customer: stripeCustomerId,
+        limit: 1,
+      });
+
+      let schedule;
+      if (schedules.data.length > 0) {
+        // Update existing schedule
+        schedule = await stripe.subscriptionSchedules.update(schedules.data[0].id, {
+          end_behavior: 'release',
+          phases: [
+            {
+              start_date: subscription.current_period_start,
+              end_date: subscription.current_period_end,
+              items: [{ price: subscription.items.data[0].price.id, quantity: 1 }],
+            },
+            {
+              start_date: subscription.current_period_end,
+              items: [{ price: newPlanId, quantity: 1 }],
+            },
+          ],
+        });
+      } else {
+        // Create a new subscription schedule
+        schedule = await stripe.subscriptionSchedules.create({
+          from_subscription: subscription.id,
+        });
+
+        // Update the schedule with the new plan
+        schedule = await stripe.subscriptionSchedules.update(schedule.id, {
+          end_behavior: 'release',
+          phases: [
+            {
+              start_date: subscription.current_period_start,
+              end_date: subscription.current_period_end,
+              items: [{ price: subscription.items.data[0].price.id, quantity: 1 }],
+            },
+            {
+              start_date: subscription.current_period_end,
+              items: [{ price: newPlanId, quantity: 1 }],
+            },
+          ],
+        });
+      }
+
+      // Update Redis and Supabase to reflect the pending upgrade
+      const newPlan = await stripe.prices.retrieve(newPlanId);
+      const newProductId = newPlan.product as string;
+      const newProduct = await stripe.products.retrieve(newProductId);
+      let newSubscriptionTier: SubscriptionTier = 'basic';
+
+      switch (newProduct.name.toLowerCase()) {
+        case 'pro':
+          newSubscriptionTier = 'pro';
+          break;
+        case 'premium':
+          newSubscriptionTier = 'premium';
+          break;
+        case 'ultimate':
+          newSubscriptionTier = 'ultimate';
+          break;
+      }
+
+      await redisClient.set(`${PENDING_UPGRADE_KEY_PREFIX}${userId}`, newSubscriptionTier);
+      await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, currentPeriodEnd.toISOString());
+
+      await supabaseAdmin
+        .from('subscriptions')
+        .update({
+          pending_upgrade: newSubscriptionTier,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('clerk_id', userId);
+
+      return NextResponse.json({ 
+        message: 'Subscription upgrade scheduled successfully',
+        nextBillingDate: currentPeriodEnd.toISOString(),
+        newSubscriptionTier: newSubscriptionTier
       });
     } else {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });

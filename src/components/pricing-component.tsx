@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { XCircle } from 'lucide-react'
-import { CalendarIcon, AlertTriangleIcon, ArrowDownIcon } from 'lucide-react'
+import { CalendarIcon, AlertTriangleIcon, ArrowDownIcon, ArrowUpIcon } from 'lucide-react'
 
 const plans = [
   {
@@ -83,6 +83,7 @@ const featureComparison = [
   { name: 'AI model choice', free: 'Yes', pro: 'Yes', premium: 'Yes', ultimate: 'Yes + GPT-4o' },
 ]
 
+
 export function PricingComponentComponent() {
   const [isMonthly, setIsMonthly] = useState(true)
   const { subscriptionType } = useSubscription('generator')
@@ -95,6 +96,8 @@ export function PricingComponentComponent() {
   const [pendingDowngrade, setPendingDowngrade] = useState<string | null>(null)
   const [isDowngradeInProgress, setIsDowngradeInProgress] = useState(false)
   const [currentSubscription, setCurrentSubscription] = useState<string>('basic')
+  const [pendingUpgrade, setPendingUpgrade] = useState<string | null>(null)
+  const [isUpgradeInProgress, setIsUpgradeInProgress] = useState(false)
 
   useEffect(() => {
     const fetchDates = async () => {
@@ -104,7 +107,9 @@ export function PricingComponentComponent() {
           const data = await response.json();
           setNextBillingDate(data.nextBillingDate);
           setPendingDowngrade(data.pendingDowngrade);
+          setPendingUpgrade(data.pendingUpgrade);
           setIsDowngradeInProgress(!!data.pendingDowngrade);
+          setIsUpgradeInProgress(!!data.pendingUpgrade);
           setCurrentSubscription(data.currentSubscription || 'basic');
         } else {
           console.error('Failed to fetch billing date:', await response.text());
@@ -258,6 +263,68 @@ export function PricingComponentComponent() {
     }
   };
 
+  const handleCancelUpgrade = async () => {
+    try {
+      const response = await fetch('/api/cancel-upgrade', {
+        method: 'POST',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setPendingUpgrade(null);
+        setIsUpgradeInProgress(false);
+        toast({
+          title: "Upgrade Cancelled",
+          description: "Your scheduled upgrade has been cancelled.",
+        });
+      } else {
+        throw new Error('Failed to cancel upgrade');
+      }
+    } catch (error) {
+      console.error('Error cancelling upgrade:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel upgrade. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpgrade = async (planName: string) => {
+    try {
+      const response = await fetch('/api/upgrade-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ planName }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'An error occurred');
+      }
+
+      const data = await response.json();
+      
+      toast({
+        title: "Upgrade Scheduled",
+        description: `Your subscription will be upgraded to ${planName} on ${new Date(data.nextBillingDate).toLocaleDateString()}.`,
+        variant: "default",
+      });
+
+      setPendingUpgrade(planName);  // Set the pending upgrade to the new plan name
+      setNextBillingDate(data.nextBillingDate);
+      setIsUpgradeInProgress(true);
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="bg-transparent text-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -298,6 +365,21 @@ export function PricingComponentComponent() {
                               <p className="text-sm">Changes take effect on: {new Date(nextBillingDate!).toLocaleDateString()}</p>
                             </div>
                           </div>
+                        ) : pendingUpgrade ? (
+                          <div className="flex flex-col space-y-2">
+                            <div className="flex items-center space-x-2 text-green-400">
+                              <SparklesIcon className="w-5 h-5" />
+                              <p className="text-sm">Upgrade scheduled</p>
+                            </div>
+                            <div className="flex items-center space-x-2 text-gray-300">
+                              <ArrowUpIcon className="w-5 h-5" />
+                              <p className="text-sm">New Plan: <span className="font-semibold">{pendingUpgrade.charAt(0).toUpperCase() + pendingUpgrade.slice(1)}</span></p>
+                            </div>
+                            <div className="flex items-center space-x-2 text-gray-300">
+                              <CalendarIcon className="w-5 h-5" />
+                              <p className="text-sm">Changes take effect on: {new Date(nextBillingDate!).toLocaleDateString()}</p>
+                            </div>
+                          </div>
                         ) : cancellationDate ? (
                           <p className="text-sm">Subscription ends on: {new Date(cancellationDate).toLocaleDateString()}</p>
                         ) : (
@@ -320,8 +402,18 @@ export function PricingComponentComponent() {
                         Cancel Downgrade
                       </Button>
                     )}
+                    {pendingUpgrade && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 text-white bg-red-600 hover:bg-red-700"
+                        onClick={handleCancelUpgrade}
+                      >
+                        Cancel Upgrade
+                      </Button>
+                    )}
                   </div>
-                  {currentSubscription !== 'basic' && !pendingDowngrade && (
+                  {currentSubscription !== 'basic' && !pendingDowngrade && !pendingUpgrade && (
                     <div>
                       {cancellationDate ? (
                         <Button
@@ -392,8 +484,11 @@ export function PricingComponentComponent() {
                       isMonthly={isMonthly} 
                       buttonProps={getButtonProps(plan.name)} 
                       isDowngradeInProgress={isDowngradeInProgress}
+                      isUpgradeInProgress={isUpgradeInProgress}
                       pendingDowngrade={pendingDowngrade}
+                      pendingUpgrade={pendingUpgrade}
                       handleDowngrade={handleDowngrade}
+                      handleUpgrade={handleUpgrade}
                     />
                   </ShineBorder>
                 ) : (
@@ -402,8 +497,11 @@ export function PricingComponentComponent() {
                     isMonthly={isMonthly} 
                     buttonProps={getButtonProps(plan.name)} 
                     isDowngradeInProgress={isDowngradeInProgress}
+                    isUpgradeInProgress={isUpgradeInProgress}
                     pendingDowngrade={pendingDowngrade}
+                    pendingUpgrade={pendingUpgrade}
                     handleDowngrade={handleDowngrade}
+                    handleUpgrade={handleUpgrade}
                   />
                 )}
               </MagicCard>
@@ -419,11 +517,7 @@ export function PricingComponentComponent() {
         >
           <h3 className="text-2xl font-bold text-center mb-8 text-gray-100">Feature Comparison</h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full rounded-lg overflow-hidden" style={{
-              background: 'rgba(30, 30, 30, 0.6)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-            }}>
+            <table className="min-w-full rounded-lg overflow-hidden bg-opacity-60 bg-gray-900 backdrop-blur-md">
               <thead className="bg-gray-800 bg-opacity-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
@@ -483,16 +577,22 @@ function PlanContent({
   plan, 
   isMonthly, 
   buttonProps, 
-  isDowngradeInProgress, 
+  isDowngradeInProgress,
+  isUpgradeInProgress,
   pendingDowngrade,
-  handleDowngrade 
+  pendingUpgrade,
+  handleDowngrade,
+  handleUpgrade
 }: { 
   plan: any; 
   isMonthly: boolean; 
   buttonProps: { text: string; style: string };
   isDowngradeInProgress: boolean;
+  isUpgradeInProgress: boolean;
   pendingDowngrade: string | null;
+  pendingUpgrade: string | null;
   handleDowngrade: (planName: string) => Promise<void>;
+  handleUpgrade: (planName: string) => Promise<void>;
 }) {
   const { toast } = useToast()
   const { isLoaded, isSignedIn } = useAuth()
@@ -503,6 +603,7 @@ function PlanContent({
   const { subscriptionType } = useSubscription('generator');
   const [nextBillingDate, setNextBillingDate] = useState<string | null>(null)
   const [isConfirmingUpgrade, setIsConfirmingUpgrade] = useState(false)
+  const [isScheduleUpgradeModalOpen, setIsScheduleUpgradeModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchNextBillingDate = async () => {
@@ -666,11 +767,52 @@ function PlanContent({
     }
   };
 
+  const handleScheduleUpgrade = async () => {
+    if (!isSignedIn) {
+      router.push('/sign-in?redirect=/pricing');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/upgrade-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ newPlanId: plan.priceId, action: 'schedule' }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'An error occurred');
+      }
+
+      const data = await response.json();
+      toast({
+        title: "Upgrade Scheduled",
+        description: `Your subscription will be upgraded to ${plan.name} on ${new Date(data.nextBillingDate).toLocaleDateString()}.`,
+        variant: "default",
+      });
+      setIsScheduleUpgradeModalOpen(false);
+      router.refresh();
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getButtonStyle = () => {
     if (plan.name === 'Basic') {
       return 'bg-gray-500 cursor-not-allowed opacity-50';
     }
     if (isDowngradeInProgress && pendingDowngrade && pendingDowngrade.toLowerCase() === plan.name.toLowerCase()) {
+      return 'bg-gray-500 cursor-not-allowed';
+    }
+    if (isUpgradeInProgress && pendingUpgrade && pendingUpgrade.toLowerCase() === plan.name.toLowerCase()) {
       return 'bg-gray-500 cursor-not-allowed';
     }
     if (buttonProps.text === 'Current Plan') {
@@ -705,22 +847,41 @@ function PlanContent({
           </li>
         ))}
       </ul>
-      <div className="mt-auto">
+      <div className="mt-auto space-y-2">
         <motion.button
-          whileHover={{ scale: buttonProps.text === 'Current Plan' || plan.name === 'Basic' || isDowngradeInProgress ? 1 : 1.05 }}
-          whileTap={{ scale: buttonProps.text === 'Current Plan' || plan.name === 'Basic' || isDowngradeInProgress ? 1 : 0.95 }}
+          whileHover={{ scale: buttonProps.text === 'Current Plan' || plan.name === 'Basic' || isDowngradeInProgress || isUpgradeInProgress ? 1 : 1.05 }}
+          whileTap={{ scale: buttonProps.text === 'Current Plan' || plan.name === 'Basic' || isDowngradeInProgress || isUpgradeInProgress ? 1 : 0.95 }}
           onClick={handleUpgradeOrSubscribe}
           className={`w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-100 ${
             getButtonStyle()
           } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200`}
-          disabled={buttonProps.text === 'Current Plan' || plan.name === 'Basic' || isDowngradeInProgress || (pendingDowngrade !== null && pendingDowngrade.toLowerCase() === plan.name.toLowerCase())}
+          disabled={!!(
+            buttonProps.text === 'Current Plan' ||
+            plan.name === 'Basic' ||
+            isDowngradeInProgress ||
+            isUpgradeInProgress ||
+            (pendingDowngrade && pendingDowngrade.toLowerCase() === plan.name.toLowerCase()) ||
+            (pendingUpgrade && pendingUpgrade.toLowerCase() === plan.name.toLowerCase())
+          )}
         >
           {isDowngradeInProgress && pendingDowngrade && pendingDowngrade.toLowerCase() === plan.name.toLowerCase()
             ? 'Downgrade in Progress'
+            : isUpgradeInProgress && pendingUpgrade && pendingUpgrade.toLowerCase() === plan.name.toLowerCase()
+            ? 'Upgrade Scheduled'
             : plan.name === 'Basic' 
             ? 'Free Plan' 
             : buttonProps.text}
         </motion.button>
+        {plan.name !== 'Basic' && buttonProps.text.startsWith('Upgrade') && subscriptionType !== 'basic' && !isUpgradeInProgress && !isDowngradeInProgress && (
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsScheduleUpgradeModalOpen(true)}
+            className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-100 bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200"
+          >
+            Schedule Upgrade for Next Billing Cycle
+          </motion.button>
+        )}
       </div>
 
       <AnimatePresence>
@@ -817,6 +978,49 @@ function PlanContent({
               disabled={isConfirmingUpgrade}
             >
               {isConfirmingUpgrade ? 'Upgrading...' : 'Confirm Upgrade'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Schedule Upgrade Modal */}
+      <AlertDialog open={isScheduleUpgradeModalOpen} onOpenChange={setIsScheduleUpgradeModalOpen}>
+        <AlertDialogContent className="bg-gray-800 text-gray-100 border border-gray-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl font-bold">Schedule Upgrade</AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              Are you sure you want to schedule an upgrade from the {subscriptionType} plan to the {plan.name} plan?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="mt-4 space-y-4">
+            <div className="flex items-start space-x-2">
+              <CalendarIcon className="w-5 h-5 text-blue-400 mt-0.5" />
+              <p className="text-sm text-gray-300">
+                Your new plan will take effect at the start of your next billing cycle:
+                <span className="block font-semibold text-white mt-1">
+                  {nextBillingDate ? new Date(nextBillingDate).toLocaleDateString() : 'Loading...'}
+                </span>
+              </p>
+            </div>
+            <p className="text-sm text-gray-300 font-semibold">
+              You will gain access to the following features:
+            </p>
+            <ul className="space-y-2 max-h-40 overflow-y-auto">
+              {getNewFeatures(subscriptionType, plan.name).map((feature: string, index: number) => (
+                <li key={index} className="flex items-start text-sm">
+                  <span className="text-green-400 mr-2">•</span>
+                  <span className="text-gray-300">{feature}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <AlertDialogFooter className="mt-6">
+            <AlertDialogCancel className="bg-gray-700 text-gray-100 hover:bg-gray-600">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleScheduleUpgrade} 
+              className="bg-purple-600 text-white hover:bg-purple-700"
+            >
+              Confirm Scheduled Upgrade
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

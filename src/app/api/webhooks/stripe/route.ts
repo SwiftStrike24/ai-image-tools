@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { getRedisClient } from "@/lib/redis";
 import { SubscriptionTier } from '@/actions/rateLimit';
 import { headers } from 'next/headers';
-import { supabaseAdmin } from '@/lib/supabase'; // Add this import
+import { supabaseAdmin } from '@/lib/supabase';
 import { clerkClient } from "@clerk/nextjs/server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -15,15 +15,9 @@ const STRIPE_CUSTOMER_KEY_PREFIX = "stripe_customer:";
 const PROCESSED_EVENTS_KEY_PREFIX = "processed_event:";
 const NEXT_BILLING_DATE_KEY_PREFIX = "next_billing_date:";
 const PENDING_DOWNGRADE_KEY_PREFIX = "pending_downgrade:";
+const PENDING_UPGRADE_KEY_PREFIX = "pending_upgrade:";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-// Remove the config export as it's not needed in Next.js 13+ API routes
-// export const config = {
-//   api: {
-//     bodyParser: false,
-//   },
-// };
 
 export async function POST(req: Request) {
   const rawBody = await req.text();
@@ -82,6 +76,9 @@ async function handleEvent(event: Stripe.Event) {
         break;
       case 'subscription_schedule.canceled':
         await handleSubscriptionScheduleCanceled(event.data.object as Stripe.SubscriptionSchedule);
+        break;
+      case 'subscription_schedule.completed':
+        await handleSubscriptionScheduleCompleted(event.data.object as Stripe.SubscriptionSchedule);
         break;
       default:
         console.log(`Received ${event.type} event, no action needed`);
@@ -313,4 +310,48 @@ function getPlanIdFromName(planName: string): string | null {
     'Ultimate': 'price_1Q3B2gHYPfrMrymkYyJgjmci',
   };
   return planMap[planName] || null;
+}
+
+async function handleSubscriptionScheduleCompleted(schedule: Stripe.SubscriptionSchedule) {
+  console.log('Handling subscription_schedule.completed event');
+  const userId = schedule.metadata?.userId;
+  if (!userId) {
+    console.error('Missing userId in subscription schedule metadata');
+    return;
+  }
+
+  try {
+    const redisClient = await getRedisClient();
+    
+    // Fetch the current active subscription
+    const subscriptions = await stripe.subscriptions.list({
+      customer: schedule.customer as string,
+      status: 'active',
+      limit: 1,
+    });
+
+    if (subscriptions.data.length > 0) {
+      const subscription = subscriptions.data[0];
+      // Update the subscription in Redis and Supabase to reflect the new active plan
+      await updateUserSubscription(userId, subscription);
+
+      // Remove the pending upgrade from Redis
+      await redisClient.del(`${PENDING_UPGRADE_KEY_PREFIX}${userId}`);
+
+      // Update Supabase to remove the pending upgrade
+      await supabaseAdmin
+        .from('subscriptions')
+        .update({
+          pending_upgrade: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('clerk_id', userId);
+
+      console.log(`Completed scheduled upgrade for user ${userId}`);
+    } else {
+      console.error('No active subscription found after completing schedule');
+    }
+  } catch (error) {
+    console.error('Error handling subscription schedule completion:', error);
+  }
 }
