@@ -9,8 +9,6 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter } from 'next/navigation'
 import { useSubscription } from '@/hooks/useSubscription'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { XCircle } from 'lucide-react'
@@ -98,6 +96,8 @@ export function PricingComponentComponent() {
   const [currentSubscription, setCurrentSubscription] = useState<string>('basic')
   const [pendingUpgrade, setPendingUpgrade] = useState<string | null>(null)
   const [isUpgradeInProgress, setIsUpgradeInProgress] = useState(false)
+  const [isScheduleUpgradeModalOpen, setIsScheduleUpgradeModalOpen] = useState(false)
+  const [scheduledUpgradePlan, setScheduledUpgradePlan] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchDates = async () => {
@@ -111,6 +111,7 @@ export function PricingComponentComponent() {
           setIsDowngradeInProgress(!!data.pendingDowngrade);
           setIsUpgradeInProgress(!!data.pendingUpgrade);
           setCurrentSubscription(data.currentSubscription || 'basic');
+          setScheduledUpgradePlan(data.pendingUpgrade);
         } else {
           console.error('Failed to fetch billing date:', await response.text());
         }
@@ -325,6 +326,88 @@ export function PricingComponentComponent() {
     }
   };
 
+  const handleScheduleUpgrade = async (planName: string) => {
+    try {
+      const response = await fetch('/api/upgrade-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ newPlanId: plans.find(p => p.name === planName)?.priceId, action: 'schedule' }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'An error occurred');
+      }
+
+      const data = await response.json();
+      
+      toast({
+        title: "Upgrade Scheduled",
+        description: `Your subscription will be upgraded to ${planName} on ${new Date(data.nextBillingDate).toLocaleDateString()}.`,
+        variant: "default",
+      });
+
+      setPendingUpgrade(planName);
+      setNextBillingDate(data.nextBillingDate);
+      setIsUpgradeInProgress(true);
+      setScheduledUpgradePlan(planName);
+      setIsScheduleUpgradeModalOpen(false);
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCancelScheduledUpgrade = async () => {
+    try {
+      const response = await fetch('/api/cancel-upgrade', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'An error occurred');
+      }
+
+      const data = await response.json();
+      
+      toast({
+        title: "Scheduled Upgrade Cancelled",
+        description: "Your subscription will continue as normal.",
+        variant: "default",
+      });
+
+      setPendingUpgrade(null);
+      setIsUpgradeInProgress(false);
+      setScheduledUpgradePlan(null);
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const refreshSubscriptionData = async () => {
+    const response = await fetch('/api/get-next-billing-date');
+    const data = await response.json();
+    setCurrentSubscription(data.currentSubscription);
+    setPendingUpgrade(data.pendingUpgrade);
+    setNextBillingDate(data.nextBillingDate);
+  };
+
+  useEffect(() => {
+    refreshSubscriptionData();
+  }, []);
+
   return (
     <div className="bg-transparent text-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -365,7 +448,7 @@ export function PricingComponentComponent() {
                               <p className="text-sm">Changes take effect on: {new Date(nextBillingDate!).toLocaleDateString()}</p>
                             </div>
                           </div>
-                        ) : pendingUpgrade ? (
+                        ) : scheduledUpgradePlan ? (
                           <div className="flex flex-col space-y-2">
                             <div className="flex items-center space-x-2 text-green-400">
                               <SparklesIcon className="w-5 h-5" />
@@ -373,7 +456,7 @@ export function PricingComponentComponent() {
                             </div>
                             <div className="flex items-center space-x-2 text-gray-300">
                               <ArrowUpIcon className="w-5 h-5" />
-                              <p className="text-sm">New Plan: <span className="font-semibold">{pendingUpgrade.charAt(0).toUpperCase() + pendingUpgrade.slice(1)}</span></p>
+                              <p className="text-sm">New Plan: <span className="font-semibold">{scheduledUpgradePlan.charAt(0).toUpperCase() + scheduledUpgradePlan.slice(1)}</span></p>
                             </div>
                             <div className="flex items-center space-x-2 text-gray-300">
                               <CalendarIcon className="w-5 h-5" />
@@ -402,18 +485,18 @@ export function PricingComponentComponent() {
                         Cancel Downgrade
                       </Button>
                     )}
-                    {pendingUpgrade && (
+                    {scheduledUpgradePlan && (
                       <Button
                         variant="outline"
                         size="sm"
                         className="mt-2 text-white bg-red-600 hover:bg-red-700"
-                        onClick={handleCancelUpgrade}
+                        onClick={handleCancelScheduledUpgrade}
                       >
-                        Cancel Upgrade
+                        Cancel Scheduled Upgrade
                       </Button>
                     )}
                   </div>
-                  {currentSubscription !== 'basic' && !pendingDowngrade && !pendingUpgrade && (
+                  {currentSubscription !== 'basic' && !pendingDowngrade && !scheduledUpgradePlan && (
                     <div>
                       {cancellationDate ? (
                         <Button
@@ -568,6 +651,49 @@ export function PricingComponentComponent() {
             </table>
           </div>
         </motion.div>
+
+        {/* Schedule Upgrade Modal */}
+        <AlertDialog open={isScheduleUpgradeModalOpen} onOpenChange={setIsScheduleUpgradeModalOpen}>
+          <AlertDialogContent className="bg-gray-800 text-gray-100 border border-gray-700">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-2xl font-bold">Schedule Upgrade</AlertDialogTitle>
+              <AlertDialogDescription className="text-gray-300">
+                Are you sure you want to schedule an upgrade from the {currentSubscription} plan to the {scheduledUpgradePlan} plan?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="mt-4 space-y-4">
+              <div className="flex items-start space-x-2">
+                <CalendarIcon className="w-5 h-5 text-blue-400 mt-0.5" />
+                <p className="text-sm text-gray-300">
+                  Your new plan will take effect at the start of your next billing cycle:
+                  <span className="block font-semibold text-white mt-1">
+                    {nextBillingDate ? new Date(nextBillingDate).toLocaleDateString() : 'Loading...'}
+                  </span>
+                </p>
+              </div>
+              <p className="text-sm text-gray-300 font-semibold">
+                You will gain access to the following features:
+              </p>
+              <ul className="space-y-2 max-h-40 overflow-y-auto">
+                {getNewFeatures(currentSubscription, scheduledUpgradePlan || '').map((feature: string, index: number) => (
+                  <li key={index} className="flex items-start text-sm">
+                    <span className="text-green-400 mr-2">•</span>
+                    <span className="text-gray-300">{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <AlertDialogFooter className="mt-6">
+              <AlertDialogCancel className="bg-gray-700 text-gray-100 hover:bg-gray-600">Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => scheduledUpgradePlan && handleScheduleUpgrade(scheduledUpgradePlan)} 
+                className="bg-purple-600 text-white hover:bg-purple-700"
+              >
+                Confirm Scheduled Upgrade
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )
