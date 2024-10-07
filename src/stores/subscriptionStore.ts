@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { createJSONStorage, persist } from 'zustand/middleware'
 
 interface SubscriptionState {
   currentSubscription: string
@@ -10,28 +11,51 @@ interface SubscriptionState {
   fetchSubscriptionData: () => Promise<void>
 }
 
-export const useSubscriptionStore = create<SubscriptionState>((set) => ({
-  currentSubscription: 'basic',
-  pendingUpgrade: null,
-  pendingDowngrade: null,
-  nextBillingDate: null,
-  isLoading: false,
-  setSubscriptionData: (data) => set(data),
-  fetchSubscriptionData: async () => {
-    set({ isLoading: true })
-    try {
-      const response = await fetch('/api/get-next-billing-date')
-      const data = await response.json()
-      set({
-        currentSubscription: data.currentSubscription,
-        pendingUpgrade: data.pendingUpgrade,
-        pendingDowngrade: data.pendingDowngrade,
-        nextBillingDate: data.nextBillingDate,
-        isLoading: false,
-      })
-    } catch (error) {
-      console.error('Error fetching subscription data:', error)
-      set({ isLoading: false })
+export const useSubscriptionStore = create<SubscriptionState>()(
+  persist(
+    (set, get) => ({
+      currentSubscription: 'basic',
+      pendingUpgrade: null,
+      pendingDowngrade: null,
+      nextBillingDate: null,
+      isLoading: false,
+      setSubscriptionData: (data) => {
+        console.log('Updating subscription data:', data);
+        set((state) => {
+          const newState = { ...state, ...data };
+          console.log('New subscription state:', newState);
+          return newState;
+        });
+      },
+      fetchSubscriptionData: async () => {
+        set({ isLoading: true })
+        try {
+          const response = await fetch('/api/get-next-billing-date')
+          const data = await response.json()
+          console.log('Fetched subscription data:', data)
+          set((state) => ({
+            ...state,
+            currentSubscription: data.currentSubscription ?? state.currentSubscription,
+            pendingUpgrade: data.pendingUpgrade ?? state.pendingUpgrade,
+            pendingDowngrade: data.pendingDowngrade ?? state.pendingDowngrade,
+            nextBillingDate: data.nextBillingDate ?? state.nextBillingDate,
+            isLoading: false,
+          }))
+        } catch (error) {
+          console.error('Error fetching subscription data:', error)
+          set({ isLoading: false })
+        }
+      },
+    }),
+    {
+      name: 'subscription-storage',
+      storage: createJSONStorage(() => localStorage),
+      // Ensure that the store uses the rehydrated state
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          console.log('Rehydrated state:', state)
+        }
+      },
     }
-  },
-}))
+  )
+)

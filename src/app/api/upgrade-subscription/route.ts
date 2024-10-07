@@ -210,10 +210,12 @@ export async function POST(req: Request) {
         })
         .eq('clerk_id', userId);
 
+      // Fetch the updated subscription data
+      const updatedSubscriptionData = await fetchSubscriptionData(userId);
+
       return NextResponse.json({ 
         message: 'Subscription upgrade scheduled successfully',
-        nextBillingDate: currentPeriodEnd.toISOString(),
-        newSubscriptionTier: newSubscriptionTier
+        ...updatedSubscriptionData
       });
     } else {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
@@ -225,4 +227,17 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
+}
+
+async function fetchSubscriptionData(userId: string) {
+  const redisClient = await getRedisClient();
+  const nextBillingDate = await redisClient.get(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`);
+  const pendingUpgrade = await redisClient.get(`${PENDING_UPGRADE_KEY_PREFIX}${userId}`);
+  const currentSubscription = await redisClient.get(`${SUBSCRIPTION_KEY_PREFIX}${userId}`) || 'basic';
+
+  return {
+    nextBillingDate,
+    pendingUpgrade,
+    currentSubscription
+  };
 }

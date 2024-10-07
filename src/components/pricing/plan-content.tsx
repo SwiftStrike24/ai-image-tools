@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { CheckIcon, CalendarIcon, AlertTriangleIcon } from 'lucide-react'
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from 'next/navigation'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { useAuth } from "@clerk/nextjs"
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
 
 interface Plan {
@@ -20,6 +19,10 @@ interface PlanContentProps {
   isMonthly: boolean;
   buttonProps: { text: string; style: string };
   isSignedIn: boolean;
+  currentSubscription: string;
+  pendingUpgrade: string | null;
+  pendingDowngrade: string | null;
+  nextBillingDate: string | null;
 }
 
 const plans: Plan[] = [
@@ -74,7 +77,11 @@ export function PlanContent({
   plan,
   isMonthly,
   buttonProps,
-  isSignedIn
+  isSignedIn,
+  currentSubscription,
+  pendingUpgrade,
+  pendingDowngrade,
+  nextBillingDate
 }: PlanContentProps) {
   const { toast } = useToast()
   const router = useRouter()
@@ -85,10 +92,6 @@ export function PlanContent({
   const [isScheduleUpgradeModalOpen, setIsScheduleUpgradeModalOpen] = useState(false)
 
   const {
-    currentSubscription,
-    pendingUpgrade,
-    pendingDowngrade,
-    nextBillingDate,
     setSubscriptionData,
     fetchSubscriptionData
   } = useSubscriptionStore()
@@ -263,6 +266,15 @@ export function PlanContent({
   };
 
   const handleScheduleUpgrade = async () => {
+    if (!plan.priceId) {
+      toast({
+        title: "Error",
+        description: "Unable to schedule upgrade. Please try again later.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const response = await fetch('/api/upgrade-subscription', {
         method: 'POST',
@@ -383,6 +395,12 @@ export function PlanContent({
           >
             Schedule Upgrade for Next Billing Cycle
           </motion.button>
+        )}
+        {pendingUpgrade === plan.name.toLowerCase() && (
+          <div className="mt-2 text-sm text-gray-300">
+            <CalendarIcon className="inline-block mr-1" size={16} />
+            Upgrade scheduled for {nextBillingDate ? new Date(nextBillingDate).toLocaleDateString() : 'Loading...'}
+          </div>
         )}
       </div>
 
@@ -525,7 +543,7 @@ export function PlanContent({
   )
 }
 
-// Helper function to get lost features when downgrading
+// Helper functions to get lost and new features
 function getLostFeatures(currentPlan: string, newPlan: string) {
   const planOrder = ['basic', 'pro', 'premium', 'ultimate'];
   const currentPlanIndex = planOrder.indexOf(currentPlan.toLowerCase());
@@ -538,12 +556,10 @@ function getLostFeatures(currentPlan: string, newPlan: string) {
     lostFeatures.push(...plans[i].features);
   }
 
-  // Remove duplicates and features that are still available in the new plan
   const newPlanFeatures = new Set(plans[newPlanIndex].features);
   return [...new Set(lostFeatures.filter(feature => !newPlanFeatures.has(feature)))];
 }
 
-// Helper function to get new features when upgrading
 function getNewFeatures(currentPlan: string, newPlan: string) {
   const planOrder = ['basic', 'pro', 'premium', 'ultimate'];
   const currentPlanIndex = planOrder.indexOf(currentPlan.toLowerCase());
@@ -556,7 +572,6 @@ function getNewFeatures(currentPlan: string, newPlan: string) {
     newFeatures.push(...plans[i].features);
   }
 
-  // Remove duplicates and features that are already available in the current plan
   const currentPlanFeatures = new Set(plans[currentPlanIndex].features);
   return [...new Set(newFeatures.filter(feature => !currentPlanFeatures.has(feature)))];
 }

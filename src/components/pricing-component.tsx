@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { CheckIcon, SparklesIcon, RefreshCw, XCircle, CalendarIcon, AlertTriangleIcon, ArrowDownIcon, ArrowUpIcon } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { SparklesIcon, XCircle, CalendarIcon, AlertTriangleIcon, ArrowDownIcon, ArrowUpIcon } from 'lucide-react'
 import ShineBorder from '@/components/magicui/shine-border'
 import { MagicCard } from '@/components/magicui/magic-card'
 import { useToast } from "@/hooks/use-toast"
@@ -18,7 +18,7 @@ export function PricingComponentComponent() {
   const [isMonthly, setIsMonthly] = useState(true)
   const { isLoaded, isSignedIn } = useAuth()
   const [isCancelling, setIsCancelling] = useState(false)
-  const [isRenewing, setIsRenewing] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
 
@@ -69,10 +69,10 @@ export function PricingComponentComponent() {
     }
   }
 
-  const handleRenewSubscription = async () => {
-    setIsRenewing(true)
+  const handleCancelDowngrade = async () => {
+    setIsProcessing(true)
     try {
-      const response = await fetch('/api/renew-subscription', {
+      const response = await fetch('/api/cancel-downgrade', {
         method: 'POST',
       })
       if (response.ok) {
@@ -82,31 +82,36 @@ export function PricingComponentComponent() {
           nextBillingDate: data.nextBillingDate
         })
         toast({
-          title: "Subscription Renewed",
-          description: "Your subscription has been successfully renewed.",
+          title: "Downgrade Cancelled",
+          description: "Your scheduled downgrade has been cancelled.",
         })
       } else {
-        throw new Error('Failed to renew subscription')
+        throw new Error('Failed to cancel downgrade')
       }
     } catch (error) {
-      console.error('Error renewing subscription:', error)
+      console.error('Error cancelling downgrade:', error)
       toast({
         title: "Error",
-        description: "Failed to renew subscription. Please try again.",
+        description: "Failed to cancel downgrade. Please try again.",
         variant: "destructive",
       })
     } finally {
-      setIsRenewing(false)
+      setIsProcessing(false)
     }
   }
 
   const handleCancelUpgrade = async () => {
+    setIsProcessing(true)
     try {
       const response = await fetch('/api/cancel-upgrade', {
         method: 'POST',
       })
       if (response.ok) {
-        setSubscriptionData({ pendingUpgrade: null })
+        const data = await response.json()
+        setSubscriptionData({ 
+          pendingUpgrade: null,
+          nextBillingDate: data.nextBillingDate
+        })
         toast({
           title: "Upgrade Cancelled",
           description: "Your scheduled upgrade has been cancelled.",
@@ -121,6 +126,8 @@ export function PricingComponentComponent() {
         description: "Failed to cancel upgrade. Please try again.",
         variant: "destructive",
       })
+    } finally {
+      setIsProcessing(false)
     }
   }
 
@@ -183,6 +190,15 @@ export function PricingComponentComponent() {
                               <CalendarIcon className="w-5 h-5" />
                               <p className="text-sm">Changes take effect on: {new Date(nextBillingDate!).toLocaleDateString()}</p>
                             </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-2 text-white bg-red-600 hover:bg-red-700"
+                              onClick={handleCancelDowngrade}
+                              disabled={isProcessing}
+                            >
+                              Cancel Downgrade
+                            </Button>
                           </div>
                         ) : pendingUpgrade ? (
                           <div className="flex flex-col space-y-2">
@@ -198,6 +214,15 @@ export function PricingComponentComponent() {
                               <CalendarIcon className="w-5 h-5" />
                               <p className="text-sm">Changes take effect on: {new Date(nextBillingDate!).toLocaleDateString()}</p>
                             </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-2 text-white bg-red-600 hover:bg-red-700"
+                              onClick={handleCancelUpgrade}
+                              disabled={isProcessing}
+                            >
+                              Cancel Scheduled Upgrade
+                            </Button>
                           </div>
                         ) : (
                           nextBillingDate && (
@@ -208,26 +233,6 @@ export function PricingComponentComponent() {
                           )
                         )}
                       </>
-                    )}
-                    {pendingDowngrade && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2 text-white bg-red-600 hover:bg-red-700"
-                        onClick={handleRenewSubscription}
-                      >
-                        Cancel Downgrade
-                      </Button>
-                    )}
-                    {pendingUpgrade && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2 text-white bg-red-600 hover:bg-red-700"
-                        onClick={handleCancelUpgrade}
-                      >
-                        Cancel Scheduled Upgrade
-                      </Button>
                     )}
                   </div>
                   {currentSubscription !== 'basic' && !pendingDowngrade && !pendingUpgrade && (
@@ -288,6 +293,10 @@ export function PricingComponentComponent() {
                       isMonthly={isMonthly} 
                       buttonProps={getButtonProps(plan.name)}
                       isSignedIn={isSignedIn ?? false}
+                      currentSubscription={currentSubscription}
+                      pendingUpgrade={pendingUpgrade}
+                      pendingDowngrade={pendingDowngrade}
+                      nextBillingDate={nextBillingDate}
                     />
                   </ShineBorder>
                 ) : (
@@ -296,6 +305,10 @@ export function PricingComponentComponent() {
                     isMonthly={isMonthly} 
                     buttonProps={getButtonProps(plan.name)}
                     isSignedIn={isSignedIn ?? false}
+                    currentSubscription={currentSubscription}
+                    pendingUpgrade={pendingUpgrade}
+                    pendingDowngrade={pendingDowngrade}
+                    nextBillingDate={nextBillingDate}
                   />
                 )}
               </MagicCard>

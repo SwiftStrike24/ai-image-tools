@@ -38,8 +38,13 @@ export async function POST() {
     if (schedules.data.length > 0) {
       const currentSchedule = schedules.data[0];
 
-      // Release the schedule instead of canceling it
-      await stripe.subscriptionSchedules.release(currentSchedule.id);
+      // Check the status before attempting to release
+      if (currentSchedule.status === 'active' || currentSchedule.status === 'not_started') {
+        // Release the schedule
+        await stripe.subscriptionSchedules.release(currentSchedule.id);
+      } else {
+        console.log(`Subscription schedule is in ${currentSchedule.status} status; cannot release.`);
+      }
 
       // Retrieve the current subscription
       const subscriptions = await stripe.subscriptions.list({
@@ -50,7 +55,7 @@ export async function POST() {
 
       if (subscriptions.data.length > 0) {
         const subscription = subscriptions.data[0];
-        
+
         // Update Redis and Supabase
         await updateUserSubscription(userId, subscription);
       }
@@ -89,9 +94,10 @@ export async function POST() {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
 async function updateUserSubscription(userId: string, subscription: Stripe.Subscription) {
   const redisClient = await getRedisClient();
-  
+
   const productId = subscription.items.data[0].price.product as string;
   const product = await stripe.products.retrieve(productId);
   let subscriptionTier: SubscriptionTier = 'basic';
@@ -109,11 +115,10 @@ async function updateUserSubscription(userId: string, subscription: Stripe.Subsc
   }
 
   await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, subscriptionTier);
-  
+
   // Update next billing date
   const nextBillingDate = new Date(subscription.current_period_end * 1000).toISOString();
   await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
 
   console.log(`Updated subscription for user ${userId} to ${subscriptionTier}`);
 }
-
