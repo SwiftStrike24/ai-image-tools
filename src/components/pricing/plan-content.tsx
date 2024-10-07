@@ -1,18 +1,21 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { CheckIcon, CalendarIcon, AlertTriangleIcon } from 'lucide-react'
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from 'next/navigation'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { useAuth } from "@clerk/nextjs"
+
+interface Plan {
+  name: string;
+  price: string;
+  features: string[];
+  popular?: boolean;
+  priceId: string | null;
+}
 
 interface PlanContentProps {
-  plan: {
-    name: string;
-    price: string;
-    features: string[];
-    popular?: boolean;
-    priceId: string | null;
-  };
+  plan: Plan;
   isMonthly: boolean;
   buttonProps: { text: string; style: string };
   isDowngradeInProgress: boolean;
@@ -24,6 +27,54 @@ interface PlanContentProps {
   subscriptionType: string;
   nextBillingDate: string | null;
 }
+
+const plans: Plan[] = [
+  {
+    name: 'Basic',
+    price: '$0',
+    features: [
+      '5 upscales/day & 5 generations/day',
+      'Upscale options: 2x and 4x only',
+      '5 prompt enhancements/day',
+      'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
+    ],
+    priceId: null,
+  },
+  {
+    name: 'Pro',
+    price: '$8',
+    features: [
+      '1000 upscales/month & 1000 generations/month',
+      'Upscale options: 2x, 4x, 6x, 8x',
+      'Unlimited prompt enhancements',
+      'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
+    ],
+    popular: true,
+    priceId: 'price_1Q3AztHYPfrMrymk4VqOuNAD',
+  },
+  {
+    name: 'Premium',
+    price: '$15',
+    features: [
+      '2000 upscales/month & 2000 generations/month',
+      'Upscale options: 2x, 4x, 6x, 8x, 10x',
+      'Unlimited prompt enhancements',
+      'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
+    ],
+    priceId: 'price_1Q3B16HYPfrMrymkgzihBxJR',
+  },
+  {
+    name: 'Ultimate',
+    price: '$35',
+    features: [
+      '4000 upscales/month & 4000 generations/month',
+      'All upscale options available',
+      'Unlimited prompt enhancements',
+      'Exclusive access to GPT-4o for prompt enhancements',
+    ],
+    priceId: 'price_1Q3B2gHYPfrMrymkYyJgjmci',
+  },
+];
 
 export function PlanContent({
   plan,
@@ -40,17 +91,29 @@ export function PlanContent({
 }: PlanContentProps) {
   const { toast } = useToast()
   const router = useRouter()
+  const { isLoaded, isSignedIn } = useAuth()
   const [isDowngradeModalOpen, setIsDowngradeModalOpen] = useState(false)
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false)
   const [proratedAmount, setProratedAmount] = useState<number | null>(null)
   const [isConfirmingUpgrade, setIsConfirmingUpgrade] = useState(false)
   const [isScheduleUpgradeModalOpen, setIsScheduleUpgradeModalOpen] = useState(false)
 
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    if (!isSignedIn) {
+      // Redirect to sign-in page if not signed in
+      router.push('/sign-in?redirect=/pricing');
+    }
+  }, [isLoaded, isSignedIn, router]);
+
   const handleUpgradeOrSubscribe = async () => {
     if (subscriptionType === 'basic') {
       await handleSubscribe();
-    } else {
+    } else if (buttonProps.text.startsWith('Upgrade')) {
       await handleUpgradeClick();
+    } else if (buttonProps.text.startsWith('Downgrade')) {
+      setIsDowngradeModalOpen(true);
     }
   };
 
@@ -295,6 +358,17 @@ export function PlanContent({
                 Tip: To maximize your current plan&apos;s benefits, consider waiting until the end of your billing period before downgrading.
               </p>
             </div>
+            <p className="text-sm text-gray-300 font-semibold">
+              You will lose access to the following features:
+            </p>
+            <ul className="space-y-2 max-h-40 overflow-y-auto">
+              {getLostFeatures(subscriptionType, plan.name).map((feature: string, index: number) => (
+                <li key={index} className="flex items-start text-sm">
+                  <span className="text-red-400 mr-2">•</span>
+                  <span className="text-gray-300">{feature}</span>
+                </li>
+              ))}
+            </ul>
           </div>
           <AlertDialogFooter className="mt-6">
             <AlertDialogCancel className="bg-gray-700 text-gray-100 hover:bg-gray-600">Cancel</AlertDialogCancel>
@@ -327,6 +401,17 @@ export function PlanContent({
                 You will be charged a prorated amount of ${proratedAmount?.toFixed(2)} for the remainder of your current billing cycle.
               </p>
             </div>
+            <p className="text-sm text-gray-300 font-semibold">
+              You will gain access to the following features:
+            </p>
+            <ul className="space-y-2 max-h-40 overflow-y-auto">
+              {getNewFeatures(subscriptionType, plan.name).map((feature: string, index: number) => (
+                <li key={index} className="flex items-start text-sm">
+                  <span className="text-green-400 mr-2">•</span>
+                  <span className="text-gray-300">{feature}</span>
+                </li>
+              ))}
+            </ul>
           </div>
           <AlertDialogFooter className="mt-6">
             <AlertDialogCancel className="bg-gray-700 text-gray-100 hover:bg-gray-600">Cancel</AlertDialogCancel>
@@ -360,6 +445,17 @@ export function PlanContent({
                 </span>
               </p>
             </div>
+            <p className="text-sm text-gray-300 font-semibold">
+              You will gain access to the following features:
+            </p>
+            <ul className="space-y-2 max-h-40 overflow-y-auto">
+              {getNewFeatures(subscriptionType, plan.name).map((feature: string, index: number) => (
+                <li key={index} className="flex items-start text-sm">
+                  <span className="text-green-400 mr-2">•</span>
+                  <span className="text-gray-300">{feature}</span>
+                </li>
+              ))}
+            </ul>
           </div>
           <AlertDialogFooter className="mt-6">
             <AlertDialogCancel className="bg-gray-700 text-gray-100 hover:bg-gray-600">Cancel</AlertDialogCancel>
@@ -374,4 +470,40 @@ export function PlanContent({
       </AlertDialog>
     </div>
   )
+}
+
+// Helper function to get lost features when downgrading
+function getLostFeatures(currentPlan: string, newPlan: string) {
+  const planOrder = ['basic', 'pro', 'premium', 'ultimate'];
+  const currentPlanIndex = planOrder.indexOf(currentPlan.toLowerCase());
+  const newPlanIndex = planOrder.indexOf(newPlan.toLowerCase());
+
+  if (newPlanIndex >= currentPlanIndex) return [];
+
+  const lostFeatures = [];
+  for (let i = currentPlanIndex; i > newPlanIndex; i--) {
+    lostFeatures.push(...plans[i].features);
+  }
+
+  // Remove duplicates and features that are still available in the new plan
+  const newPlanFeatures = new Set(plans[newPlanIndex].features);
+  return [...new Set(lostFeatures.filter(feature => !newPlanFeatures.has(feature)))];
+}
+
+// Helper function to get new features when upgrading
+function getNewFeatures(currentPlan: string, newPlan: string) {
+  const planOrder = ['basic', 'pro', 'premium', 'ultimate'];
+  const currentPlanIndex = planOrder.indexOf(currentPlan.toLowerCase());
+  const newPlanIndex = planOrder.indexOf(newPlan.toLowerCase());
+
+  if (newPlanIndex <= currentPlanIndex) return [];
+
+  const newFeatures = [];
+  for (let i = currentPlanIndex + 1; i <= newPlanIndex; i++) {
+    newFeatures.push(...plans[i].features);
+  }
+
+  // Remove duplicates and features that are already available in the current plan
+  const currentPlanFeatures = new Set(plans[currentPlanIndex].features);
+  return [...new Set(newFeatures.filter(feature => !currentPlanFeatures.has(feature)))];
 }
