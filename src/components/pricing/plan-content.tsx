@@ -5,6 +5,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from 'next/navigation'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useAuth } from "@clerk/nextjs"
+import { useSubscriptionStore } from '@/stores/subscriptionStore'
 
 interface Plan {
   name: string;
@@ -18,14 +19,7 @@ interface PlanContentProps {
   plan: Plan;
   isMonthly: boolean;
   buttonProps: { text: string; style: string };
-  isDowngradeInProgress: boolean;
-  isUpgradeInProgress: boolean;
-  pendingDowngrade: string | null;
-  pendingUpgrade: string | null;
-  handleDowngrade: (planName: string) => Promise<void>;
-  handleUpgrade: (planName: string) => Promise<void>;
-  subscriptionType: string;
-  nextBillingDate: string | null;
+  isSignedIn: boolean;
 }
 
 const plans: Plan[] = [
@@ -80,35 +74,32 @@ export function PlanContent({
   plan,
   isMonthly,
   buttonProps,
-  isDowngradeInProgress,
-  isUpgradeInProgress,
-  pendingDowngrade,
-  pendingUpgrade,
-  handleDowngrade,
-  handleUpgrade,
-  subscriptionType,
-  nextBillingDate
+  isSignedIn
 }: PlanContentProps) {
   const { toast } = useToast()
   const router = useRouter()
-  const { isLoaded, isSignedIn } = useAuth()
   const [isDowngradeModalOpen, setIsDowngradeModalOpen] = useState(false)
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false)
   const [proratedAmount, setProratedAmount] = useState<number | null>(null)
   const [isConfirmingUpgrade, setIsConfirmingUpgrade] = useState(false)
   const [isScheduleUpgradeModalOpen, setIsScheduleUpgradeModalOpen] = useState(false)
 
-  useEffect(() => {
-    if (!isLoaded) return;
-
-    if (!isSignedIn) {
-      // Redirect to sign-in page if not signed in
-      router.push('/sign-in?redirect=/pricing');
-    }
-  }, [isLoaded, isSignedIn, router]);
+  const {
+    currentSubscription,
+    pendingUpgrade,
+    pendingDowngrade,
+    nextBillingDate,
+    setSubscriptionData,
+    fetchSubscriptionData
+  } = useSubscriptionStore()
 
   const handleUpgradeOrSubscribe = async () => {
-    if (subscriptionType === 'basic') {
+    if (!isSignedIn) {
+      router.push(`/sign-in?redirect=${encodeURIComponent('/pricing')}`)
+      return
+    }
+
+    if (currentSubscription === 'basic') {
       await handleSubscribe();
     } else if (buttonProps.text.startsWith('Upgrade')) {
       await handleUpgradeClick();
@@ -191,9 +182,34 @@ export function PlanContent({
   const confirmUpgrade = async () => {
     setIsConfirmingUpgrade(true);
     try {
-      await handleUpgrade(plan.name);
+      const response = await fetch('/api/upgrade-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ newPlanId: plan.priceId, action: 'confirm' }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'An error occurred');
+      }
+
+      const data = await response.json();
+      
+      setSubscriptionData({
+        currentSubscription: plan.name.toLowerCase(),
+        pendingUpgrade: null,
+      });
+
+      toast({
+        title: "Upgrade Successful",
+        description: `Your subscription has been upgraded to ${plan.name}.`,
+        variant: "default",
+      });
+
       setIsUpgradeModalOpen(false);
-      router.refresh();
+      await fetchSubscriptionData();
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -208,9 +224,34 @@ export function PlanContent({
 
   const handleDowngradeClick = async () => {
     try {
-      await handleDowngrade(plan.name);
+      const response = await fetch('/api/downgrade-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ planName: plan.name }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'An error occurred');
+      }
+
+      const data = await response.json();
+      
+      setSubscriptionData({
+        pendingDowngrade: plan.name.toLowerCase(),
+        nextBillingDate: data.nextBillingDate,
+      });
+
+      toast({
+        title: "Downgrade Scheduled",
+        description: `Your subscription will be downgraded to ${plan.name} on ${new Date(data.nextBillingDate).toLocaleDateString()}.`,
+        variant: "default",
+      });
+
       setIsDowngradeModalOpen(false);
-      router.refresh();
+      await fetchSubscriptionData();
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -237,13 +278,20 @@ export function PlanContent({
       }
 
       const data = await response.json();
+      
+      setSubscriptionData({
+        pendingUpgrade: plan.name.toLowerCase(),
+        nextBillingDate: data.nextBillingDate,
+      });
+
       toast({
         title: "Upgrade Scheduled",
         description: `Your subscription will be upgraded to ${plan.name} on ${new Date(data.nextBillingDate).toLocaleDateString()}.`,
         variant: "default",
       });
+
       setIsScheduleUpgradeModalOpen(false);
-      router.refresh();
+      await fetchSubscriptionData();
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -255,13 +303,16 @@ export function PlanContent({
   };
 
   const getButtonStyle = () => {
+    if (!isSignedIn) {
+      return buttonProps.style;
+    }
     if (plan.name === 'Basic') {
       return 'bg-gray-500 cursor-not-allowed opacity-50';
     }
-    if (isDowngradeInProgress && pendingDowngrade && pendingDowngrade.toLowerCase() === plan.name.toLowerCase()) {
+    if (pendingDowngrade && pendingDowngrade.toLowerCase() === plan.name.toLowerCase()) {
       return 'bg-gray-500 cursor-not-allowed';
     }
-    if (isUpgradeInProgress && pendingUpgrade && pendingUpgrade.toLowerCase() === plan.name.toLowerCase()) {
+    if (pendingUpgrade && pendingUpgrade.toLowerCase() === plan.name.toLowerCase()) {
       return 'bg-gray-500 cursor-not-allowed';
     }
     if (buttonProps.text === 'Current Plan') {
@@ -298,30 +349,32 @@ export function PlanContent({
       </ul>
       <div className="mt-auto space-y-2">
         <motion.button
-          whileHover={{ scale: buttonProps.text === 'Current Plan' || plan.name === 'Basic' || isDowngradeInProgress || isUpgradeInProgress ? 1 : 1.05 }}
-          whileTap={{ scale: buttonProps.text === 'Current Plan' || plan.name === 'Basic' || isDowngradeInProgress || isUpgradeInProgress ? 1 : 0.95 }}
+          whileHover={{ scale: !isSignedIn || (buttonProps.text !== 'Current Plan' && plan.name !== 'Basic' && !pendingDowngrade && !pendingUpgrade) ? 1.05 : 1 }}
+          whileTap={{ scale: !isSignedIn || (buttonProps.text !== 'Current Plan' && plan.name !== 'Basic' && !pendingDowngrade && !pendingUpgrade) ? 0.95 : 1 }}
           onClick={handleUpgradeOrSubscribe}
           className={`w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-100 ${
             getButtonStyle()
           } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200`}
           disabled={!!(
-            buttonProps.text === 'Current Plan' ||
-            plan.name === 'Basic' ||
-            isDowngradeInProgress ||
-            isUpgradeInProgress ||
-            (pendingDowngrade && pendingDowngrade.toLowerCase() === plan.name.toLowerCase()) ||
-            (pendingUpgrade && pendingUpgrade.toLowerCase() === plan.name.toLowerCase())
+            isSignedIn && (
+              buttonProps.text === 'Current Plan' ||
+              plan.name === 'Basic' ||
+              pendingDowngrade ||
+              pendingUpgrade
+            )
           )}
         >
-          {isDowngradeInProgress && pendingDowngrade && pendingDowngrade.toLowerCase() === plan.name.toLowerCase()
-            ? 'Downgrade in Progress'
-            : isUpgradeInProgress && pendingUpgrade && pendingUpgrade.toLowerCase() === plan.name.toLowerCase()
-            ? 'Upgrade Scheduled'
-            : plan.name === 'Basic' 
-            ? 'Free Plan' 
-            : buttonProps.text}
+          {isSignedIn
+            ? (pendingDowngrade && pendingDowngrade.toLowerCase() === plan.name.toLowerCase()
+              ? 'Downgrade in Progress'
+              : pendingUpgrade && pendingUpgrade.toLowerCase() === plan.name.toLowerCase()
+              ? 'Upgrade Scheduled'
+              : plan.name === 'Basic' 
+              ? 'Free Plan' 
+              : buttonProps.text)
+            : 'Sign In to Subscribe'}
         </motion.button>
-        {plan.name !== 'Basic' && buttonProps.text.startsWith('Upgrade') && subscriptionType !== 'basic' && !isUpgradeInProgress && !isDowngradeInProgress && (
+        {isSignedIn && plan.name !== 'Basic' && buttonProps.text.startsWith('Upgrade') && currentSubscription !== 'basic' && !pendingUpgrade && !pendingDowngrade && (
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -339,7 +392,7 @@ export function PlanContent({
           <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl font-bold">Confirm Downgrade</AlertDialogTitle>
             <AlertDialogDescription className="text-gray-300">
-              Are you sure you want to downgrade from the {subscriptionType} plan to the {plan.name} plan?
+              Are you sure you want to downgrade from the {currentSubscription} plan to the {plan.name} plan?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="mt-4 space-y-4">
@@ -362,7 +415,7 @@ export function PlanContent({
               You will lose access to the following features:
             </p>
             <ul className="space-y-2 max-h-40 overflow-y-auto">
-              {getLostFeatures(subscriptionType, plan.name).map((feature: string, index: number) => (
+              {getLostFeatures(currentSubscription, plan.name).map((feature: string, index: number) => (
                 <li key={index} className="flex items-start text-sm">
                   <span className="text-red-400 mr-2">•</span>
                   <span className="text-gray-300">{feature}</span>
@@ -385,7 +438,7 @@ export function PlanContent({
           <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl font-bold">Confirm Upgrade</AlertDialogTitle>
             <AlertDialogDescription className="text-gray-300">
-              Are you sure you want to upgrade from the {subscriptionType} plan to the {plan.name} plan?
+              Are you sure you want to upgrade from the {currentSubscription} plan to the {plan.name} plan?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="mt-4 space-y-4">
@@ -405,7 +458,7 @@ export function PlanContent({
               You will gain access to the following features:
             </p>
             <ul className="space-y-2 max-h-40 overflow-y-auto">
-              {getNewFeatures(subscriptionType, plan.name).map((feature: string, index: number) => (
+              {getNewFeatures(currentSubscription, plan.name).map((feature: string, index: number) => (
                 <li key={index} className="flex items-start text-sm">
                   <span className="text-green-400 mr-2">•</span>
                   <span className="text-gray-300">{feature}</span>
@@ -432,7 +485,7 @@ export function PlanContent({
           <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl font-bold">Schedule Upgrade</AlertDialogTitle>
             <AlertDialogDescription className="text-gray-300">
-              Are you sure you want to schedule an upgrade from the {subscriptionType} plan to the {plan.name} plan?
+              Are you sure you want to schedule an upgrade from the {currentSubscription} plan to the {plan.name} plan?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="mt-4 space-y-4">
@@ -449,7 +502,7 @@ export function PlanContent({
               You will gain access to the following features:
             </p>
             <ul className="space-y-2 max-h-40 overflow-y-auto">
-              {getNewFeatures(subscriptionType, plan.name).map((feature: string, index: number) => (
+              {getNewFeatures(currentSubscription, plan.name).map((feature: string, index: number) => (
                 <li key={index} className="flex items-start text-sm">
                   <span className="text-green-400 mr-2">•</span>
                   <span className="text-gray-300">{feature}</span>
