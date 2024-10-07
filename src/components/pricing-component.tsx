@@ -290,6 +290,33 @@ export function PricingComponentComponent() {
     }
   };
 
+  const refreshSubscriptionData = async () => {
+    try {
+      const response = await fetch('/api/get-next-billing-date');
+      if (!response.ok) {
+        throw new Error('Failed to fetch subscription data');
+      }
+      const data = await response.json();
+      setCurrentSubscription(data.currentSubscription);
+      setPendingUpgrade(data.pendingUpgrade);
+      setNextBillingDate(data.nextBillingDate);
+      setIsDowngradeInProgress(!!data.pendingDowngrade);
+      setIsUpgradeInProgress(!!data.pendingUpgrade);
+      setScheduledUpgradePlan(data.pendingUpgrade);
+    } catch (error) {
+      console.error('Error refreshing subscription data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh subscription data. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
+    refreshSubscriptionData();
+  }, []);
+
   const handleUpgrade = async (planName: string) => {
     try {
       const response = await fetch('/api/upgrade-subscription', {
@@ -297,7 +324,7 @@ export function PricingComponentComponent() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ planName }),
+        body: JSON.stringify({ newPlanId: plans.find(p => p.name === planName)?.priceId, action: 'confirm' }),
       });
 
       if (!response.ok) {
@@ -308,14 +335,18 @@ export function PricingComponentComponent() {
       const data = await response.json();
       
       toast({
-        title: "Upgrade Scheduled",
-        description: `Your subscription will be upgraded to ${planName} on ${new Date(data.nextBillingDate).toLocaleDateString()}.`,
+        title: "Upgrade Successful",
+        description: `Your subscription has been upgraded to ${planName}.`,
         variant: "default",
       });
 
-      setPendingUpgrade(planName);  // Set the pending upgrade to the new plan name
-      setNextBillingDate(data.nextBillingDate);
-      setIsUpgradeInProgress(true);
+      // Update local state
+      setCurrentSubscription(planName.toLowerCase());
+      setPendingUpgrade(null);
+      setIsUpgradeInProgress(false);
+
+      // Refresh subscription data
+      await refreshSubscriptionData();
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -354,6 +385,9 @@ export function PricingComponentComponent() {
       setIsUpgradeInProgress(true);
       setScheduledUpgradePlan(planName);
       setIsScheduleUpgradeModalOpen(false);
+
+      // Refresh subscription data
+      await refreshSubscriptionData();
     } catch (error) {
       console.error('Error:', error);
       toast({
@@ -395,18 +429,6 @@ export function PricingComponentComponent() {
       });
     }
   };
-
-  const refreshSubscriptionData = async () => {
-    const response = await fetch('/api/get-next-billing-date');
-    const data = await response.json();
-    setCurrentSubscription(data.currentSubscription);
-    setPendingUpgrade(data.pendingUpgrade);
-    setNextBillingDate(data.nextBillingDate);
-  };
-
-  useEffect(() => {
-    refreshSubscriptionData();
-  }, []);
 
   return (
     <div className="bg-transparent text-gray-100 py-12 px-4 sm:px-6 lg:px-8">
