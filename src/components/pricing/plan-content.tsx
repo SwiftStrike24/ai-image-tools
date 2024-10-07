@@ -5,14 +5,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from 'next/navigation'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
-
-interface Plan {
-  name: string;
-  price: string;
-  features: string[];
-  popular?: boolean;
-  priceId: string | null;
-}
+import { Plan, plans } from '@/data/plans'  // Import both Plan type and plans array
 
 interface PlanContentProps {
   plan: Plan;
@@ -24,54 +17,6 @@ interface PlanContentProps {
   pendingDowngrade: string | null;
   nextBillingDate: string | null;
 }
-
-const plans: Plan[] = [
-  {
-    name: 'Basic',
-    price: '$0',
-    features: [
-      '5 upscales/day & 5 generations/day',
-      'Upscale options: 2x and 4x only',
-      '5 prompt enhancements/day',
-      'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
-    ],
-    priceId: null,
-  },
-  {
-    name: 'Pro',
-    price: '$8',
-    features: [
-      '1000 upscales/month & 1000 generations/month',
-      'Upscale options: 2x, 4x, 6x, 8x',
-      'Unlimited prompt enhancements',
-      'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
-    ],
-    popular: true,
-    priceId: 'price_1Q3AztHYPfrMrymk4VqOuNAD',
-  },
-  {
-    name: 'Premium',
-    price: '$15',
-    features: [
-      '2000 upscales/month & 2000 generations/month',
-      'Upscale options: 2x, 4x, 6x, 8x, 10x',
-      'Unlimited prompt enhancements',
-      'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
-    ],
-    priceId: 'price_1Q3B16HYPfrMrymkgzihBxJR',
-  },
-  {
-    name: 'Ultimate',
-    price: '$35',
-    features: [
-      '4000 upscales/month & 4000 generations/month',
-      'All upscale options available',
-      'Unlimited prompt enhancements',
-      'Exclusive access to GPT-4o for prompt enhancements',
-    ],
-    priceId: 'price_1Q3B2gHYPfrMrymkYyJgjmci',
-  },
-];
 
 export function PlanContent({
   plan,

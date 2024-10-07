@@ -57,21 +57,24 @@ async function getUserSubscription(userId: string | null): Promise<SubscriptionT
 }
 
 export async function getLimitForTier(tier: SubscriptionTier, type: 'generator' | 'upscaler' | 'enhance_prompt'): Promise<number> {
+  const userId = await getUserId();
+  const latestTier = await getUserSubscription(userId);
+  
   switch (type) {
     case 'generator':
-      return tier === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT :
-             tier === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT :
-             tier === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT :
+      return latestTier === 'ultimate' ? ULTIMATE_GENERATOR_MONTHLY_LIMIT :
+             latestTier === 'premium' ? PREMIUM_GENERATOR_MONTHLY_LIMIT :
+             latestTier === 'pro' ? PRO_GENERATOR_MONTHLY_LIMIT :
              GENERATOR_DAILY_LIMIT;
     case 'upscaler':
-      return tier === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT :
-             tier === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT :
-             tier === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT :
+      return latestTier === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT :
+             latestTier === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT :
+             latestTier === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT :
              UPSCALER_DAILY_LIMIT;
     case 'enhance_prompt':
-      return tier === 'ultimate' ? ULTIMATE_ENHANCE_PROMPT_MONTHLY_LIMIT :
-             tier === 'premium' ? PREMIUM_ENHANCE_PROMPT_MONTHLY_LIMIT :
-             tier === 'pro' ? PRO_ENHANCE_PROMPT_MONTHLY_LIMIT :
+      return latestTier === 'ultimate' ? ULTIMATE_ENHANCE_PROMPT_MONTHLY_LIMIT :
+             latestTier === 'premium' ? PREMIUM_ENHANCE_PROMPT_MONTHLY_LIMIT :
+             latestTier === 'pro' ? PRO_ENHANCE_PROMPT_MONTHLY_LIMIT :
              ENHANCE_PROMPT_DAILY_LIMIT;
   }
 }

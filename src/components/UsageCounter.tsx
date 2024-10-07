@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { Progress } from "@/components/ui/progress"
 import { useSubscription } from '@/hooks/useSubscription'
 import { getLimitForTier, SubscriptionTier } from "@/actions/rateLimit"
+import { useSubscriptionStore } from '@/stores/subscriptionStore'
 
 interface UsageCounterProps {
   type: 'generator' | 'upscaler' | 'enhance_prompt';
   isSimulationMode: boolean;
   onUsageUpdate: (usage: number) => void;
-  forceUpdate?: number; // Add this prop
+  forceUpdate?: number;
 }
 
 const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onUsageUpdate, forceUpdate }) => {
@@ -20,13 +21,14 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onU
   } = useSubscription(type);
 
   const [limit, setLimit] = useState<number | null>(null);
+  const { currentSubscription } = useSubscriptionStore();
 
   useEffect(() => {
     fetchUsage();
-    if (subscriptionType) {
-      getLimitForTier(subscriptionType as SubscriptionTier, type).then(setLimit);
+    if (currentSubscription) {
+      getLimitForTier(currentSubscription as SubscriptionTier, type).then(setLimit);
     }
-  }, [fetchUsage, subscriptionType, type, forceUpdate]); // Add forceUpdate to the dependency array
+  }, [fetchUsage, currentSubscription, type, forceUpdate]);
 
   useEffect(() => {
     onUsageUpdate(usage);
@@ -40,9 +42,9 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onU
     <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
       <div className="flex justify-between items-center">
         <span className="text-sm font-medium">
-          {!subscriptionType || subscriptionType === 'basic' 
+          {!currentSubscription || currentSubscription === 'basic' 
             ? 'Daily Usage (Free Plan)' 
-            : `Monthly Usage (${subscriptionType.charAt(0).toUpperCase() + subscriptionType.slice(1)} Plan)`}
+            : `Monthly Usage (${currentSubscription.charAt(0).toUpperCase() + currentSubscription.slice(1)} Plan)`}
         </span>
         {isSimulationMode ? (
           <span className="text-sm font-medium">Simulation Mode</span>

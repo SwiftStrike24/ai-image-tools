@@ -55,8 +55,11 @@ export function useSubscription(type: 'generator' | 'upscaler' | 'enhance_prompt
 
   useEffect(() => {
     fetchUsage();
-    // Refetch subscription type every minute
-    const intervalId = setInterval(fetchSubscriptionType, 60000);
+    // Refetch subscription type and usage every minute
+    const intervalId = setInterval(() => {
+      fetchSubscriptionType();
+      fetchUsage();
+    }, 60000);
     return () => clearInterval(intervalId);
   }, [fetchUsage, fetchSubscriptionType]);
 
