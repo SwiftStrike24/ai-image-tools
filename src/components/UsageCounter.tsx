@@ -3,6 +3,8 @@ import { Progress } from "@/components/ui/progress"
 import { useSubscription } from '@/hooks/useSubscription'
 import { getLimitForTier, SubscriptionTier } from "@/actions/rateLimit"
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
+import { getPusherClient, disconnectPusherClient } from '@/lib/pusher';
+import { useUser } from '@clerk/nextjs';
 
 interface UsageCounterProps {
   type: 'generator' | 'upscaler' | 'enhance_prompt';
@@ -23,6 +25,10 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onU
   const [limit, setLimit] = useState<number | null>(null);
   const { currentSubscription, fetchSubscriptionData } = useSubscriptionStore();
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pusherChannelRef = useRef<any>(null);
+  const pusherClientRef = useRef<any>(null);
+
+  const { user } = useUser();
 
   const updateSubscriptionAndUsage = useCallback(async () => {
     if (updateTimeoutRef.current) {
@@ -52,6 +58,24 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onU
   useEffect(() => {
     onUsageUpdate(usage);
   }, [usage, onUsageUpdate]);
+
+  useEffect(() => {
+    if (user) {
+      pusherClientRef.current = getPusherClient();
+      const channelName = `private-user-${user.id}`;
+      
+      pusherChannelRef.current = pusherClientRef.current.subscribe(channelName);
+      pusherChannelRef.current.bind('subscription-updated', updateSubscriptionAndUsage);
+
+      return () => {
+        if (pusherChannelRef.current) {
+          pusherChannelRef.current.unbind('subscription-updated', updateSubscriptionAndUsage);
+          pusherClientRef.current.unsubscribe(channelName);
+        }
+        disconnectPusherClient();
+      };
+    }
+  }, [user, updateSubscriptionAndUsage]);
 
   if (isSubscriptionLoading || limit === null) {
     return <div>Loading usage information...</div>;
