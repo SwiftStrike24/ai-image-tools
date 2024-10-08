@@ -14,7 +14,7 @@ export default function SuccessPage() {
   useEffect(() => {
     const sessionId = searchParams?.get('session_id')
     if (sessionId) {
-      fetch(`/api/check-session-status?session_id=${sessionId}`)
+      fetch(`/api/subscription/checkout?session_id=${sessionId}`)
         .then(response => response.json())
         .then(data => {
           if (data.status === 'complete') {

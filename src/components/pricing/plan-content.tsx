@@ -68,7 +68,7 @@ export function PlanContent({
 
     if (plan.priceId) {
       try {
-        const response = await fetch('/api/create-checkout-session', {
+        const response = await fetch('/api/subscription/checkout', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -101,12 +101,12 @@ export function PlanContent({
 
   const handleUpgradeClick = async () => {
     try {
-      const response = await fetch('/api/upgrade-subscription', {
+      const response = await fetch('/api/subscription/subscription-management', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ newPlanId: plan.priceId, action: 'calculate' }),
+        body: JSON.stringify({ action: 'upgrade', newPlanId: plan.priceId, subAction: 'calculate' }),
       });
 
       if (!response.ok) {
@@ -130,12 +130,12 @@ export function PlanContent({
   const confirmUpgrade = async () => {
     setIsConfirmingUpgrade(true);
     try {
-      const response = await fetch('/api/upgrade-subscription', {
+      const response = await fetch('/api/subscription/subscription-management', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ newPlanId: plan.priceId, action: 'confirm' }),
+        body: JSON.stringify({ action: 'upgrade', newPlanId: plan.priceId, subAction: 'confirm' }),
       });
 
       if (!response.ok) {
@@ -172,12 +172,12 @@ export function PlanContent({
 
   const handleDowngradeClick = async () => {
     try {
-      const response = await fetch('/api/downgrade-subscription', {
+      const response = await fetch('/api/subscription/subscription-management', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ planName: plan.name }),
+        body: JSON.stringify({ action: 'downgrade', planName: plan.name }),
       });
 
       if (!response.ok) {
@@ -221,12 +221,12 @@ export function PlanContent({
     }
 
     try {
-      const response = await fetch('/api/upgrade-subscription', {
+      const response = await fetch('/api/subscription/subscription-management', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ newPlanId: plan.priceId, action: 'schedule' }),
+        body: JSON.stringify({ action: 'upgrade', newPlanId: plan.priceId, subAction: 'schedule' }),
       });
 
       if (!response.ok) {
@@ -341,7 +341,7 @@ export function PlanContent({
             Schedule Upgrade for Next Billing Cycle
           </motion.button>
         )}
-        {pendingUpgrade === plan.name.toLowerCase() && (
+        {isSignedIn && pendingUpgrade === plan.name.toLowerCase() && (
           <div className="mt-2 text-sm text-gray-300">
             <CalendarIcon className="inline-block mr-1" size={16} />
             Upgrade scheduled for {nextBillingDate ? new Date(nextBillingDate).toLocaleDateString() : 'Loading...'}

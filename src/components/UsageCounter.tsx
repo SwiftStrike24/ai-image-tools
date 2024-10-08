@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Progress } from "@/components/ui/progress"
 import { useSubscription } from '@/hooks/useSubscription'
 import { getLimitForTier, SubscriptionTier } from "@/actions/rateLimit"
@@ -21,14 +21,33 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onU
   } = useSubscription(type);
 
   const [limit, setLimit] = useState<number | null>(null);
-  const { currentSubscription } = useSubscriptionStore();
+  const { currentSubscription, fetchSubscriptionData } = useSubscriptionStore();
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const updateSubscriptionAndUsage = useCallback(async () => {
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+
+    updateTimeoutRef.current = setTimeout(async () => {
+      await fetchSubscriptionData();
+      await fetchUsage();
+      if (currentSubscription) {
+        const newLimit = await getLimitForTier(currentSubscription as SubscriptionTier, type);
+        setLimit(newLimit);
+      }
+      updateTimeoutRef.current = null;
+    }, 500); // Debounce for 500ms
+  }, [fetchSubscriptionData, fetchUsage, currentSubscription, type]);
 
   useEffect(() => {
-    fetchUsage();
-    if (currentSubscription) {
-      getLimitForTier(currentSubscription as SubscriptionTier, type).then(setLimit);
-    }
-  }, [fetchUsage, currentSubscription, type, forceUpdate]);
+    updateSubscriptionAndUsage();
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, [updateSubscriptionAndUsage, forceUpdate]);
 
   useEffect(() => {
     onUsageUpdate(usage);
@@ -38,13 +57,15 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onU
     return <div>Loading usage information...</div>;
   }
 
+  const displaySubscription = currentSubscription || subscriptionType;
+
   return (
     <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">
       <div className="flex justify-between items-center">
         <span className="text-sm font-medium">
-          {!currentSubscription || currentSubscription === 'basic' 
+          {displaySubscription === 'basic' 
             ? 'Daily Usage (Free Plan)' 
-            : `Monthly Usage (${currentSubscription.charAt(0).toUpperCase() + currentSubscription.slice(1)} Plan)`}
+            : `Monthly Usage (${displaySubscription.charAt(0).toUpperCase() + displaySubscription.slice(1)} Plan)`}
         </span>
         {isSimulationMode ? (
           <span className="text-sm font-medium">Simulation Mode</span>
@@ -57,7 +78,7 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onU
       {!isSimulationMode && (
         <>
           <Progress 
-            value={(usage / limit) * 100} 
+            value={(usage / (limit || 1)) * 100} 
             className="h-2" 
           />
           <p className="text-xs text-purple-300">

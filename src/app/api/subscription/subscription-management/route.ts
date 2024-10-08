@@ -1,0 +1,415 @@
+import { NextResponse } from 'next/server';
+import { auth } from "@clerk/nextjs/server";
+import { getRedisClient } from "@/lib/redis";
+import Stripe from 'stripe';
+import { SubscriptionTier } from '@/actions/rateLimit';
+import { supabaseAdmin } from '@/lib/supabase';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2024-06-20',
+});
+
+const STRIPE_CUSTOMER_KEY_PREFIX = "stripe_customer:";
+const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
+const NEXT_BILLING_DATE_KEY_PREFIX = "next_billing_date:";
+const PENDING_DOWNGRADE_KEY_PREFIX = "pending_downgrade:";
+const PENDING_UPGRADE_KEY_PREFIX = "pending_upgrade:";
+const CANCELLATION_DATE_KEY_PREFIX = "cancellation_date:";
+
+export async function POST(req: Request) {
+  const { userId } = auth();
+
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { action, planName, newPlanId, subAction } = await req.json();
+
+  try {
+    const redisClient = await getRedisClient();
+    const stripeCustomerId = await redisClient.get(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
+
+    if (!stripeCustomerId) {
+      return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
+    }
+
+    switch (action) {
+      case 'cancel':
+        return await cancelSubscription(userId, stripeCustomerId, redisClient);
+      case 'cancelDowngrade':
+        return await cancelDowngrade(userId, stripeCustomerId, redisClient);
+      case 'cancelUpgrade':
+        return await cancelUpgrade(userId, stripeCustomerId, redisClient);
+      case 'downgrade':
+        return await downgradeSubscription(userId, stripeCustomerId, redisClient, planName);
+      case 'upgrade':
+        return await upgradeSubscription(userId, stripeCustomerId, redisClient, newPlanId, subAction);
+      case 'renew':
+        return await renewSubscription(userId, stripeCustomerId, redisClient);
+      default:
+        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    }
+  } catch (error) {
+    console.error(`Error in subscription management (${action}):`, error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+async function cancelSubscription(userId: string, stripeCustomerId: string, redisClient: any) {
+  const subscriptions = await stripe.subscriptions.list({
+    customer: stripeCustomerId,
+    status: 'active',
+    limit: 1,
+  });
+
+  if (subscriptions.data.length === 0) {
+    return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
+  }
+
+  const subscription = subscriptions.data[0];
+  const updatedSubscription = await stripe.subscriptions.update(subscription.id, {
+    cancel_at_period_end: true,
+  });
+
+  const cancellationDate = new Date(updatedSubscription.current_period_end * 1000).toISOString();
+
+  await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, cancellationDate);
+  await redisClient.set(`${CANCELLATION_DATE_KEY_PREFIX}${userId}`, cancellationDate);
+
+  return NextResponse.json({ cancellationDate });
+}
+
+async function cancelDowngrade(userId: string, stripeCustomerId: string, redisClient: any) {
+  const schedules = await stripe.subscriptionSchedules.list({
+    customer: stripeCustomerId,
+    limit: 1,
+  });
+
+  if (schedules.data.length > 0) {
+    const currentSchedule = schedules.data[0];
+
+    if (currentSchedule.status === 'active' || currentSchedule.status === 'not_started') {
+      await stripe.subscriptionSchedules.release(currentSchedule.id);
+    }
+
+    const subscriptions = await stripe.subscriptions.list({
+      customer: stripeCustomerId,
+      status: 'active',
+      limit: 1,
+    });
+
+    if (subscriptions.data.length > 0) {
+      const subscription = subscriptions.data[0];
+      await updateUserSubscription(userId, subscription, redisClient);
+    }
+
+    await redisClient.del(`${PENDING_DOWNGRADE_KEY_PREFIX}${userId}`);
+
+    return NextResponse.json({ message: 'Downgrade cancelled successfully' });
+  } else {
+    const subscriptions = await stripe.subscriptions.list({
+      customer: stripeCustomerId,
+      status: 'active',
+      limit: 1,
+    });
+
+    if (subscriptions.data.length > 0) {
+      const subscription = subscriptions.data[0];
+      if (subscription.cancel_at_period_end) {
+        await stripe.subscriptions.update(subscription.id, {
+          cancel_at_period_end: false,
+        });
+
+        await updateUserSubscription(userId, subscription, redisClient);
+
+        return NextResponse.json({ message: 'Cancellation removed successfully' });
+      }
+    }
+
+    return NextResponse.json({ message: 'No pending downgrade or cancellation found' });
+  }
+}
+
+async function cancelUpgrade(userId: string, stripeCustomerId: string, redisClient: any) {
+  const schedules = await stripe.subscriptionSchedules.list({
+    customer: stripeCustomerId,
+    limit: 1,
+  });
+
+  if (schedules.data.length > 0) {
+    const currentSchedule = schedules.data[0];
+    await stripe.subscriptionSchedules.release(currentSchedule.id);
+
+    const subscriptions = await stripe.subscriptions.list({
+      customer: stripeCustomerId,
+      status: 'active',
+      limit: 1,
+    });
+
+    if (subscriptions.data.length > 0) {
+      const subscription = subscriptions.data[0];
+      await updateUserSubscription(userId, subscription, redisClient);
+    }
+
+    await redisClient.del(`${PENDING_UPGRADE_KEY_PREFIX}${userId}`);
+
+    await supabaseAdmin
+      .from('subscriptions')
+      .update({
+        pending_upgrade: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('clerk_id', userId);
+
+    return NextResponse.json({ message: 'Upgrade cancelled successfully' });
+  } else {
+    return NextResponse.json({ message: 'No pending upgrade found' });
+  }
+}
+
+async function downgradeSubscription(userId: string, stripeCustomerId: string, redisClient: any, planName: string) {
+  const currentSubscription = await redisClient.get(`${SUBSCRIPTION_KEY_PREFIX}${userId}`);
+
+  if (currentSubscription?.toLowerCase() === planName.toLowerCase()) {
+    return NextResponse.json({ error: 'Already subscribed to this plan' }, { status: 400 });
+  }
+
+  const subscriptions = await stripe.subscriptions.list({
+    customer: stripeCustomerId,
+    status: 'active',
+    limit: 1,
+  });
+
+  if (subscriptions.data.length > 0) {
+    const subscription = subscriptions.data[0];
+    const newPlanId = getPlanIdFromName(planName);
+    if (!newPlanId) {
+      return NextResponse.json({ error: 'Invalid plan name' }, { status: 400 });
+    }
+
+    const schedule = await stripe.subscriptionSchedules.create({
+      from_subscription: subscription.id,
+    });
+
+    await stripe.subscriptionSchedules.update(schedule.id, {
+      end_behavior: 'release',
+      phases: [
+        {
+          start_date: subscription.current_period_start,
+          end_date: subscription.current_period_end,
+          items: [{ price: subscription.items.data[0].price.id, quantity: 1 }],
+        },
+        {
+          start_date: subscription.current_period_end,
+          items: [{ price: newPlanId, quantity: 1 }],
+        },
+      ],
+    });
+
+    await redisClient.set(`${PENDING_DOWNGRADE_KEY_PREFIX}${userId}`, planName);
+
+    const nextBillingDate = new Date(subscription.current_period_end * 1000).toISOString();
+    await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
+
+    return NextResponse.json({ 
+      message: `Downgrade to ${planName} scheduled successfully`,
+      nextBillingDate,
+      pendingDowngrade: planName
+    });
+  }
+
+  return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
+}
+
+async function upgradeSubscription(userId: string, stripeCustomerId: string, redisClient: any, newPlanId: string, subAction: string) {
+  const subscriptions = await stripe.subscriptions.list({
+    customer: stripeCustomerId,
+    status: 'active',
+    limit: 1,
+  });
+
+  let subscription = subscriptions.data[0];
+
+  if (!subscription) {
+    return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
+  }
+
+  if (subAction === 'calculate') {
+    // Calculate prorated amount
+    const invoice = await stripe.invoices.retrieveUpcoming({
+      customer: stripeCustomerId,
+      subscription: subscription.id,
+      subscription_items: [{ 
+        id: subscription.items.data[0].id, 
+        price: newPlanId 
+      }],
+    });
+
+    const proratedAmount = invoice.amount_due / 100; // Convert cents to dollars
+
+    return NextResponse.json({ 
+      proratedAmount,
+      currentPlanId: subscription.items.data[0].price.id
+    });
+  } else if (subAction === 'confirm') {
+    // Immediate upgrade
+    subscription = await stripe.subscriptions.update(subscription.id, {
+      items: [{ id: subscription.items.data[0].id, price: newPlanId }],
+      proration_behavior: 'always_invoice',
+    });
+
+    const newPlan = await stripe.prices.retrieve(newPlanId);
+    const newProductId = newPlan.product as string;
+    const newProduct = await stripe.products.retrieve(newProductId);
+    let subscriptionTier: SubscriptionTier = 'basic';
+
+    switch (newProduct.name.toLowerCase()) {
+      case 'pro':
+        subscriptionTier = 'pro';
+        break;
+      case 'premium':
+        subscriptionTier = 'premium';
+        break;
+      case 'ultimate':
+        subscriptionTier = 'ultimate';
+        break;
+    }
+
+    await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, subscriptionTier);
+    await redisClient.del(`${PENDING_UPGRADE_KEY_PREFIX}${userId}`);
+
+    await supabaseAdmin
+      .from('subscriptions')
+      .upsert({
+        clerk_id: userId,
+        plan: subscriptionTier,
+        status: 'active',
+        updated_at: new Date().toISOString(),
+        pending_upgrade: null,
+      }, {
+        onConflict: 'clerk_id'
+      });
+
+    return NextResponse.json({ 
+      message: 'Subscription upgraded successfully',
+      newSubscriptionTier: subscriptionTier
+    });
+  } else if (subAction === 'schedule') {
+    // Schedule upgrade for next billing cycle
+    const schedule = await stripe.subscriptionSchedules.create({
+      from_subscription: subscription.id,
+    });
+
+    await stripe.subscriptionSchedules.update(schedule.id, {
+      end_behavior: 'release',
+      phases: [
+        {
+          start_date: subscription.current_period_start,
+          end_date: subscription.current_period_end,
+          items: [{ price: subscription.items.data[0].price.id, quantity: 1 }],
+        },
+        {
+          start_date: subscription.current_period_end,
+          items: [{ price: newPlanId, quantity: 1 }],
+        },
+      ],
+    });
+
+    const newPlan = await stripe.prices.retrieve(newPlanId);
+    const newProductId = newPlan.product as string;
+    const newProduct = await stripe.products.retrieve(newProductId);
+    let subscriptionTier: SubscriptionTier = 'basic';
+
+    switch (newProduct.name.toLowerCase()) {
+      case 'pro':
+        subscriptionTier = 'pro';
+        break;
+      case 'premium':
+        subscriptionTier = 'premium';
+        break;
+      case 'ultimate':
+        subscriptionTier = 'ultimate';
+        break;
+    }
+
+    await redisClient.set(`${PENDING_UPGRADE_KEY_PREFIX}${userId}`, subscriptionTier);
+    const nextBillingDate = new Date(subscription.current_period_end * 1000).toISOString();
+    await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
+
+    await supabaseAdmin
+      .from('subscriptions')
+      .update({
+        pending_upgrade: subscriptionTier,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('clerk_id', userId);
+
+    return NextResponse.json({ 
+      message: 'Subscription upgrade scheduled successfully',
+      pendingUpgrade: subscriptionTier,
+      nextBillingDate
+    });
+  } else {
+    return NextResponse.json({ error: 'Invalid subAction' }, { status: 400 });
+  }
+}
+
+async function renewSubscription(userId: string, stripeCustomerId: string, redisClient: any) {
+  const subscriptions = await stripe.subscriptions.list({
+    customer: stripeCustomerId,
+    status: 'active',
+    limit: 1,
+  });
+
+  if (subscriptions.data.length === 0) {
+    return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
+  }
+
+  const subscription = subscriptions.data[0];
+  
+  const updatedSubscription = await stripe.subscriptions.update(subscription.id, {
+    cancel_at_period_end: false,
+  });
+
+  const nextBillingDate = new Date(updatedSubscription.current_period_end * 1000).toISOString();
+
+  await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
+  await redisClient.del(`${CANCELLATION_DATE_KEY_PREFIX}${userId}`);
+
+  return NextResponse.json({ nextBillingDate });
+}
+
+async function updateUserSubscription(userId: string, subscription: Stripe.Subscription, redisClient: any) {
+  const productId = subscription.items.data[0].price.product as string;
+  const product = await stripe.products.retrieve(productId);
+  let subscriptionTier: SubscriptionTier = 'basic';
+
+  switch (product.name.toLowerCase()) {
+    case 'pro':
+      subscriptionTier = 'pro';
+      break;
+    case 'premium':
+      subscriptionTier = 'premium';
+      break;
+    case 'ultimate':
+      subscriptionTier = 'ultimate';
+      break;
+  }
+
+  await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, subscriptionTier);
+  
+  const nextBillingDate = new Date(subscription.current_period_end * 1000).toISOString();
+  await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
+
+  console.log(`Updated subscription for user ${userId} to ${subscriptionTier}`);
+}
+
+
+function getPlanIdFromName(planName: string): string | null {
+  const planMap: { [key: string]: string } = {
+    'Pro': 'price_1Q3AztHYPfrMrymk4VqOuNAD',
+    'Premium': 'price_1Q3B16HYPfrMrymkgzihBxJR',
+    'Ultimate': 'price_1Q3B2gHYPfrMrymkYyJgjmci',
+  };
+  return planMap[planName] || null;
+}

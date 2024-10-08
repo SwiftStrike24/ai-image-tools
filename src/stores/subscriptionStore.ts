@@ -9,6 +9,7 @@ interface SubscriptionState {
   isLoading: boolean
   setSubscriptionData: (data: Partial<SubscriptionState>) => void
   fetchSubscriptionData: () => Promise<void>
+  clearSubscriptionData: () => void
 }
 
 export const useSubscriptionStore = create<SubscriptionState>()(
@@ -30,7 +31,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       fetchSubscriptionData: async () => {
         set({ isLoading: true })
         try {
-          const response = await fetch('/api/get-next-billing-date')
+          const response = await fetch('/api/subscription/subscription-info')
           const data = await response.json()
           console.log('Fetched subscription data:', data)
           set((state) => ({
@@ -46,16 +47,18 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           set({ isLoading: false })
         }
       },
+      clearSubscriptionData: () => {
+        set({
+          currentSubscription: 'basic',
+          pendingUpgrade: null,
+          pendingDowngrade: null,
+          nextBillingDate: null,
+        })
+      },
     }),
     {
       name: 'subscription-storage',
       storage: createJSONStorage(() => localStorage),
-      // Ensure that the store uses the rehydrated state
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          console.log('Rehydrated state:', state)
-        }
-      },
     }
   )
 )

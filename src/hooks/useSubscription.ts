@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   getGeneratorUsage,
   getUpscalerUsage,
@@ -15,10 +15,12 @@ export function useSubscription(type: 'generator' | 'upscaler' | 'enhance_prompt
   const [usage, setUsage] = useState(0);
   const [resetsIn, setResetsIn] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const lastFetchTime = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchSubscriptionType = useCallback(async () => {
     try {
-      const response = await fetch('/api/check-subscription');
+      const response = await fetch('/api/subscription/subscription-info');
       const data = await response.json();
       setSubscriptionType(data.subscriptionType || 'basic');
     } catch (error) {
@@ -28,6 +30,18 @@ export function useSubscription(type: 'generator' | 'upscaler' | 'enhance_prompt
   }, []);
 
   const fetchUsage = useCallback(async () => {
+    const now = Date.now();
+    if (now - lastFetchTime.current < 5000) {
+      return; // Throttle fetches to once every 5 seconds
+    }
+    lastFetchTime.current = now;
+
+    // Cancel any ongoing fetch
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
     setIsLoading(true);
     try {
       await fetchSubscriptionType();
@@ -46,22 +60,26 @@ export function useSubscription(type: 'generator' | 'upscaler' | 'enhance_prompt
         setUsage(result.usageCount);
         setResetsIn(result.resetsIn);
       }
-    } catch (error) {
-      console.error('Error fetching usage:', error);
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name !== 'AbortError') {
+        console.error('Error fetching usage:', error);
+      }
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   }, [type, fetchSubscriptionType]);
 
   useEffect(() => {
     fetchUsage();
-    // Refetch subscription type and usage every minute
-    const intervalId = setInterval(() => {
-      fetchSubscriptionType();
-      fetchUsage();
-    }, 60000);
-    return () => clearInterval(intervalId);
-  }, [fetchUsage, fetchSubscriptionType]);
+    const intervalId = setInterval(fetchUsage, 30000); // Fetch every 30 seconds
+    return () => {
+      clearInterval(intervalId);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [fetchUsage]);
 
   const checkAndUpdateLimit = useCallback(async (count: number = 1) => {
     let result;

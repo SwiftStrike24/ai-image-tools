@@ -53,8 +53,8 @@ export default function PricingPage() {
       transition: { duration: 0.4 }
     })
 
-    // After animation completes, navigate to sign-in page
-    router.push('/sign-in')
+    // After animation completes, navigate to sign-in page with redirect
+    router.push('/sign-in?redirect=/pricing')
   }
 
   return (

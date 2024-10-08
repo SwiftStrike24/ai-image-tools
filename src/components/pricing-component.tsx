@@ -29,20 +29,29 @@ export function PricingComponentComponent() {
     nextBillingDate,
     isLoading,
     fetchSubscriptionData,
-    setSubscriptionData
+    setSubscriptionData,
+    clearSubscriptionData
   } = useSubscriptionStore()
 
   useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      fetchSubscriptionData()
+    if (isLoaded) {
+      if (isSignedIn) {
+        fetchSubscriptionData()
+      } else {
+        clearSubscriptionData()
+      }
     }
-  }, [isLoaded, isSignedIn, fetchSubscriptionData])
+  }, [isLoaded, isSignedIn, fetchSubscriptionData, clearSubscriptionData])
 
   const handleCancelSubscription = async () => {
     setIsCancelling(true)
     try {
-      const response = await fetch('/api/cancel-subscription', {
+      const response = await fetch('/api/subscription/subscription-management', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'cancel' }),
       })
       if (response.ok) {
         const data = await response.json()
@@ -72,8 +81,12 @@ export function PricingComponentComponent() {
   const handleCancelDowngrade = async () => {
     setIsProcessing(true)
     try {
-      const response = await fetch('/api/cancel-downgrade', {
+      const response = await fetch('/api/subscription/subscription-management', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'cancelDowngrade' }),
       })
       if (response.ok) {
         const data = await response.json()
@@ -103,8 +116,12 @@ export function PricingComponentComponent() {
   const handleCancelUpgrade = async () => {
     setIsProcessing(true)
     try {
-      const response = await fetch('/api/cancel-upgrade', {
+      const response = await fetch('/api/subscription/subscription-management', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'cancelUpgrade' }),
       })
       if (response.ok) {
         const data = await response.json()
