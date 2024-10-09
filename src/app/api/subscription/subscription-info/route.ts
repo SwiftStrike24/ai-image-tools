@@ -75,12 +75,7 @@ export async function GET(request: Request) {
   try {
     const redisClient = await getRedisClient();
     
-    // Check cache first
-    const cachedData = await redisClient.get(`${CACHE_KEY_PREFIX}${userId}`);
-    if (cachedData) {
-      return NextResponse.json(JSON.parse(cachedData));
-    }
-
+    // Always fetch fresh data from Stripe
     const stripeCustomerId = await redisClient.get(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
 
     let subscriptionData: {
@@ -107,29 +102,15 @@ export async function GET(request: Request) {
       ...subscriptionData,
       pendingUpgrade,
       pendingDowngrade,
-      currentSubscription: currentSubscription || 'basic'
+      currentSubscription: currentSubscription || subscriptionData.subscriptionType
     };
 
-    // Cache the response with a randomized TTL
-    const cacheTTL = getRandomTTL(BASE_CACHE_TTL);
+    // Update the cache
     await redisClient.set(
       `${CACHE_KEY_PREFIX}${userId}`,
       JSON.stringify(responseData),
-      { EX: cacheTTL }
+      { EX: BASE_CACHE_TTL }
     );
-
-    // For active users, set up a background refresh
-    if (subscriptionData.subscriptionType !== 'basic') {
-      setTimeout(async () => {
-        const freshData = await getSubscriptionData(userId, stripeCustomerId!);
-        await updateRedisWithSubscriptionData(redisClient, userId, freshData);
-        await redisClient.set(
-          `${CACHE_KEY_PREFIX}${userId}`,
-          JSON.stringify({ ...responseData, ...freshData }),
-          { EX: getRandomTTL(BASE_CACHE_TTL) }
-        );
-      }, (cacheTTL - 60) * 1000); // Refresh 1 minute before expiration
-    }
 
     return NextResponse.json(responseData);
   } catch (error) {

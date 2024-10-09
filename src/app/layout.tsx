@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+"use client"
+
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -6,45 +7,32 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/react";
 import { ClerkProvider } from '@clerk/nextjs'
 import Script from 'next/script';
+import { useEffect } from 'react';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
+import { metadata } from './metadata'; // Import the metadata
 
 const inter = Inter({ subsets: ["latin"] });
-
-export const metadata: Metadata = {
-  title: 'FluxScale AI - Advanced AI Image Generation & Upscaling Tools',
-  description: 'FluxScale AI offers cutting-edge AI image generation and upscaling tools powered by FLUX.1 and Real-ESRGAN. Create stunning visuals from text prompts.',
-  keywords: 'AI image generation, image upscaling, AI art generator, Real-ESRGAN, FLUX.1 AI',
-  openGraph: {
-    title: 'FluxScale AI - Advanced AI Image Generation & Upscaling Tools',
-    description: 'Generate and upscale AI images with FluxScale AI. Create stunning visuals using FLUX.1 and Real-ESRGAN technology.',
-    url: 'https://fluxscaleai.com',
-    siteName: 'FluxScale AI',
-    images: [
-      {
-        url: 'https://fluxscaleai.com/og-image.jpg', // Make sure to add this image to your public folder
-        width: 1200,
-        height: 630,
-      },
-    ],
-    locale: 'en_US',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'FluxScale AI - AI Image Generation & Upscaling',
-    description: 'Create and enhance images with advanced AI tools. Try FluxScale AI now!',
-    images: ['https://fluxscaleai.com/twitter-image.jpg'], // Add this image to your public folder
-  },
-};
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const initializeStore = useSubscriptionStore((state) => state.initializeStore);
+
+  useEffect(() => {
+    initializeStore();
+  }, [initializeStore]);
+
   return (
     <ClerkProvider>
       <html lang="en">
         <head>
+          {/* Add metadata to the head */}
+          <title>{metadata.title as string}</title>
+          <meta name="description" content={metadata.description as string} />
+          <meta name="keywords" content={metadata.keywords as string} />
+          {/* Add other metadata as needed */}
           <Script id="schema-org" type="application/ld+json">
             {`
               {
