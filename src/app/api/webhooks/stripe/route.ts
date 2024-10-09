@@ -19,6 +19,8 @@ const PENDING_UPGRADE_KEY_PREFIX = "pending_upgrade:";
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 export async function POST(req: Request) {
+  console.log('Webhook received'); // Add this line for debugging
+
   const rawBody = await req.text();
   const signature = headers().get('stripe-signature');
 
@@ -34,14 +36,14 @@ export async function POST(req: Request) {
 
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-    const response = NextResponse.json({ received: true }, { status: 200 });
+    console.log(`Event constructed: ${event.type}`); // Add this line for debugging
 
     // Process the event asynchronously
     handleEvent(event).catch(error => {
       console.error('Error processing webhook event:', error);
     });
 
-    return response;
+    return NextResponse.json({ received: true }, { status: 200 });
   } catch (err) {
     console.error(`Webhook signature verification failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
