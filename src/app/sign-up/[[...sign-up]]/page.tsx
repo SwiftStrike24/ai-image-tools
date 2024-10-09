@@ -12,8 +12,9 @@ import Link from 'next/link';
 import { Shield, Home, ArrowLeft } from 'lucide-react';
 import { Theme } from "@clerk/types";
 import { Dock, DockIcon } from "@/components/ui/dock";
+import { Suspense } from 'react';
 
-export default function SignUpPage() {
+function SignUpPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const redirect = searchParams?.get('redirect') || '/';
@@ -137,5 +138,13 @@ export default function SignUpPage() {
         ))}
       </Dock>
     </motion.div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignUpPageContent />
+    </Suspense>
   );
 }

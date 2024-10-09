@@ -12,8 +12,9 @@ import Link from 'next/link';
 import { Shield, Home } from 'lucide-react';
 import { Theme } from "@clerk/types";
 import { Dock, DockIcon } from "@/components/ui/dock";
+import { Suspense } from 'react';
 
-export default function SignInPage() {
+function SignInPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const redirect = searchParams?.get('redirect') || '/';
@@ -136,5 +137,13 @@ export default function SignInPage() {
         ))}
       </Dock>
     </motion.div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignInPageContent />
+    </Suspense>
   );
 }

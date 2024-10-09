@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useToast } from "@/hooks/use-toast"
 import { Loader2 } from 'lucide-react'
 
-export default function SuccessPage() {
+function SuccessPageContent() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const searchParams = useSearchParams()
   const { toast } = useToast()
@@ -73,4 +73,14 @@ export default function SuccessPage() {
       )}
     </div>
   )
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen bg-gray-900">
+      <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+    </div>}>
+      <SuccessPageContent />
+    </Suspense>
+  );
 }
