@@ -25,7 +25,8 @@ function SuccessPageContent() {
             })
             // Set a timeout to redirect after 3-5 seconds
             const redirectTimeout = setTimeout(() => {
-              router.push('/generator')
+              const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://192.168.1.81:3000'
+              router.push(`${baseUrl}/generator`)
             }, 3000 + Math.random() * 2000) // Random delay between 3-5 seconds
 
             // Clear the timeout if the component unmounts

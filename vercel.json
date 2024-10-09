@@ -5,6 +5,20 @@
     },
     "src/app/api/webhooks/clerk/**/*.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/webhooks/stripe/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
     }
-  }
+  },
+  "routes": [
+    {
+      "src": "/api/webhooks/stripe",
+      "dest": "/api/webhooks/stripe/route.ts",
+      "methods": ["POST"],
+      "headers": {
+        "Access-Control-Allow-Origin": "*"
+      }
+    }
+  ]
 }

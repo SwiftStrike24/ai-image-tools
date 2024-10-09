@@ -4,7 +4,6 @@ import { getRedisClient } from "@/lib/redis";
 import { SubscriptionTier } from '@/actions/rateLimit';
 import { headers } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase';
-import { clerkClient } from "@clerk/nextjs/server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -28,13 +27,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
+  console.log(`Received signature: ${signature}`);
+  console.log(`Raw body (first 100 chars): ${rawBody.substring(0, 100)}...`);
+
   let event: Stripe.Event;
 
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
     const response = NextResponse.json({ received: true }, { status: 200 });
 
-    handleEvent(event).catch(console.error);
+    // Process the event asynchronously
+    handleEvent(event).catch(error => {
+      console.error('Error processing webhook event:', error);
+    });
 
     return response;
   } catch (err) {
