@@ -43,6 +43,9 @@ export function PricingComponentComponent() {
     }
   }, [isLoaded, isSignedIn, fetchSubscriptionData, clearSubscriptionData])
 
+  // Modify this part to handle 'inactive' as 'basic'
+  const displayCurrentSubscription = currentSubscription === 'inactive' ? 'basic' : currentSubscription
+
   const handleCancelSubscription = async () => {
     setIsCancelling(true)
     try {
@@ -154,7 +157,7 @@ export function PricingComponentComponent() {
     }
 
     const lowerPlanName = planName.toLowerCase();
-    const lowerSubType = currentSubscription.toLowerCase();
+    const lowerSubType = displayCurrentSubscription.toLowerCase();
 
     if (lowerPlanName === lowerSubType) {
       return { text: 'Current Plan', style: 'bg-gray-500 cursor-not-allowed' };
@@ -189,9 +192,9 @@ export function PricingComponentComponent() {
                   <div>
                     <h3 className="text-xl font-bold mb-2">Your Plan Details</h3>
                     <p className="text-lg mb-2">
-                      Current Plan: <span className="font-semibold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">{currentSubscription.charAt(0).toUpperCase() + currentSubscription.slice(1)}</span>
+                      Current Plan: <span className="font-semibold bg-gradient-to-r from-purple-400 to-purple-600 bg-clip-text text-transparent">{displayCurrentSubscription.charAt(0).toUpperCase() + displayCurrentSubscription.slice(1)}</span>
                     </p>
-                    {currentSubscription !== 'basic' && (
+                    {displayCurrentSubscription !== 'basic' && (
                       <>
                         {pendingDowngrade ? (
                           <div className="flex flex-col space-y-2">
@@ -252,7 +255,7 @@ export function PricingComponentComponent() {
                       </>
                     )}
                   </div>
-                  {currentSubscription !== 'basic' && !pendingDowngrade && !pendingUpgrade && (
+                  {displayCurrentSubscription !== 'basic' && !pendingDowngrade && !pendingUpgrade && (
                     <div>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>

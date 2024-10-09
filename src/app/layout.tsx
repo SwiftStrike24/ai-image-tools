@@ -9,7 +9,7 @@ import { ClerkProvider } from '@clerk/nextjs'
 import Script from 'next/script';
 import { useEffect } from 'react';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
-import { metadata } from './metadata'; // Import the metadata
+import { metadata } from '@/app/metadata'; // Import the metadata
 
 const inter = Inter({ subsets: ["latin"] });
 

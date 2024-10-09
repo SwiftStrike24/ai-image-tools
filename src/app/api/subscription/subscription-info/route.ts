@@ -17,19 +17,29 @@ const PENDING_UPGRADE_KEY_PREFIX = "pending_upgrade:";
 const CACHE_KEY_PREFIX = "subscription_cache:";
 const BASE_CACHE_TTL = 300; // 5 minutes in seconds
 
-// Helper function to get a random TTL
+/**
+ * Get a random TTL based on the base TTL and a variance
+ * @param baseTTL Base TTL in seconds
+ * @param variance Variance in seconds
+ * @returns Random TTL in seconds
+ */
 function getRandomTTL(baseTTL: number, variance: number = 60) {
   return baseTTL + Math.floor(Math.random() * variance);
 }
 
-// Helper function to get subscription data
+/**
+ * Get subscription data from Stripe
+ * @param userId User ID
+ * @param stripeCustomerId Stripe customer ID
+ * @returns Subscription data
+ */
 async function getSubscriptionData(userId: string, stripeCustomerId: string): Promise<{
   subscriptionType: string;
   nextBillingDate: string | null;
+  status: string;
 }> {
   const subscriptions = await stripe.subscriptions.list({
     customer: stripeCustomerId,
-    status: 'active',
     limit: 1,
   });
 
@@ -37,20 +47,28 @@ async function getSubscriptionData(userId: string, stripeCustomerId: string): Pr
     const subscription = subscriptions.data[0];
     const product = await stripe.products.retrieve(subscription.items.data[0].price.product as string);
     return {
-      subscriptionType: product.metadata.type || 'basic',
+      subscriptionType: product.name.toLowerCase(),
       nextBillingDate: new Date(subscription.current_period_end * 1000).toISOString(),
+      status: subscription.cancel_at_period_end ? 'canceling' : subscription.status,
     };
   }
 
-  return { subscriptionType: 'basic', nextBillingDate: null };
+  return { subscriptionType: 'basic', nextBillingDate: null, status: 'inactive' };
 }
 
-// Helper function to update Redis with subscription data using pipeline
+/**
+ * Update Redis with subscription data
+ * @param redisClient Redis client
+ * @param userId User ID
+ * @param subscriptionData Subscription data
+ */
 async function updateRedisWithSubscriptionData(redisClient: RedisClientType, userId: string, subscriptionData: any) {
-  const { subscriptionType, nextBillingDate } = subscriptionData;
+  const { subscriptionType, nextBillingDate, status } = subscriptionData;
   const pipeline = redisClient.multi();
   
   pipeline.set(`${SUBSCRIPTION_TYPE_KEY_PREFIX}${userId}`, subscriptionType);
+  pipeline.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, subscriptionType);
+  pipeline.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}:status`, status);
   if (nextBillingDate) {
     pipeline.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
   }
@@ -68,35 +86,49 @@ export async function GET(request: Request) {
       nextBillingDate: null,
       pendingUpgrade: null,
       pendingDowngrade: null,
-      currentSubscription: 'basic'
+      currentSubscription: 'basic',
+      status: 'inactive'
     }, { status: 401 });
   }
 
   try {
     const redisClient = await getRedisClient();
-    
-    // Always fetch fresh data from Stripe
+    const cacheKey = `${CACHE_KEY_PREFIX}${userId}`;
+
+    // Try to get subscription data from cache
+    const cachedData = await redisClient.get(cacheKey);
+
+    if (cachedData) {
+      const responseData = JSON.parse(cachedData);
+      return NextResponse.json(responseData);
+    }
+
+    // If not cached, proceed to fetch data
     const stripeCustomerId = await redisClient.get(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
 
     let subscriptionData: {
       subscriptionType: string;
       nextBillingDate: string | null;
-    } = { subscriptionType: 'basic', nextBillingDate: null };
+      status: string;
+    } = { subscriptionType: 'basic', nextBillingDate: null, status: 'inactive' };
 
     if (stripeCustomerId) {
       subscriptionData = await getSubscriptionData(userId, stripeCustomerId);
     }
 
-    // Update Redis with the latest subscription information
     await updateRedisWithSubscriptionData(redisClient, userId, subscriptionData);
 
-    // Use pipeline for multiple gets
+    // Fetch pendingUpgrade, pendingDowngrade, currentSubscription
     const pipeline = redisClient.multi();
     pipeline.get(`${PENDING_DOWNGRADE_KEY_PREFIX}${userId}`);
     pipeline.get(`${PENDING_UPGRADE_KEY_PREFIX}${userId}`);
     pipeline.get(`${SUBSCRIPTION_KEY_PREFIX}${userId}`);
+    const results = await pipeline.exec();
+    const [pendingDowngradeResult, pendingUpgradeResult, currentSubscriptionResult] = results as [string | null, string | null, string | null];
 
-    const [pendingDowngrade, pendingUpgrade, currentSubscription] = await pipeline.exec();
+    const pendingDowngrade = pendingDowngradeResult;
+    const pendingUpgrade = pendingUpgradeResult;
+    const currentSubscription = currentSubscriptionResult;
 
     const responseData = { 
       ...subscriptionData,
@@ -105,11 +137,11 @@ export async function GET(request: Request) {
       currentSubscription: currentSubscription || subscriptionData.subscriptionType
     };
 
-    // Update the cache
+    // Cache the response data
     await redisClient.set(
-      `${CACHE_KEY_PREFIX}${userId}`,
+      cacheKey,
       JSON.stringify(responseData),
-      { EX: BASE_CACHE_TTL }
+      { EX: getRandomTTL(BASE_CACHE_TTL) }
     );
 
     return NextResponse.json(responseData);
@@ -119,7 +151,10 @@ export async function GET(request: Request) {
   }
 }
 
-// Helper function to invalidate cache
+/**
+ * Invalidate the subscription cache for a user
+ * @param userId User ID
+ */
 export async function invalidateCache(userId: string) {
   const redisClient = await getRedisClient();
   await redisClient.del(`${CACHE_KEY_PREFIX}${userId}`);

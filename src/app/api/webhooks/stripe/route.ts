@@ -32,10 +32,8 @@ export async function POST(req: Request) {
 
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-    // Return a 200 response immediately
     const response = NextResponse.json({ received: true }, { status: 200 });
 
-    // Process the event asynchronously
     handleEvent(event).catch(console.error);
 
     return response;
@@ -48,7 +46,6 @@ export async function POST(req: Request) {
 async function handleEvent(event: Stripe.Event) {
   const redisClient = await getRedisClient();
 
-  // Check if this event has already been processed
   const eventId = event.id;
   const isProcessed = await redisClient.get(`${PROCESSED_EVENTS_KEY_PREFIX}${eventId}`);
   if (isProcessed) {
@@ -63,8 +60,6 @@ async function handleEvent(event: Stripe.Event) {
         break;
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
-        await handleSubscriptionChange(event.data.object as Stripe.Subscription);
-        break;
       case 'customer.subscription.deleted':
         await handleSubscriptionChange(event.data.object as Stripe.Subscription);
         break;
@@ -84,8 +79,7 @@ async function handleEvent(event: Stripe.Event) {
         console.log(`Received ${event.type} event, no action needed`);
     }
 
-    // Mark this event as processed
-    await redisClient.set(`${PROCESSED_EVENTS_KEY_PREFIX}${eventId}`, 'true', { EX: 60 * 60 * 24 }); // Expire after 24 hours
+    await redisClient.set(`${PROCESSED_EVENTS_KEY_PREFIX}${eventId}`, 'true', { EX: 60 * 60 * 24 });
 
     return NextResponse.json({ received: true });
   } catch (error) {
@@ -259,47 +253,29 @@ async function updateUserSubscription(userId: string, subscription: Stripe.Subsc
     await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, subscriptionTier);
     console.log(`Updated subscription for user ${userId} to ${subscriptionTier}`);
 
-    // Update next billing date
     const nextBillingDate = new Date(subscription.current_period_end * 1000).toISOString();
     await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
 
-    // Clear any pending downgrades
-    await redisClient.del(`${SUBSCRIPTION_KEY_PREFIX}${userId}:pending_downgrade`);
-
     // Update Supabase
-    await updateSupabaseSubscription(userId, userId, subscriptionTier, null);
+    await supabaseAdmin
+      .from('subscriptions')
+      .update({
+        plan: subscriptionTier,
+        status: 'active',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('clerk_id', userId);
   } else if (subscription.status === 'canceled') {
     await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, 'basic');
     console.log(`Reset subscription for user ${userId} to basic due to cancellation`);
-    await updateSupabaseSubscription(userId, userId, 'basic', null);
-  }
-}
-
-async function updateSupabaseSubscription(userId: string, clerkId: string, subscriptionTier: SubscriptionTier, pendingDowngrade: string | null) {
-  try {
-    // Fetch the user's information from Clerk
-    const user = await clerkClient().users.getUser(clerkId);
-    const username = user.username || `${user.firstName} ${user.lastName}`.trim() || null;
-
-    const { data, error } = await supabaseAdmin
+    await supabaseAdmin
       .from('subscriptions')
-      .upsert({
-        clerk_id: clerkId,
-        username: username,
-        plan: subscriptionTier,
-        status: 'active',
-        pending_downgrade: pendingDowngrade,
+      .update({
+        plan: 'basic',
+        status: 'canceled',
         updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'clerk_id'
       })
-      .select();
-
-    if (error) throw error;
-    console.log(`Updated Supabase subscription for user ${clerkId} to ${subscriptionTier}${pendingDowngrade ? ` with pending downgrade to ${pendingDowngrade}` : ''}`);
-  } catch (error) {
-    console.error('Error updating Supabase subscription:', error);
-    throw error;
+      .eq('clerk_id', userId);
   }
 }
 

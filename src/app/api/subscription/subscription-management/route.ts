@@ -19,10 +19,14 @@ const PENDING_DOWNGRADE_KEY_PREFIX = "pending_downgrade:";
 const PENDING_UPGRADE_KEY_PREFIX = "pending_upgrade:";
 const CANCELLATION_DATE_KEY_PREFIX = "cancellation_date:";
 
-// Add a new constant for max retries
 const MAX_RETRIES = 3;
 
-// Helper function for retrying operations
+/**
+ * Retry an operation with exponential backoff
+ * @param operation Function to retry
+ * @returns Result of the operation
+ * @throws Last error encountered
+ */
 async function retryOperation<T>(operation: () => Promise<T>): Promise<T> {
   let lastError;
   for (let i = 0; i < MAX_RETRIES; i++) {
@@ -31,15 +35,20 @@ async function retryOperation<T>(operation: () => Promise<T>): Promise<T> {
     } catch (error) {
       console.error(`Operation failed (attempt ${i + 1}/${MAX_RETRIES}):`, error);
       lastError = error;
-      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i))); // Exponential backoff
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
     }
   }
   throw lastError;
 }
 
+/**
+ * Notify user about subscription update via Pusher
+ * @param userId User ID
+ */
 async function notifySubscriptionUpdate(userId: string) {
   await pusherServer.trigger(`private-user-${userId}`, 'subscription-updated', {});
 }
+
 
 export async function POST(req: Request) {
   const { userId } = auth();
@@ -50,7 +59,6 @@ export async function POST(req: Request) {
 
   const { action, planName, newPlanId, subAction } = await req.json();
 
-  // Input validation
   if (!action || (action === 'upgrade' && (!newPlanId || !subAction))) {
     return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
   }
@@ -59,7 +67,20 @@ export async function POST(req: Request) {
     const redisClient = await getRedisClient();
     const stripeCustomerId = await redisClient.get(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
 
+    // If there's no Stripe customer ID, we need to create one
     if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        metadata: { userId },
+      });
+      await redisClient.set(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`, customer.id);
+      
+      // For a new customer, we'll redirect to checkout instead of trying to manage a non-existent subscription
+      if (action === 'upgrade' || action === 'subscribe') {
+        const session = await createCheckoutSession(customer.id, userId, newPlanId);
+        return NextResponse.json({ url: session.url });
+      }
+      
+      // For other actions, we can return an error or handle as needed
       return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
     }
 
@@ -87,17 +108,13 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
 
-    // Invalidate the subscription info cache after any action
     await invalidateCache(userId);
-
-    // Notify about the subscription update
     await notifySubscriptionUpdate(userId);
 
     return NextResponse.json(result);
   } catch (error) {
     console.error(`Error in subscription management (${action}):`, error);
     
-    // Log more details about the error
     if (error instanceof Error) {
       console.error('Error name:', error.name);
       console.error('Error message:', error.message);
@@ -108,7 +125,11 @@ export async function POST(req: Request) {
   }
 }
 
-// Modify the batchUpdateRedis function
+/**
+ * Batch update Redis keys
+ * @param redisClient Redis client
+ * @param operations Array of key-value pairs to update
+ */
 async function batchUpdateRedis(redisClient: RedisClientType, operations: Array<[string, string]>) {
   const pipeline = redisClient.multi();
   
@@ -119,15 +140,13 @@ async function batchUpdateRedis(redisClient: RedisClientType, operations: Array<
   await pipeline.exec();
 }
 
-// Update existing helper functions to use batchUpdateRedis
-// For example, in the cancelSubscription function:
-
 async function cancelSubscription(userId: string, stripeCustomerId: string, redisClient: RedisClientType) {
   const subscriptions = await stripe.subscriptions.list({
     customer: stripeCustomerId,
     status: 'active',
     limit: 1,
   });
+
 
   if (subscriptions.data.length === 0) {
     return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
@@ -145,8 +164,18 @@ async function cancelSubscription(userId: string, stripeCustomerId: string, redi
     [`${CANCELLATION_DATE_KEY_PREFIX}${userId}`, cancellationDate]
   ]);
 
+  // Update Supabase
+  await supabaseAdmin
+    .from('subscriptions')
+    .update({
+      status: 'canceling',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('clerk_id', userId);
+
   return { cancellationDate };
 }
+
 
 async function cancelDowngrade(userId: string, stripeCustomerId: string, redisClient: RedisClientType) {
   const schedules = await stripe.subscriptionSchedules.list({
@@ -289,6 +318,7 @@ async function downgradeSubscription(userId: string, stripeCustomerId: string, r
 
   return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
 }
+
 
 async function upgradeSubscription(userId: string, stripeCustomerId: string, redisClient: RedisClientType, newPlanId: string, subAction: string) {
   const subscriptions = await stripe.subscriptions.list({
@@ -470,6 +500,16 @@ async function updateUserSubscription(userId: string, subscription: Stripe.Subsc
   const nextBillingDate = new Date(subscription.current_period_end * 1000).toISOString();
   await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
 
+  // Update Supabase
+  await supabaseAdmin
+    .from('subscriptions')
+    .update({
+      plan: subscriptionTier,
+      status: 'active',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('clerk_id', userId);
+
   console.log(`Updated subscription for user ${userId} to ${subscriptionTier}`);
 }
 
@@ -481,4 +521,23 @@ function getPlanIdFromName(planName: string): string | null {
     'Ultimate': 'price_1Q3B2gHYPfrMrymkYyJgjmci',
   };
   return planMap[planName] || null;
+}
+
+// Add this new function to create a checkout session
+async function createCheckoutSession(customerId: string, userId: string, priceId: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const successUrl = `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`;
+  const cancelUrl = `${baseUrl}/pricing`;
+
+  return await stripe.checkout.sessions.create({
+    customer: customerId,
+    line_items: [{ price: priceId, quantity: 1 }],
+    mode: 'subscription',
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    subscription_data: {
+      metadata: { userId },
+    },
+    metadata: { userId }
+  });
 }

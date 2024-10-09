@@ -47,7 +47,7 @@ export function PlanContent({
       return
     }
 
-    if (currentSubscription === 'basic') {
+    if (currentSubscription === 'basic' || currentSubscription === 'inactive') {
       await handleSubscribe();
     } else if (buttonProps.text.startsWith('Upgrade')) {
       await handleUpgradeClick();
@@ -68,12 +68,12 @@ export function PlanContent({
 
     if (plan.priceId) {
       try {
-        const response = await fetch('/api/subscription/checkout', {
+        const response = await fetch('/api/subscription/subscription-management', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ priceId: plan.priceId }),
+          body: JSON.stringify({ action: 'subscribe', newPlanId: plan.priceId }),
         });
 
         if (!response.ok) {
@@ -510,13 +510,19 @@ function getNewFeatures(currentPlan: string, newPlan: string) {
   const currentPlanIndex = planOrder.indexOf(currentPlan.toLowerCase());
   const newPlanIndex = planOrder.indexOf(newPlan.toLowerCase());
 
-  if (newPlanIndex <= currentPlanIndex) return [];
+  if (newPlanIndex <= currentPlanIndex || currentPlanIndex === -1 || newPlanIndex === -1) {
+    return [];
+  }
 
   const newFeatures = [];
   for (let i = currentPlanIndex + 1; i <= newPlanIndex; i++) {
-    newFeatures.push(...plans[i].features);
+    const plan = plans.find(p => p.name.toLowerCase() === planOrder[i]);
+    if (plan) {
+      newFeatures.push(...plan.features);
+    }
   }
 
-  const currentPlanFeatures = new Set(plans[currentPlanIndex].features);
+  const currentPlanData = plans.find(p => p.name.toLowerCase() === currentPlan.toLowerCase());
+  const currentPlanFeatures = new Set(currentPlanData?.features || []);
   return [...new Set(newFeatures.filter(feature => !currentPlanFeatures.has(feature)))];
 }
