@@ -4,7 +4,7 @@ import { getRedisClient } from "@/lib/redis";
 import Stripe from 'stripe';
 import { SubscriptionTier } from '@/actions/rateLimit';
 import { supabaseAdmin } from '@/lib/supabase';
-import { invalidateCache } from '../subscription-info/route';
+import { invalidateCache } from '@/lib/subscriptionUtils'; // Updated import
 import { pusherServer } from '@/lib/pusher';
 import { RedisClientType } from 'redis';
 

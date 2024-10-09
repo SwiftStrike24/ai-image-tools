@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getRedisClient } from "@/lib/redis";
 import Stripe from 'stripe';
 import { RedisClientType } from 'redis';
+import { getSubscriptionData as getStripeSubscriptionData, updateRedisWithSubscriptionData as updateRedisData } from '@/lib/subscriptionUtils';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -113,10 +114,10 @@ export async function GET(request: Request) {
     } = { subscriptionType: 'basic', nextBillingDate: null, status: 'inactive' };
 
     if (stripeCustomerId) {
-      subscriptionData = await getSubscriptionData(userId, stripeCustomerId);
+      subscriptionData = await getStripeSubscriptionData(userId, stripeCustomerId);
     }
 
-    await updateRedisWithSubscriptionData(redisClient, userId, subscriptionData);
+    await updateRedisData(redisClient, userId, subscriptionData);
 
     // Fetch pendingUpgrade, pendingDowngrade, currentSubscription
     const pipeline = redisClient.multi();
@@ -149,13 +150,4 @@ export async function GET(request: Request) {
     console.error("Error checking subscription:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
-}
-
-/**
- * Invalidate the subscription cache for a user
- * @param userId User ID
- */
-export async function invalidateCache(userId: string) {
-  const redisClient = await getRedisClient();
-  await redisClient.del(`${CACHE_KEY_PREFIX}${userId}`);
 }
