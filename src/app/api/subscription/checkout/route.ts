@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { auth } from '@clerk/nextjs/server';
 import { getRedisClient } from "@/lib/redis";
+import { supabaseAdmin } from '@/lib/supabase';
+import { pusherServer } from '@/lib/pusher';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -18,6 +20,35 @@ function getBaseUrl() {
     return `https://${process.env.VERCEL_URL}`;
   }
   return process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+}
+
+async function updateSubscriptionInfo(userId: string, subscriptionId: string) {
+  try {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const product = await stripe.products.retrieve(subscription.items.data[0].price.product as string);
+    const planName = product.name.toLowerCase();
+
+    const redisClient = await getRedisClient();
+    await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, planName);
+
+    await supabaseAdmin
+      .from('subscriptions')
+      .upsert({
+        clerk_id: userId,
+        plan: planName,
+        status: subscription.status,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'clerk_id'
+      });
+
+    // Notify client about subscription update
+    await pusherServer.trigger(`private-user-${userId}`, 'subscription-updated', {});
+
+    console.log(`Updated subscription for user ${userId} to ${planName}`);
+  } catch (error) {
+    console.error('Error updating subscription info:', error);
+  }
 }
 
 export async function POST(req: Request) {
@@ -172,9 +203,22 @@ export async function GET(req: Request) {
   }
 
   try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['subscription'],
+    });
+
+    if (session.status === 'complete') {
+      const userId = session.metadata?.userId;
+      const subscriptionId = (session.subscription as Stripe.Subscription).id;
+
+      if (userId && subscriptionId) {
+        await updateSubscriptionInfo(userId, subscriptionId);
+      }
+    }
+
     return NextResponse.json({ status: session.status });
   } catch (err: any) {
+    console.error('Error retrieving checkout session:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

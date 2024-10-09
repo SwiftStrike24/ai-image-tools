@@ -1,9 +1,9 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Progress } from "@/components/ui/progress"
 import { useSubscription } from '@/hooks/useSubscription'
 import { getLimitForTier, SubscriptionTier } from "@/actions/rateLimit"
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
-import { getPusherClient, disconnectPusherClient } from '@/lib/pusher';
+import { getPusherClient } from '@/lib/pusher';
 import { useUser } from '@clerk/nextjs';
 
 interface UsageCounterProps {
@@ -19,40 +19,25 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onU
     usage,
     resetsIn, 
     isLoading: isSubscriptionLoading,
-    fetchUsage
+    fetchUsage,
+    refreshSubscriptionData
   } = useSubscription(type);
 
   const [limit, setLimit] = useState<number | null>(null);
   const { currentSubscription, fetchSubscriptionData } = useSubscriptionStore();
-  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pusherChannelRef = useRef<any>(null);
-  const pusherClientRef = useRef<any>(null);
-
   const { user } = useUser();
 
   const updateSubscriptionAndUsage = useCallback(async () => {
-    if (updateTimeoutRef.current) {
-      clearTimeout(updateTimeoutRef.current);
+    await fetchSubscriptionData();
+    await refreshSubscriptionData();
+    if (currentSubscription) {
+      const newLimit = await getLimitForTier(currentSubscription as SubscriptionTier, type);
+      setLimit(newLimit);
     }
-
-    updateTimeoutRef.current = setTimeout(async () => {
-      await fetchSubscriptionData();
-      await fetchUsage();
-      if (currentSubscription) {
-        const newLimit = await getLimitForTier(currentSubscription as SubscriptionTier, type);
-        setLimit(newLimit);
-      }
-      updateTimeoutRef.current = null;
-    }, 500); // Debounce for 500ms
-  }, [fetchSubscriptionData, fetchUsage, currentSubscription, type]);
+  }, [fetchSubscriptionData, refreshSubscriptionData, currentSubscription, type]);
 
   useEffect(() => {
     updateSubscriptionAndUsage();
-    return () => {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-      }
-    };
   }, [updateSubscriptionAndUsage, forceUpdate]);
 
   useEffect(() => {
@@ -61,18 +46,14 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onU
 
   useEffect(() => {
     if (user) {
-      pusherClientRef.current = getPusherClient();
-      const channelName = `private-user-${user.id}`;
+      const pusherClient = getPusherClient();
+      const channel = pusherClient.subscribe(`private-user-${user.id}`);
       
-      pusherChannelRef.current = pusherClientRef.current.subscribe(channelName);
-      pusherChannelRef.current.bind('subscription-updated', updateSubscriptionAndUsage);
+      channel.bind('subscription-updated', updateSubscriptionAndUsage);
 
       return () => {
-        if (pusherChannelRef.current) {
-          pusherChannelRef.current.unbind('subscription-updated', updateSubscriptionAndUsage);
-          pusherClientRef.current.unsubscribe(channelName);
-        }
-        disconnectPusherClient();
+        channel.unbind('subscription-updated', updateSubscriptionAndUsage);
+        pusherClient.unsubscribe(`private-user-${user.id}`);
       };
     }
   }, [user, updateSubscriptionAndUsage]);
@@ -82,6 +63,8 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onU
   }
 
   const displaySubscription = currentSubscription || subscriptionType;
+
+  console.log('Rendering UsageCounter with subscription:', displaySubscription);
 
   return (
     <div className="bg-purple-900/30 rounded-lg p-4 space-y-2">

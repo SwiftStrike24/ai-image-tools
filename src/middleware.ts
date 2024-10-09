@@ -1,41 +1,35 @@
 import { clerkMiddleware, auth } from "@clerk/nextjs/server";
 import { NextResponse } from 'next/server';
-import type { NextRequest, NextFetchEvent } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { saveUserToSupabase, syncUserDataWithRedis, getUserSubscription } from "@/lib/supabase";
 
-export default async function middleware(req: NextRequest) {
+// Define the routes to be excluded from middleware processing
+const excludedRoutes = ['/api/webhooks/stripe', '/api/webhooks/clerk'];
+
+/**
+ * Middleware to handle user authentication and data synchronization.
+ */
+export default clerkMiddleware(async (auth, req) => {
   // Exclude the webhook routes from middleware processing
-  if (req.nextUrl.pathname === '/api/webhooks/stripe' || req.nextUrl.pathname === '/api/webhooks/clerk') {
+  if (excludedRoutes.includes(req.nextUrl.pathname)) {
     return NextResponse.next();
   }
 
-  // Run Clerk middleware
-  const clerkResponse = clerkMiddleware()(req, { sourcePage: req.url } as NextFetchEvent);
-
-  // If Clerk middleware redirects or modifies the response, return it
-  if ((clerkResponse as NextResponse).status !== 200) {
-    return clerkResponse as NextResponse;
-  }
-
-  const { userId } = auth();
+  const { userId } = auth as any;
 
   // Save user data to Supabase and sync with Redis if authenticated
   if (userId) {
     try {
-      // Check if the user exists in Supabase
       const existingSubscription = await getUserSubscription(userId);
       
       if (!existingSubscription) {
-        // If the user doesn't exist in Supabase, save them
         await saveUserToSupabase(userId);
         console.log(`New user ${userId} saved to Supabase`);
       } else {
-        // If the user exists, update their data
         await saveUserToSupabase(userId);
         console.log(`Existing user ${userId} updated in Supabase`);
       }
 
-      // Sync user data with Redis
       await syncUserDataWithRedis(userId);
       console.log(`User ${userId} synced with Redis`);
 
@@ -48,14 +42,12 @@ export default async function middleware(req: NextRequest) {
       }
     } catch (error) {
       console.error(`Error processing user ${userId}:`, error);
-      // Instead of throwing an error, we'll log it and continue
-      // This prevents the middleware from blocking the request
     }
   }
 
-  // If no redirects or modifications are needed, proceed with the request
+  // Proceed with the request if no modifications are needed
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: [

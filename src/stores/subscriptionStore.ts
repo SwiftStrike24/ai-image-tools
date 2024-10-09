@@ -57,7 +57,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           console.log('Fetched subscription data:', data)
           set((state) => ({
             ...state,
-            currentSubscription: data.currentSubscription ?? state.currentSubscription,
+            currentSubscription: data.subscriptionType ?? state.currentSubscription,
             pendingUpgrade: data.pendingUpgrade ?? state.pendingUpgrade,
             pendingDowngrade: data.pendingDowngrade ?? state.pendingDowngrade,
             nextBillingDate: data.nextBillingDate ?? state.nextBillingDate,

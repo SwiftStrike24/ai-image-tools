@@ -330,7 +330,54 @@ async function upgradeSubscription(userId: string, stripeCustomerId: string, red
   let subscription = subscriptions.data[0];
 
   if (!subscription) {
-    return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
+    // If there's no active subscription, create a new one
+    if (subAction === 'confirm') {
+      const newSubscription = await stripe.subscriptions.create({
+        customer: stripeCustomerId,
+        items: [{ price: newPlanId }],
+      });
+
+      const newPlan = await stripe.prices.retrieve(newPlanId);
+      const newProductId = newPlan.product as string;
+      const newProduct = await stripe.products.retrieve(newProductId);
+      let subscriptionTier: SubscriptionTier = 'basic';
+
+      switch (newProduct.name.toLowerCase()) {
+        case 'pro':
+          subscriptionTier = 'pro';
+          break;
+        case 'premium':
+          subscriptionTier = 'premium';
+          break;
+        case 'ultimate':
+          subscriptionTier = 'ultimate';
+          break;
+      }
+
+      await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, subscriptionTier);
+
+      await supabaseAdmin
+        .from('subscriptions')
+        .upsert({
+          clerk_id: userId,
+          plan: subscriptionTier,
+          status: 'active',
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'clerk_id'
+        });
+
+      return NextResponse.json({ 
+        message: 'Subscription created successfully',
+        newSubscriptionTier: subscriptionTier
+      });
+    } else {
+      // For 'calculate' action, return 0 as there's no proration
+      return NextResponse.json({ 
+        proratedAmount: 0,
+        currentPlanId: null
+      });
+    }
   }
 
   if (subAction === 'calculate') {

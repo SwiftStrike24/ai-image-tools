@@ -4,6 +4,7 @@ import { getRedisClient } from "@/lib/redis";
 import Stripe from 'stripe';
 import { RedisClientType } from 'redis';
 import { getSubscriptionData as getStripeSubscriptionData, updateRedisWithSubscriptionData as updateRedisData } from '@/lib/subscriptionUtils';
+import { saveUserToSupabase, getUserSubscription } from '@/lib/supabase';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -81,6 +82,7 @@ export async function GET(request: Request) {
   const { userId } = auth();
 
   if (!userId) {
+    console.log('User not authenticated');
     return NextResponse.json({ 
       error: 'Unauthorized',
       subscriptionType: 'basic',
@@ -115,6 +117,24 @@ export async function GET(request: Request) {
 
     if (stripeCustomerId) {
       subscriptionData = await getStripeSubscriptionData(userId, stripeCustomerId);
+    } else {
+      // If there's no Stripe customer ID, check Supabase for the user's subscription
+      const supabaseSubscription = await getUserSubscription(userId);
+      if (supabaseSubscription) {
+        subscriptionData = {
+          subscriptionType: supabaseSubscription.plan,
+          nextBillingDate: null, // Supabase doesn't store this information
+          status: supabaseSubscription.status,
+        };
+      } else {
+        // If no subscription found in Supabase, save the user and create a basic subscription
+        await saveUserToSupabase(userId);
+        subscriptionData = {
+          subscriptionType: 'basic',
+          nextBillingDate: null,
+          status: 'active',
+        };
+      }
     }
 
     await updateRedisData(redisClient, userId, subscriptionData);

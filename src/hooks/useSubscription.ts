@@ -70,16 +70,21 @@ export function useSubscription(type: 'generator' | 'upscaler' | 'enhance_prompt
     }
   }, [type, fetchSubscriptionType]);
 
+  const refreshSubscriptionData = useCallback(async () => {
+    await fetchSubscriptionType();
+    await fetchUsage();
+  }, [fetchSubscriptionType, fetchUsage]);
+
   useEffect(() => {
-    fetchUsage();
-    const intervalId = setInterval(fetchUsage, 30000); // Fetch every 30 seconds
+    refreshSubscriptionData();
+    const intervalId = setInterval(refreshSubscriptionData, 30000); // Refresh every 30 seconds
     return () => {
       clearInterval(intervalId);
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
     };
-  }, [fetchUsage]);
+  }, [refreshSubscriptionData]);
 
   const checkAndUpdateLimit = useCallback(async (count: number = 1) => {
     let result;
@@ -107,6 +112,7 @@ export function useSubscription(type: 'generator' | 'upscaler' | 'enhance_prompt
     resetsIn,
     isLoading,
     checkAndUpdateLimit,
-    fetchUsage
+    fetchUsage,
+    refreshSubscriptionData // Add this new function to the return object
   };
 }

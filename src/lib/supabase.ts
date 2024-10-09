@@ -1,84 +1,140 @@
-import { createClient } from '@supabase/supabase-js'
-import { Database } from '@/types/database.types'
-import { getRedisClient } from "@/lib/redis";
-import { clerkClient } from "@clerk/nextjs/server";
+import { createClient } from '@supabase/supabase-js';
+import { Database } from '@/types/database.types';
+import { getRedisClient } from '@/lib/redis';
+import { clerkClient } from '@clerk/nextjs/server';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
-  throw new Error('Missing Supabase environment variables')
+  throw new Error('Missing Supabase environment variables');
 }
 
 // Client for client-side operations
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
 // Client for server-side operations with elevated permissions
 export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
   auth: {
     autoRefreshToken: false,
-    persistSession: false
-  }
-})
+    persistSession: false,
+  },
+});
 
+/**
+ * Creates or updates a user in Supabase.
+ * @param id - The Clerk user ID.
+ * @param email - The user's email address.
+ * @param username - The user's username.
+ */
 export async function createUserInSupabase(id: string, email: string, username: string) {
   try {
-    await supabaseAdmin
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
-      .upsert({
-        clerk_id: id,
-        email: email,
-        username: username,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'clerk_id',
-      });
+      .upsert(
+        {
+          clerk_id: id,
+          email: email,
+          username: username || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'clerk_id',
+        }
+      )
+      .select();
 
-    await supabaseAdmin
+    if (userError) {
+      console.error('Error upserting user:', userError);
+      throw userError;
+    }
+
+    console.log('User upserted in Supabase:', userData);
+
+    const { data: subscriptionData, error: subscriptionError } = await supabaseAdmin
       .from('subscriptions')
-      .upsert({
-        clerk_id: id,
-        username: username,
-        plan: 'basic',
-        status: 'active',
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'clerk_id',
-      });
+      .upsert(
+        {
+          clerk_id: id,
+          username: username || null,
+          plan: 'basic',
+          status: 'active',
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'clerk_id',
+        }
+      )
+      .select();
+
+    if (subscriptionError) {
+      console.error('Error upserting subscription:', subscriptionError);
+      throw subscriptionError;
+    }
+
+    console.log('Subscription upserted in Supabase:', subscriptionData);
 
     await syncUserDataWithRedis(id);
   } catch (error) {
+    console.error('Error in createUserInSupabase:', error);
     throw error;
   }
 }
 
+/**
+ * Updates a user in Supabase.
+ * @param id - The Clerk user ID.
+ * @param email - The user's email address.
+ * @param username - The user's username.
+ */
 export async function updateUserInSupabase(id: string, email: string, username: string) {
   try {
-    await supabaseAdmin
+    const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .update({
         email: email,
-        username: username,
+        username: username || null,
         updated_at: new Date().toISOString(),
       })
-      .eq('clerk_id', id);
+      .eq('clerk_id', id)
+      .select();
 
-    await supabaseAdmin
+    if (userError) {
+      console.error('Error updating user:', userError);
+      throw userError;
+    }
+
+    console.log('User updated in Supabase:', userData);
+
+    const { data: subscriptionData, error: subscriptionError } = await supabaseAdmin
       .from('subscriptions')
       .update({
-        username: username,
+        username: username || null,
         updated_at: new Date().toISOString(),
       })
-      .eq('clerk_id', id);
+      .eq('clerk_id', id)
+      .select();
+
+    if (subscriptionError) {
+      console.error('Error updating subscription:', subscriptionError);
+      throw subscriptionError;
+    }
+
+    console.log('Subscription updated in Supabase:', subscriptionData);
 
     await syncUserDataWithRedis(id);
   } catch (error) {
+    console.error('Error in updateUserInSupabase:', error);
     throw error;
   }
 }
 
+/**
+ * Deletes a user and related data from Supabase and Redis.
+ * @param clerkId - The Clerk user ID.
+ */
 export async function deleteUserFromSupabase(clerkId: string) {
   try {
     console.log(`Attempting to delete user ${clerkId} from Supabase`);
@@ -95,7 +151,7 @@ export async function deleteUserFromSupabase(clerkId: string) {
     } else {
       console.log(`Deleted subscription for user ${clerkId}:`, deletedSubscription);
     }
-    
+
     // Delete from users table
     const { data: deletedUser, error: userError } = await supabaseAdmin
       .from('users')
@@ -108,7 +164,7 @@ export async function deleteUserFromSupabase(clerkId: string) {
     } else {
       console.log(`Deleted user ${clerkId}:`, deletedUser);
     }
-    
+
     // Delete from Redis
     try {
       const redisClient = await getRedisClient();
@@ -119,21 +175,6 @@ export async function deleteUserFromSupabase(clerkId: string) {
       console.error('Error deleting user data from Redis:', redisError);
     }
 
-    // Check if the user was actually deleted
-    const { data: checkUser, error: checkError } = await supabaseAdmin
-      .from('users')
-      .select()
-      .eq('clerk_id', clerkId)
-      .single();
-
-    if (checkError && checkError.code === 'PGRST116') {
-      console.log(`Confirmed: User ${clerkId} no longer exists in the users table`);
-    } else if (checkUser) {
-      console.error(`User ${clerkId} still exists in the users table after deletion attempt`);
-    } else {
-      console.error('Error checking user deletion:', checkError);
-    }
-
     console.log(`User ${clerkId} and related data deletion process completed`);
   } catch (error) {
     console.error('Error in deleteUserFromSupabase:', error);
@@ -141,11 +182,19 @@ export async function deleteUserFromSupabase(clerkId: string) {
   }
 }
 
+/**
+ * Logs when a session is created.
+ * @param userId - The Clerk user ID.
+ */
 export async function logSessionCreated(userId: string) {
   console.log(`Session created for user ${userId}`);
   // Placeholder for future session tracking functionality
 }
 
+/**
+ * Tests the Supabase connection.
+ * @returns True if the connection is successful; otherwise, false.
+ */
 export async function testSupabaseConnection() {
   try {
     const { data, error } = await supabase.from('users').select('*').limit(1);
@@ -158,6 +207,11 @@ export async function testSupabaseConnection() {
   }
 }
 
+/**
+ * Retrieves the user's subscription from Supabase.
+ * @param userId - The Clerk user ID.
+ * @returns The subscription data or null.
+ */
 export async function getUserSubscription(userId: string) {
   try {
     const { data, error } = await supabaseAdmin
@@ -168,23 +222,26 @@ export async function getUserSubscription(userId: string) {
 
     if (error) {
       if (error.code === 'PGRST116') {
-        // No subscription found, create a default basic subscription
-        console.log(`No subscription found for user ${userId}, creating default basic subscription`);
-        return createBasicSubscription(userId);
+        // No subscription found
+        console.log(`No subscription found for user ${userId}`);
+        return null;
       }
       console.error('Error fetching user subscription:', error);
-      // Instead of throwing, return null or a default subscription
-      return { plan: 'basic', status: 'active', username: null };
+      return null;
     }
 
     return data;
   } catch (error) {
     console.error('Unexpected error fetching user subscription:', error);
-    // Instead of throwing, return null or a default subscription
-    return { plan: 'basic', status: 'active', username: null };
+    return null;
   }
 }
 
+/**
+ * Retrieves the user's usage from Supabase.
+ * @param userId - The Clerk user ID.
+ * @returns The usage data or null.
+ */
 export async function getUserUsage(userId: string) {
   try {
     const { data, error } = await supabaseAdmin
@@ -205,6 +262,10 @@ export async function getUserUsage(userId: string) {
   }
 }
 
+/**
+ * Syncs user data with Redis.
+ * @param userId - The Clerk user ID.
+ */
 export async function syncUserDataWithRedis(userId: string) {
   try {
     const subscription = await getUserSubscription(userId);
@@ -218,17 +279,23 @@ export async function syncUserDataWithRedis(userId: string) {
   }
 }
 
-export async function createBasicSubscription(userId: string): Promise<{ plan: string; status: string; username: string | null; } | null> {
+/**
+ * Creates a basic subscription for a user.
+ * @param userId - The Clerk user ID.
+ * @returns The subscription data or null.
+ */
+export async function createBasicSubscription(
+  userId: string
+): Promise<{ plan: string; status: string; username: string | null } | null> {
   try {
-    const user = await clerkClient().users.getUser(userId);
-    const username = user.username || `${user.firstName} ${user.lastName}`.trim() || null;
-    const email = user.emailAddresses[0]?.emailAddress || '';
+    const user = await clerkClient.users.getUser(userId);
+    const username = user.username || `${user.firstName || ''} ${user.lastName || ''}`.trim() || null;
 
     // Check if user already exists
     const { data: existingUser, error: fetchError } = await supabaseAdmin
       .from('users')
       .select('*')
-      .eq('email', email)
+      .eq('clerk_id', userId)
       .single();
 
     if (fetchError && fetchError.code !== 'PGRST116') {
@@ -243,15 +310,18 @@ export async function createBasicSubscription(userId: string): Promise<{ plan: s
     // Upsert subscription
     const { data, error } = await supabaseAdmin
       .from('subscriptions')
-      .upsert({
-        clerk_id: userId,
-        username: username,
-        plan: 'basic',
-        status: 'active',
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'clerk_id',
-      })
+      .upsert(
+        {
+          clerk_id: userId,
+          username: username,
+          plan: 'basic',
+          status: 'active',
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'clerk_id',
+        }
+      )
       .select();
 
     if (error) throw error;
@@ -263,17 +333,22 @@ export async function createBasicSubscription(userId: string): Promise<{ plan: s
   }
 }
 
+/**
+ * Saves or updates a user in Supabase.
+ * @param userId - The Clerk user ID.
+ * @returns The user and subscription data.
+ */
 export async function saveUserToSupabase(userId: string) {
   try {
     const user = await clerkClient.users.getUser(userId);
     const email = user.emailAddresses[0]?.emailAddress || '';
-    const username = user.username || `${user.firstName} ${user.lastName}`.trim() || null;
+    const username = user.username || `${user.firstName || ''} ${user.lastName || ''}`.trim() || null;
 
-    // Check if user already exists by email
+    // Check if user already exists by clerk_id
     const { data: existingUser, error: fetchError } = await supabaseAdmin
       .from('users')
       .select('*')
-      .eq('email', email)
+      .eq('clerk_id', userId)
       .single();
 
     if (fetchError && fetchError.code !== 'PGRST116') {
@@ -286,8 +361,7 @@ export async function saveUserToSupabase(userId: string) {
       const { data, error: insertError } = await supabaseAdmin
         .from('users')
         .insert({
-          id: user.id,
-          clerk_id: user.id,
+          clerk_id: userId,
           email: email,
           username: username,
           created_at: new Date().toISOString(),
@@ -297,40 +371,45 @@ export async function saveUserToSupabase(userId: string) {
 
       if (insertError) throw insertError;
       userData = data[0];
-      console.log('New user saved in Supabase:', userId);
+      console.log('New user saved in Supabase:', userData);
     } else {
       // Update existing user
       const { data, error: updateError } = await supabaseAdmin
         .from('users')
         .update({
-          clerk_id: user.id,
+          email: email,
           username: username,
           updated_at: new Date().toISOString(),
         })
-        .eq('email', email)
+        .eq('clerk_id', userId)
         .select();
 
       if (updateError) throw updateError;
       userData = data[0];
-      console.log('Existing user updated in Supabase:', userId);
+      console.log('Existing user updated in Supabase:', userData);
     }
 
     // Upsert subscription
     const { data: subscriptionData, error: subscriptionError } = await supabaseAdmin
       .from('subscriptions')
-      .upsert({
-        clerk_id: user.id,
-        username: username,
-        plan: 'basic',
-        status: 'active',
-        updated_at: new Date().toISOString(),
-      }, {
-        onConflict: 'clerk_id',
-      })
+      .upsert(
+        {
+          clerk_id: userId,
+          username: username,
+          plan: 'basic',
+          status: 'active',
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'clerk_id',
+        }
+      )
       .select();
 
     if (subscriptionError) throw subscriptionError;
-    console.log('Subscription created/updated for user:', userId);
+    console.log('Subscription created/updated for user:', subscriptionData[0]);
+
+    await syncUserDataWithRedis(userId);
 
     return { user: userData, subscription: subscriptionData[0] };
   } catch (error) {

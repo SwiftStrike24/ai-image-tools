@@ -2,23 +2,30 @@ import { NextResponse } from 'next/server';
 import { Webhook, WebhookRequiredHeaders } from 'svix';
 import { headers } from 'next/headers';
 import { WebhookEvent } from '@clerk/nextjs/server';
-import { createUserInSupabase, updateUserInSupabase, deleteUserFromSupabase, logSessionCreated } from '@/lib/supabase';
+import {
+  createUserInSupabase,
+  updateUserInSupabase,
+  deleteUserFromSupabase,
+  logSessionCreated,
+} from '@/lib/supabase';
 
 const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
 
+/**
+ * Handles Clerk webhook events.
+ * @param req - The incoming request.
+ * @returns The response after processing.
+ */
 export async function POST(req: Request) {
-  console.log('[INFO] Webhook received');
+  console.log('[INFO] Clerk Webhook received');
   try {
     // Get the raw body as a string
     const rawBody = await req.text();
-    console.log('[DEBUG] Raw body:', rawBody.substring(0, 100) + '...');
 
     const headerPayload = headers();
-    const svixId = headerPayload.get("svix-id");
-    const svixTimestamp = headerPayload.get("svix-timestamp");
-    const svixSignature = headerPayload.get("svix-signature");
-
-    console.log('[DEBUG] Webhook headers:', { svixId, svixTimestamp, svixSignature: svixSignature?.substring(0, 10) + '...' });
+    const svixId = headerPayload.get('svix-id');
+    const svixTimestamp = headerPayload.get('svix-timestamp');
+    const svixSignature = headerPayload.get('svix-signature');
 
     if (!svixId || !svixTimestamp || !svixSignature) {
       console.error('[ERROR] Missing svix headers');
@@ -31,12 +38,11 @@ export async function POST(req: Request) {
     }
 
     const svixHeaders: WebhookRequiredHeaders = {
-      "svix-id": svixId,
-      "svix-timestamp": svixTimestamp,
-      "svix-signature": svixSignature,
+      'svix-id': svixId,
+      'svix-timestamp': svixTimestamp,
+      'svix-signature': svixSignature,
     };
 
-    console.log('[INFO] Verifying webhook signature');
     const wh = new Webhook(webhookSecret);
     let evt: WebhookEvent;
 
@@ -60,6 +66,8 @@ export async function POST(req: Request) {
           if (id && primaryEmail) {
             await createUserInSupabase(id, primaryEmail, username || '');
             console.log(`[INFO] User created in Supabase: ${id}`);
+          } else {
+            console.error('[ERROR] Missing user ID or email in user.created event');
           }
           break;
 
@@ -70,6 +78,8 @@ export async function POST(req: Request) {
           if (updatedUser.id && updatedEmail) {
             await updateUserInSupabase(updatedUser.id, updatedEmail, updatedUser.username || '');
             console.log(`[INFO] User updated in Supabase: ${updatedUser.id}`);
+          } else {
+            console.error('[ERROR] Missing user ID or email in user.updated event');
           }
           break;
 
@@ -78,6 +88,8 @@ export async function POST(req: Request) {
           if (typeof evt.data.id === 'string') {
             await deleteUserFromSupabase(evt.data.id);
             console.log(`[INFO] User deleted from Supabase: ${evt.data.id}`);
+          } else {
+            console.error('[ERROR] Missing user ID in user.deleted event');
           }
           break;
 
@@ -86,6 +98,8 @@ export async function POST(req: Request) {
           if (typeof evt.data.user_id === 'string') {
             await logSessionCreated(evt.data.user_id);
             console.log(`[INFO] Session created logged for user: ${evt.data.user_id}`);
+          } else {
+            console.error('[ERROR] Missing user ID in session.created event');
           }
           break;
 
