@@ -160,6 +160,15 @@ Logging and Monitoring
 - Implement comprehensive logging for debugging and monitoring.
 - Use error tracking services to catch and diagnose issues in production.
 - Log important events in subscription management for auditing purposes.
+- Implement detailed, structured logging for database operations and user actions:
+  - Use console.log with JSON.stringify for objects, with 2-space indentation.
+  - Include descriptive messages before the logged object.
+  - Example format:
+    console.log('Existing user updated in Supabase:', JSON.stringify(user, null, 2));
+    console.log('Subscription created/updated for user:', JSON.stringify(subscription, null, 2));
+    console.log('User data synced with Redis:', userId);
+- Ensure logs provide clear context and are easily readable for debugging.
+- Maintain consistent logging style across the application for better traceability.
 
 Continuous Optimization
 - Regularly review and optimize existing code for performance and maintainability.

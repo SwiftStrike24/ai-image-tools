@@ -95,61 +95,57 @@ export async function GET(request: Request) {
   }
 
   try {
+    console.log(`Fetching subscription info for user ${userId}`);
     const redisClient = await getRedisClient();
     const cacheKey = `${CACHE_KEY_PREFIX}${userId}`;
 
-    // Try to get subscription data from cache
+    // Keep the cache check, but add logging
     const cachedData = await redisClient.get(cacheKey);
-
     if (cachedData) {
       const responseData = JSON.parse(cachedData);
+      console.log(`Cached subscription data for user ${userId}:`, JSON.stringify(responseData, null, 2));
       return NextResponse.json(responseData);
     }
 
-    // If not cached, proceed to fetch data
     const stripeCustomerId = await redisClient.get(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
+    console.log(`Stripe customer ID for user ${userId}:`, stripeCustomerId);
 
     let subscriptionData: {
       subscriptionType: string;
       nextBillingDate: string | null;
       status: string;
-    } = { subscriptionType: 'basic', nextBillingDate: null, status: 'inactive' };
+    };
 
     if (stripeCustomerId) {
       subscriptionData = await getStripeSubscriptionData(userId, stripeCustomerId);
+      console.log(`Stripe subscription data for user ${userId}:`, JSON.stringify(subscriptionData, null, 2));
     } else {
-      // If there's no Stripe customer ID, check Supabase for the user's subscription
       const supabaseSubscription = await getUserSubscription(userId);
       if (supabaseSubscription) {
         subscriptionData = {
           subscriptionType: supabaseSubscription.plan,
-          nextBillingDate: null, // Supabase doesn't store this information
+          nextBillingDate: null,
           status: supabaseSubscription.status,
         };
+        console.log(`Supabase subscription data for user ${userId}:`, JSON.stringify(subscriptionData, null, 2));
       } else {
-        // If no subscription found in Supabase, save the user and create a basic subscription
         await saveUserToSupabase(userId);
         subscriptionData = {
           subscriptionType: 'basic',
           nextBillingDate: null,
           status: 'active',
         };
+        console.log(`New basic subscription created for user ${userId}`);
       }
     }
 
     await updateRedisData(redisClient, userId, subscriptionData);
 
-    // Fetch pendingUpgrade, pendingDowngrade, currentSubscription
-    const pipeline = redisClient.multi();
-    pipeline.get(`${PENDING_DOWNGRADE_KEY_PREFIX}${userId}`);
-    pipeline.get(`${PENDING_UPGRADE_KEY_PREFIX}${userId}`);
-    pipeline.get(`${SUBSCRIPTION_KEY_PREFIX}${userId}`);
-    const results = await pipeline.exec();
-    const [pendingDowngradeResult, pendingUpgradeResult, currentSubscriptionResult] = results as [string | null, string | null, string | null];
-
-    const pendingDowngrade = pendingDowngradeResult;
-    const pendingUpgrade = pendingUpgradeResult;
-    const currentSubscription = currentSubscriptionResult;
+    const [pendingDowngrade, pendingUpgrade, currentSubscription] = await Promise.all([
+      redisClient.get(`${PENDING_DOWNGRADE_KEY_PREFIX}${userId}`),
+      redisClient.get(`${PENDING_UPGRADE_KEY_PREFIX}${userId}`),
+      redisClient.get(`${SUBSCRIPTION_KEY_PREFIX}${userId}`)
+    ]);
 
     const responseData = { 
       ...subscriptionData,
@@ -158,13 +154,15 @@ export async function GET(request: Request) {
       currentSubscription: currentSubscription || subscriptionData.subscriptionType
     };
 
-    // Cache the response data
+    // Keep caching, but add logging
     await redisClient.set(
       cacheKey,
       JSON.stringify(responseData),
       { EX: getRandomTTL(BASE_CACHE_TTL) }
     );
+    console.log(`Updated cache for user ${userId}`);
 
+    console.log(`Returning subscription info for user ${userId}:`, JSON.stringify(responseData, null, 2));
     return NextResponse.json(responseData);
   } catch (error) {
     console.error("Error checking subscription:", error);

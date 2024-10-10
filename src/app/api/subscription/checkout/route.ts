@@ -13,13 +13,11 @@ const STRIPE_CUSTOMER_KEY_PREFIX = "stripe_customer:";
 const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
 
 function getBaseUrl() {
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL;
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+  if (!baseUrl) {
+    throw new Error('NEXT_PUBLIC_BASE_URL is not set. Please set it in your environment variables.');
   }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  return process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  return baseUrl;
 }
 
 async function updateSubscriptionInfo(userId: string, subscriptionId: string) {

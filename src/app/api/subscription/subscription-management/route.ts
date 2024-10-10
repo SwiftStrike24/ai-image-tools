@@ -178,53 +178,57 @@ async function cancelSubscription(userId: string, stripeCustomerId: string, redi
 
 
 async function cancelDowngrade(userId: string, stripeCustomerId: string, redisClient: RedisClientType) {
-  const schedules = await stripe.subscriptionSchedules.list({
+  const subscriptions = await stripe.subscriptions.list({
     customer: stripeCustomerId,
+    status: 'active',
     limit: 1,
   });
 
-  if (schedules.data.length > 0) {
-    const currentSchedule = schedules.data[0];
+  if (subscriptions.data.length > 0) {
+    const subscription = subscriptions.data[0];
 
-    if (currentSchedule.status === 'active' || currentSchedule.status === 'not_started') {
-      await stripe.subscriptionSchedules.release(currentSchedule.id);
+    if (subscription.cancel_at_period_end) {
+      // If the subscription is set to cancel at period end, remove the cancellation
+      await stripe.subscriptions.update(subscription.id, {
+        cancel_at_period_end: false,
+      });
+
+      console.log(`Cancelled downgrade for subscription ${subscription.id}`);
     }
 
-    const subscriptions = await stripe.subscriptions.list({
+    // Check for any pending subscription schedule
+    const schedules = await stripe.subscriptionSchedules.list({
       customer: stripeCustomerId,
-      status: 'active',
       limit: 1,
     });
 
-    if (subscriptions.data.length > 0) {
-      const subscription = subscriptions.data[0];
-      await updateUserSubscription(userId, subscription, redisClient);
-    }
+    if (schedules.data.length > 0) {
+      const currentSchedule = schedules.data[0];
 
-    await redisClient.del(`${PENDING_DOWNGRADE_KEY_PREFIX}${userId}`);
-
-    return NextResponse.json({ message: 'Downgrade cancelled successfully' });
-  } else {
-    const subscriptions = await stripe.subscriptions.list({
-      customer: stripeCustomerId,
-      status: 'active',
-      limit: 1,
-    });
-
-    if (subscriptions.data.length > 0) {
-      const subscription = subscriptions.data[0];
-      if (subscription.cancel_at_period_end) {
-        await stripe.subscriptions.update(subscription.id, {
-          cancel_at_period_end: false,
-        });
-
-        await updateUserSubscription(userId, subscription, redisClient);
-
-        return NextResponse.json({ message: 'Cancellation removed successfully' });
+      if (currentSchedule.status === 'active' || currentSchedule.status === 'not_started') {
+        await stripe.subscriptionSchedules.release(currentSchedule.id);
+        console.log(`Released subscription schedule ${currentSchedule.id}`);
       }
     }
 
-    return NextResponse.json({ message: 'No pending downgrade or cancellation found' });
+    await updateUserSubscription(userId, subscription, redisClient);
+
+    await redisClient.del(`${PENDING_DOWNGRADE_KEY_PREFIX}${userId}`);
+    await redisClient.del(`${CANCELLATION_DATE_KEY_PREFIX}${userId}`);
+
+    await supabaseAdmin
+      .from('subscriptions')
+      .update({
+        pending_downgrade: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('clerk_id', userId);
+
+    await invalidateCache(userId);
+
+    return NextResponse.json({ message: 'Downgrade cancelled successfully' });
+  } else {
+    return NextResponse.json({ message: 'No active subscription found' }, { status: 400 });
   }
 }
 
@@ -367,6 +371,9 @@ async function upgradeSubscription(userId: string, stripeCustomerId: string, red
           onConflict: 'clerk_id'
         });
 
+      await invalidateCache(userId);
+      console.log(`Subscription upgraded for user ${userId} to ${subscriptionTier}`);
+
       return NextResponse.json({ 
         message: 'Subscription created successfully',
         newSubscriptionTier: subscriptionTier
@@ -436,6 +443,9 @@ async function upgradeSubscription(userId: string, stripeCustomerId: string, red
         onConflict: 'clerk_id'
       });
 
+    await invalidateCache(userId);
+    console.log(`Subscription upgraded for user ${userId} to ${subscriptionTier}`);
+
     return NextResponse.json({ 
       message: 'Subscription upgraded successfully',
       newSubscriptionTier: subscriptionTier
@@ -490,6 +500,9 @@ async function upgradeSubscription(userId: string, stripeCustomerId: string, red
       })
       .eq('clerk_id', userId);
 
+    await invalidateCache(userId);
+    console.log(`Subscription upgraded for user ${userId} to ${subscriptionTier}`);
+
     return NextResponse.json({ 
       message: 'Subscription upgrade scheduled successfully',
       pendingUpgrade: subscriptionTier,
@@ -522,6 +535,8 @@ async function renewSubscription(userId: string, stripeCustomerId: string, redis
   await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
   await redisClient.del(`${CANCELLATION_DATE_KEY_PREFIX}${userId}`);
 
+  await invalidateCache(userId);
+
   return NextResponse.json({ nextBillingDate });
 }
 
@@ -547,17 +562,25 @@ async function updateUserSubscription(userId: string, subscription: Stripe.Subsc
   const nextBillingDate = new Date(subscription.current_period_end * 1000).toISOString();
   await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
 
+  if (subscription.cancel_at_period_end) {
+    await redisClient.set(`${CANCELLATION_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
+  } else {
+    await redisClient.del(`${CANCELLATION_DATE_KEY_PREFIX}${userId}`);
+  }
+
   // Update Supabase
   await supabaseAdmin
     .from('subscriptions')
     .update({
       plan: subscriptionTier,
-      status: 'active',
+      status: subscription.cancel_at_period_end ? 'canceling' : 'active',
       updated_at: new Date().toISOString(),
     })
     .eq('clerk_id', userId);
 
-  console.log(`Updated subscription for user ${userId} to ${subscriptionTier}`);
+  console.log(`Updated subscription for user ${userId} to ${subscriptionTier}, status: ${subscription.cancel_at_period_end ? 'canceling' : 'active'}`);
+
+  await invalidateCache(userId);
 }
 
 
