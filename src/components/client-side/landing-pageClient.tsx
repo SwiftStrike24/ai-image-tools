@@ -128,7 +128,7 @@ export default function LandingPage() {
   const faqs: FAQ[] = [
     {
       question: "What's included in the free tier?",
-      answer: "5 image upscales, 5 image generations, and 5 prompt enhancements per day during generation. Choose your LLM for prompt enhancement."
+      answer: "10 image upscales, 10 image generations, and 10 prompt enhancements per day during generation. Choose your LLM for prompt enhancement."
     },
     {
       question: "Which AI models do you use?",

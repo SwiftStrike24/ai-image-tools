@@ -12,9 +12,9 @@ export const plans: Plan[] = [
     name: 'Basic',
     price: '$0',
     features: [
-      '5 upscales/day & 5 generations/day',
+      '10 upscales/day & 10 generations/day',
       'Upscale options: 2x and 4x only',
-      '5 prompt enhancements/day',
+      '10 prompt enhancements/day',
       'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
     ],
     cta: 'Get Started',
@@ -60,16 +60,15 @@ export const plans: Plan[] = [
 ]
 
 export const featureComparison = [
-  { name: 'Upscales/month', free: '150', pro: '1000', premium: '2000', ultimate: '4000' },
-  { name: 'Generations/month', free: '150', pro: '1000', premium: '2000', ultimate: '4000' },
+  { name: 'Upscales/month', free: '300', pro: '1000', premium: '2000', ultimate: '4000' },
+  { name: 'Generations/month', free: '300', pro: '1000', premium: '2000', ultimate: '4000' },
   { name: 'Max upscale option', free: '4x', pro: '8x', premium: '10x', ultimate: 'All options' },
   { 
     name: 'Prompt enhancements/month', 
-    free: '150', 
-    pro: 'Unlimited*', 
-    premium: 'Unlimited*', 
-    ultimate: 'Unlimited*',
-    note: 'Limited to the number of generations per month'
+    free: '300', 
+    pro: 'Unlimited', 
+    premium: 'Unlimited', 
+    ultimate: 'Unlimited'
   },
   { name: 'AI model choice', free: 'Yes', pro: 'Yes', premium: 'Yes', ultimate: 'Yes + GPT-4o' },
 ]

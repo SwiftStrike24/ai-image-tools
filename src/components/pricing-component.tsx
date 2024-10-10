@@ -369,13 +369,6 @@ export function PricingComponentComponent() {
                   <tr key={index} className={index % 2 === 0 ? 'bg-gray-800 bg-opacity-30' : 'bg-gray-800 bg-opacity-10'}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">
                       {feature.name}
-                      {feature.note && (
-                        <div className="mt-1 text-xs text-gray-400 font-normal">
-                          <span className="inline-block px-2 py-1 rounded-full bg-gray-700 bg-opacity-50">
-                            * {feature.note}
-                          </span>
-                        </div>
-                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                       {feature.free}
@@ -393,6 +386,9 @@ export function PricingComponentComponent() {
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="mt-4 text-sm text-gray-400 text-right">
+            * Prompt enhancements are limited to the number of generations per month
           </div>
         </motion.div>
       </div>
