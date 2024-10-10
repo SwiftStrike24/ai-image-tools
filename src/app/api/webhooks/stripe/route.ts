@@ -4,6 +4,7 @@ import { getRedisClient } from "@/lib/redis";
 import { SubscriptionTier } from '@/actions/rateLimit';
 import { headers } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase';
+import { pusherServer } from '@/lib/pusher';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -19,7 +20,7 @@ const PENDING_UPGRADE_KEY_PREFIX = "pending_upgrade:";
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 export async function POST(req: Request) {
-  console.log('Webhook received'); // Add this line for debugging
+  console.log('Webhook received');
 
   const rawBody = await req.text();
   const signature = headers().get('stripe-signature');
@@ -30,13 +31,14 @@ export async function POST(req: Request) {
   }
 
   console.log(`Received signature: ${signature}`);
+  console.log(`Webhook secret: ${webhookSecret.substring(0, 5)}...`); // Log first 5 chars of secret
   console.log(`Raw body (first 100 chars): ${rawBody.substring(0, 100)}...`);
 
   let event: Stripe.Event;
 
   try {
     event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-    console.log(`Event constructed: ${event.type}`); // Add this line for debugging
+    console.log(`Event constructed: ${event.type}`);
 
     // Process the event asynchronously
     handleEvent(event).catch(error => {
@@ -59,6 +61,8 @@ async function handleEvent(event: Stripe.Event) {
     console.log(`Event ${eventId} has already been processed. Skipping.`);
     return;
   }
+
+  console.log(`Processing event: ${event.type}, ID: ${eventId}`);
 
   try {
     switch (event.type) {
@@ -86,11 +90,12 @@ async function handleEvent(event: Stripe.Event) {
         console.log(`Received ${event.type} event, no action needed`);
     }
 
+    console.log(`Event ${eventId} processed successfully`);
     await redisClient.set(`${PROCESSED_EVENTS_KEY_PREFIX}${eventId}`, 'true', { EX: 60 * 60 * 24 });
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error('Error processing webhook:', error);
+    console.error(`Error processing webhook ${eventId}:`, error);
     return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
   }
 }
@@ -137,6 +142,11 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
     }
 
     await updateUserSubscription(userId, subscription);
+
+    // Notify client about subscription update
+    await pusherServer.trigger(`private-user-${userId}`, 'subscription-updated', {});
+
+    console.log(`Subscription updated for user ${userId}, client notified`);
   } catch (error) {
     console.error('Error handling subscription change:', error);
   }
