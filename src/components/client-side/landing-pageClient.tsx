@@ -519,7 +519,7 @@ export default function LandingPage() {
             </motion.footer>
           </main>
         </div>
-        <Dock className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+        <Dock>
           {dockItems.map((item, index) => (
             item.icon === 'separator' ? (
               <div key={index} className="w-px h-8 bg-gray-600 mx-2" />
