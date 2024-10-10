@@ -36,6 +36,7 @@ import { useSubscription } from '@/hooks/useSubscription'
 import UsageCounter from '@/components/UsageCounter'
 import Link from 'next/link'
 import { useDebounce } from '@/hooks/useDebounce'
+import BlurFade from "@/components/magicui/blur-fade"
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -786,41 +787,49 @@ export default function FluxAIImageGenerator() {
             {/* Generated Images Display */}
             <div className="space-y-4">
               {promptHistory.length > 0 && (
-                <ImageGrid
-                  key={`${resetKey}-${imageResults.length}-${generatedAspectRatio}-${numOutputs}`}
-                  imageResults={imageResults}
-                  generatedAspectRatio={generatedAspectRatio}
-                  isFocused={isFocused}
-                  focusedImageIndex={focusedImageIndex}
-                  handleImageClick={handleImageClick}
-                  handleCopySeed={handleCopySeed}
-                  handleDownload={handleDownload}
-                  isSimulationMode={isSimulationMode}
-                  downloadingIndex={downloadingIndex}
-                  showSeedInput={showSeedInput}
-                  numOutputs={numOutputs}
-                />
+                <BlurFade delay={0.2} duration={0.6} yOffset={10} blur="10px">
+                  <ImageGrid
+                    key={`${resetKey}-${imageResults.length}-${generatedAspectRatio}-${numOutputs}`}
+                    imageResults={imageResults}
+                    generatedAspectRatio={generatedAspectRatio}
+                    isFocused={isFocused}
+                    focusedImageIndex={focusedImageIndex}
+                    handleImageClick={handleImageClick}
+                    handleCopySeed={handleCopySeed}
+                    handleDownload={handleDownload}
+                    isSimulationMode={isSimulationMode}
+                    downloadingIndex={downloadingIndex}
+                    showSeedInput={showSeedInput}
+                    numOutputs={numOutputs}
+                  />
+                </BlurFade>
               )}
               {isFocused && (
-                <ShinyButton
-                  onClick={handleClearFocus}
-                  className="w-full py-2 md:py-3 text-base md:text-lg font-semibold"
-                  text="Clear Focus"
-                />
+                <BlurFade delay={0.3} duration={0.5}>
+                  <ShinyButton
+                    onClick={handleClearFocus}
+                    className="w-full py-2 md:py-3 text-base md:text-lg font-semibold"
+                    text="Clear Focus"
+                  />
+                </BlurFade>
               )}
               {followUpLevel > 1 && (
-                <ShinyButton
-                  onClick={goToPreviousFollowUp}
-                  className="w-full py-2 md:py-3 text-base md:text-lg font-semibold mt-2"
-                  text={`Go to Previous Follow-up (Level ${followUpLevel - 1})`}
-                />
+                <BlurFade delay={0.4} duration={0.5}>
+                  <ShinyButton
+                    onClick={goToPreviousFollowUp}
+                    className="w-full py-2 md:py-3 text-base md:text-lg font-semibold mt-2"
+                    text={`Go to Previous Follow-up (Level ${followUpLevel - 1})`}
+                  />
+                </BlurFade>
               )}
               {promptHistory.length > 0 && (
-                <ShinyButton
-                  onClick={handleNewImage}
-                  className="w-full py-2 md:py-3 text-base md:text-lg font-semibold"
-                  text="New Image(s)"
-                />
+                <BlurFade delay={0.5} duration={0.5}>
+                  <ShinyButton
+                    onClick={handleNewImage}
+                    className="w-full py-2 md:py-3 text-base md:text-lg font-semibold"
+                    text="New Image(s)"
+                  />
+                </BlurFade>
               )}
             </div>
           </div>
