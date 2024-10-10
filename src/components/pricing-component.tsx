@@ -343,50 +343,57 @@ export function PricingComponentComponent() {
           className="mt-16 overflow-hidden"
         >
           <h3 className="text-2xl font-bold text-center mb-8 text-gray-100">Feature Comparison</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full rounded-lg overflow-hidden bg-opacity-60 bg-gray-900 backdrop-blur-md">
-              <thead className="bg-gray-800 bg-opacity-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Feature
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Free
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Pro
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Premium
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    Ultimate
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-700">
-                {featureComparison.map((feature, index) => (
-                  <tr key={index} className={index % 2 === 0 ? 'bg-gray-800 bg-opacity-30' : 'bg-gray-800 bg-opacity-10'}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">
-                      {feature.name}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      {feature.free}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      {feature.pro}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      {feature.premium}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      {feature.ultimate}
-                    </td>
+          <MagicCard 
+            className="overflow-hidden rounded-xl"
+            gradientSize={50}  // Reduced from 1000 to 300
+            gradientColor="#FFFFFF"
+            gradientOpacity={0.15}  // Reduced from 0.15 to 0.1
+          >
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-opacity-60 bg-gray-900 backdrop-blur-md">
+                <thead className="bg-gray-800 bg-opacity-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Feature
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Free
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Pro
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Premium
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                      Ultimate
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {featureComparison.map((feature, index) => (
+                    <tr key={index} className={index % 2 === 0 ? 'bg-gray-800 bg-opacity-30' : 'bg-gray-800 bg-opacity-10'}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">
+                        {feature.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {feature.free}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {feature.pro}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {feature.premium}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {feature.ultimate}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </MagicCard>
           <div className="mt-4 text-sm text-gray-400 text-right">
             * Prompt enhancements are limited to the number of generations per month
           </div>
