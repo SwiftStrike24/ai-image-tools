@@ -394,7 +394,6 @@ export default function LandingPage() {
           repeatDelay={0}
         />
         
-        {/* Move NavBar outside of the relative z-20 div */}
         <NavBar />
         
         <div className="relative z-20">
