@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { Button } from "@/components/ui/button"
 import { Dock, DockIcon } from "@/components/ui/dock"
+import { NavBar } from "@/components/navbar"
 
 // Custom Components
 import { addToWaitlist } from '@/actions/waitlist-actions'
@@ -393,25 +394,11 @@ export default function LandingPage() {
           repeatDelay={0}
         />
         
+        {/* Move NavBar outside of the relative z-20 div */}
+        <NavBar />
+        
         <div className="relative z-20">
-          <motion.nav
-            className="p-4 flex justify-between items-center fixed w-full bg-black bg-opacity-50 backdrop-blur-md z-50"
-            variants={itemVariants}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 2, ease: "easeOut" }}
-            >
-              <HyperText
-                text="FluxScale AI"
-                className="text-2xl font-bold text-purple-500"
-                duration={2000}
-              />
-            </motion.div>
-          </motion.nav>
-          
-          <main className="container mx-auto px-4 py-16 pt-24">
+          <main className="container mx-auto px-4 py-16 pt-32"> {/* Increased top padding */}
             <BlurFade>
               <div className="flex justify-center items-center">
                 <AnimatedGradientText className="text-4xl md:text-6xl font-bold mb-4 text-center">
