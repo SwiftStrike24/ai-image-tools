@@ -149,9 +149,9 @@ export async function GET(request: Request) {
 
     const responseData = { 
       ...subscriptionData,
-      pendingUpgrade,
-      pendingDowngrade,
-      currentSubscription: currentSubscription || subscriptionData.subscriptionType
+      pendingUpgrade: null,
+      pendingDowngrade: null,
+      currentSubscription: subscriptionData.subscriptionType
     };
 
     // Keep caching, but add logging

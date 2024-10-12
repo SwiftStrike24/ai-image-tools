@@ -19,6 +19,11 @@ const PENDING_UPGRADE_KEY_PREFIX = "pending_upgrade:";
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+// Add this new export to handle OPTIONS requests
+export async function OPTIONS() {
+  return NextResponse.json({}, { status: 200 });
+}
+
 export async function POST(req: Request) {
   console.log('Webhook received');
 
@@ -31,7 +36,7 @@ export async function POST(req: Request) {
   }
 
   console.log(`Received signature: ${signature}`);
-  console.log(`Webhook secret: ${webhookSecret.substring(0, 5)}...`); // Log first 5 chars of secret
+  console.log(`Webhook secret: ${webhookSecret.substring(0, 5)}...`);
   console.log(`Raw body (first 100 chars): ${rawBody.substring(0, 100)}...`);
 
   let event: Stripe.Event;
@@ -85,6 +90,9 @@ async function handleEvent(event: Stripe.Event) {
         break;
       case 'subscription_schedule.completed':
         await handleSubscriptionScheduleCompleted(event.data.object as Stripe.SubscriptionSchedule);
+        break;
+      case 'subscription_schedule.released':
+        await handleSubscriptionScheduleReleased(event.data.object as Stripe.SubscriptionSchedule);
         break;
       default:
         console.log(`Received ${event.type} event, no action needed`);
@@ -280,8 +288,13 @@ async function updateUserSubscription(userId: string, subscription: Stripe.Subsc
         plan: subscriptionTier,
         status: 'active',
         updated_at: new Date().toISOString(),
+        pending_upgrade: null,
+        pending_downgrade: null,
       })
       .eq('clerk_id', userId);
+
+    // Notify client about subscription update
+    await pusherServer.trigger(`private-user-${userId}`, 'subscription-updated', {});
   } else if (subscription.status === 'canceled') {
     await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, 'basic');
     console.log(`Reset subscription for user ${userId} to basic due to cancellation`);
@@ -346,5 +359,51 @@ async function handleSubscriptionScheduleCompleted(schedule: Stripe.Subscription
     }
   } catch (error) {
     console.error('Error handling subscription schedule completion:', error);
+  }
+}
+
+async function handleSubscriptionScheduleReleased(schedule: Stripe.SubscriptionSchedule) {
+  console.log('Handling subscription_schedule.released event');
+  const userId = schedule.metadata?.userId;
+  if (!userId) {
+    console.error('Missing userId in subscription schedule metadata');
+    return;
+  }
+
+  try {
+    const redisClient = await getRedisClient();
+    
+    // Fetch the current active subscription
+    const subscriptions = await stripe.subscriptions.list({
+      customer: schedule.customer as string,
+      status: 'active',
+      limit: 1,
+    });
+
+    if (subscriptions.data.length > 0) {
+      const subscription = subscriptions.data[0];
+      // Update the subscription in Redis and Supabase to reflect the new active plan
+      await updateUserSubscription(userId, subscription);
+
+      // Remove any pending upgrades or downgrades from Redis
+      await redisClient.del(`${PENDING_UPGRADE_KEY_PREFIX}${userId}`);
+      await redisClient.del(`${PENDING_DOWNGRADE_KEY_PREFIX}${userId}`);
+
+      // Update Supabase to remove any pending changes
+      await supabaseAdmin
+        .from('subscriptions')
+        .update({
+          pending_upgrade: null,
+          pending_downgrade: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('clerk_id', userId);
+
+      console.log(`Applied scheduled subscription change for user ${userId}`);
+    } else {
+      console.error('No active subscription found after releasing schedule');
+    }
+  } catch (error) {
+    console.error('Error handling subscription schedule release:', error);
   }
 }
