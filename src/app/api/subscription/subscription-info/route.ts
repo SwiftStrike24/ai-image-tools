@@ -17,17 +17,7 @@ const SUBSCRIPTION_KEY_PREFIX = "user_subscription:";
 const PENDING_DOWNGRADE_KEY_PREFIX = "pending_downgrade:";
 const PENDING_UPGRADE_KEY_PREFIX = "pending_upgrade:";
 const CACHE_KEY_PREFIX = "subscription_cache:";
-const BASE_CACHE_TTL = 300; // 5 minutes in seconds
-
-/**
- * Get a random TTL based on the base TTL and a variance
- * @param baseTTL Base TTL in seconds
- * @param variance Variance in seconds
- * @returns Random TTL in seconds
- */
-function getRandomTTL(baseTTL: number, variance: number = 60) {
-  return baseTTL + Math.floor(Math.random() * variance);
-}
+const BASE_CACHE_TTL = 60; // Reduced to 1 minute
 
 /**
  * Get subscription data from Stripe
@@ -99,14 +89,6 @@ export async function GET(request: Request) {
     const redisClient = await getRedisClient();
     const cacheKey = `${CACHE_KEY_PREFIX}${userId}`;
 
-    // Keep the cache check, but add logging
-    const cachedData = await redisClient.get(cacheKey);
-    if (cachedData) {
-      const responseData = JSON.parse(cachedData);
-      console.log(`Cached subscription data for user ${userId}:`, JSON.stringify(responseData, null, 2));
-      return NextResponse.json(responseData);
-    }
-
     const stripeCustomerId = await redisClient.get(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
     console.log(`Stripe customer ID for user ${userId}:`, stripeCustomerId);
 
@@ -141,24 +123,23 @@ export async function GET(request: Request) {
 
     await updateRedisData(redisClient, userId, subscriptionData);
 
-    const [pendingDowngrade, pendingUpgrade, currentSubscription] = await Promise.all([
+    const [pendingDowngrade, pendingUpgrade] = await Promise.all([
       redisClient.get(`${PENDING_DOWNGRADE_KEY_PREFIX}${userId}`),
-      redisClient.get(`${PENDING_UPGRADE_KEY_PREFIX}${userId}`),
-      redisClient.get(`${SUBSCRIPTION_KEY_PREFIX}${userId}`)
+      redisClient.get(`${PENDING_UPGRADE_KEY_PREFIX}${userId}`)
     ]);
 
     const responseData = { 
       ...subscriptionData,
-      pendingUpgrade: null,
-      pendingDowngrade: null,
+      pendingUpgrade,
+      pendingDowngrade,
       currentSubscription: subscriptionData.subscriptionType
     };
 
-    // Keep caching, but add logging
+    // Update cache with new data
     await redisClient.set(
       cacheKey,
       JSON.stringify(responseData),
-      { EX: getRandomTTL(BASE_CACHE_TTL) }
+      { EX: BASE_CACHE_TTL }
     );
     console.log(`Updated cache for user ${userId}`);
 

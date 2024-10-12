@@ -5,7 +5,7 @@ import Stripe from 'stripe';
 import { SubscriptionTier } from '@/actions/rateLimit';
 import { supabaseAdmin } from '@/lib/supabase';
 import { invalidateCache } from '@/lib/subscriptionUtils';
-import { pusherServer } from '@/lib/pusher';
+import { triggerPusherEvent } from '@/lib/pusher';
 import { RedisClientType } from 'redis';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -33,10 +33,6 @@ async function retryOperation<T>(operation: () => Promise<T>): Promise<T> {
     }
   }
   throw lastError;
-}
-
-async function notifySubscriptionUpdate(userId: string) {
-  await pusherServer.trigger(`private-user-${userId}`, 'subscription-updated', {});
 }
 
 export async function POST(req: Request) {
@@ -108,7 +104,9 @@ export async function POST(req: Request) {
     }
 
     await invalidateCache(userId);
-    await notifySubscriptionUpdate(userId);
+    
+    // Trigger a single Pusher event after processing
+    await triggerPusherEvent(`private-user-${userId}`, 'subscription-updated', result);
 
     return NextResponse.json(result);
   } catch (error) {

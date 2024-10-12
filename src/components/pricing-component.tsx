@@ -13,10 +13,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { PlanContent } from '@/components/pricing/plan-content'
 import { plans, featureComparison } from '@/data/plans'
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
+import { getPusherClient } from '@/lib/pusher'
 
 export function PricingComponentComponent() {
   const [isMonthly, setIsMonthly] = useState(true)
-  const { isLoaded, isSignedIn } = useAuth()
+  const { isLoaded, isSignedIn, userId } = useAuth()
   const [isCancelling, setIsCancelling] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const { toast } = useToast()
@@ -34,14 +35,21 @@ export function PricingComponentComponent() {
   } = useSubscriptionStore()
 
   useEffect(() => {
-    if (isLoaded) {
-      if (isSignedIn) {
-        fetchSubscriptionData()
-      } else {
-        clearSubscriptionData()
+    if (isLoaded && isSignedIn && userId) {
+      fetchSubscriptionData()
+
+      const pusherClient = getPusherClient()
+      const channel = pusherClient.subscribe(`private-user-${userId}`)
+      channel.bind('subscription-updated', fetchSubscriptionData)
+
+      return () => {
+        channel.unbind('subscription-updated', fetchSubscriptionData)
+        pusherClient.unsubscribe(`private-user-${userId}`)
       }
+    } else if (isLoaded && !isSignedIn) {
+      clearSubscriptionData()
     }
-  }, [isLoaded, isSignedIn, fetchSubscriptionData, clearSubscriptionData])
+  }, [isLoaded, isSignedIn, fetchSubscriptionData, clearSubscriptionData, userId])
 
   // Modify this part to handle 'inactive' as 'basic'
   const displayCurrentSubscription = currentSubscription === 'inactive' ? 'basic' : currentSubscription

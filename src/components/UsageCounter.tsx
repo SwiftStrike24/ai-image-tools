@@ -14,27 +14,32 @@ interface UsageCounterProps {
 }
 
 const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onUsageUpdate, forceUpdate }) => {
-  const { 
-    subscriptionType, 
-    usage,
-    resetsIn, 
-    isLoading: isSubscriptionLoading,
-    fetchUsage,
-    refreshSubscriptionData
-  } = useSubscription(type);
+  const { subscription, refreshSubscriptionData } = useSubscription();
+  const [usage, setUsage] = useState(0);
+  const [resetsIn, setResetsIn] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   const [limit, setLimit] = useState<number | null>(null);
   const { currentSubscription, fetchSubscriptionData } = useSubscriptionStore();
   const { user } = useUser();
 
+  const fetchUsage = useCallback(async () => {
+    // Implement this function to fetch usage data
+    // For now, we'll use a placeholder
+    setUsage(0);
+    setResetsIn('24 hours');
+    setIsLoading(false);
+  }, []);
+
   const updateSubscriptionAndUsage = useCallback(async () => {
     await fetchSubscriptionData();
     await refreshSubscriptionData();
+    await fetchUsage();
     if (currentSubscription) {
       const newLimit = await getLimitForTier(currentSubscription as SubscriptionTier, type);
       setLimit(newLimit);
     }
-  }, [fetchSubscriptionData, refreshSubscriptionData, currentSubscription, type]);
+  }, [fetchSubscriptionData, refreshSubscriptionData, fetchUsage, currentSubscription, type]);
 
   useEffect(() => {
     updateSubscriptionAndUsage();
@@ -58,11 +63,11 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onU
     }
   }, [user, updateSubscriptionAndUsage]);
 
-  if (isSubscriptionLoading || limit === null) {
+  if (isLoading || limit === null) {
     return <div>Loading usage information...</div>;
   }
 
-  const displaySubscription = currentSubscription || subscriptionType;
+  const displaySubscription = currentSubscription || subscription;
 
   console.log('Rendering UsageCounter with subscription:', displaySubscription);
 
