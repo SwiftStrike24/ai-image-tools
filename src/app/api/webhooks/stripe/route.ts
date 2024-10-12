@@ -94,6 +94,9 @@ async function handleEvent(event: Stripe.Event) {
       case 'subscription_schedule.released':
         await handleSubscriptionScheduleReleased(event.data.object as Stripe.SubscriptionSchedule);
         break;
+      case 'checkout.session.expired':
+        await handleCheckoutSessionExpired(event.data.object as Stripe.Checkout.Session);
+        break;
       default:
         console.log(`Received ${event.type} event, no action needed`);
     }
@@ -406,4 +409,25 @@ async function handleSubscriptionScheduleReleased(schedule: Stripe.SubscriptionS
   } catch (error) {
     console.error('Error handling subscription schedule release:', error);
   }
+}
+
+async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session) {
+  const userId = session.metadata?.userId;
+  if (!userId) return;
+
+  const redisClient = await getRedisClient();
+
+  // Remove any pending subscription data from Redis
+  await redisClient.del(`pending_subscription:${userId}`);
+
+  // Update Supabase if necessary
+  await supabaseAdmin
+    .from('subscriptions')
+    .update({
+      status: 'expired',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('clerk_id', userId);
+
+  console.log(`Cleaned up expired checkout session for user ${userId}`);
 }

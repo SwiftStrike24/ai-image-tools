@@ -4,7 +4,7 @@ import { getRedisClient } from "@/lib/redis";
 import Stripe from 'stripe';
 import { SubscriptionTier } from '@/actions/rateLimit';
 import { supabaseAdmin } from '@/lib/supabase';
-import { invalidateCache } from '@/lib/subscriptionUtils'; // Updated import
+import { invalidateCache } from '@/lib/subscriptionUtils';
 import { pusherServer } from '@/lib/pusher';
 import { RedisClientType } from 'redis';
 
@@ -21,12 +21,6 @@ const CANCELLATION_DATE_KEY_PREFIX = "cancellation_date:";
 
 const MAX_RETRIES = 3;
 
-/**
- * Retry an operation with exponential backoff
- * @param operation Function to retry
- * @returns Result of the operation
- * @throws Last error encountered
- */
 async function retryOperation<T>(operation: () => Promise<T>): Promise<T> {
   let lastError;
   for (let i = 0; i < MAX_RETRIES; i++) {
@@ -41,14 +35,9 @@ async function retryOperation<T>(operation: () => Promise<T>): Promise<T> {
   throw lastError;
 }
 
-/**
- * Notify user about subscription update via Pusher
- * @param userId User ID
- */
 async function notifySubscriptionUpdate(userId: string) {
   await pusherServer.trigger(`private-user-${userId}`, 'subscription-updated', {});
 }
-
 
 export async function POST(req: Request) {
   const { userId } = auth();
@@ -57,53 +46,62 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { action, planName, newPlanId, subAction } = await req.json();
+  const body = await req.json();
+  const { action, planName, newPlanId, subAction } = body;
 
-  if (!action || (action === 'upgrade' && (!newPlanId || !subAction))) {
-    return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+  if (!action) {
+    return NextResponse.json({ error: 'Invalid input: No action provided' }, { status: 400 });
   }
 
   try {
     const redisClient = await getRedisClient();
     const stripeCustomerId = await redisClient.get(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
 
-    // If there's no Stripe customer ID, we need to create one
-    if (!stripeCustomerId) {
-      const customer = await stripe.customers.create({
+    let customer;
+    if (stripeCustomerId) {
+      try {
+        customer = await stripe.customers.retrieve(stripeCustomerId);
+        if ((customer as Stripe.DeletedCustomer).deleted) {
+          await redisClient.del(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
+          customer = null;
+        }
+      } catch (error) {
+        if (error instanceof Stripe.errors.StripeError && error.code === 'resource_missing') {
+          await redisClient.del(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`);
+          customer = null;
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    if (!customer) {
+      customer = await stripe.customers.create({
         metadata: { userId },
       });
       await redisClient.set(`${STRIPE_CUSTOMER_KEY_PREFIX}${userId}`, customer.id);
-      
-      // For a new customer, we'll redirect to checkout instead of trying to manage a non-existent subscription
-      if (action === 'upgrade' || action === 'subscribe') {
-        const session = await createCheckoutSession(customer.id, userId, newPlanId);
-        return NextResponse.json({ url: session.url });
-      }
-      
-      // For other actions, we can return an error or handle as needed
-      return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
     }
 
     let result;
     switch (action) {
+      case 'subscribe':
+      case 'upgrade':
+        result = await retryOperation(() => upgradeSubscription(userId, customer.id, redisClient, newPlanId, subAction || 'immediate'));
+        break;
       case 'cancel':
-        result = await retryOperation(() => cancelSubscription(userId, stripeCustomerId, redisClient));
+        result = await retryOperation(() => cancelSubscription(userId, customer.id, redisClient));
         break;
       case 'cancelDowngrade':
-        result = await retryOperation(() => cancelDowngrade(userId, stripeCustomerId, redisClient));
+        result = await retryOperation(() => cancelDowngrade(userId, customer.id, redisClient));
         break;
       case 'cancelUpgrade':
-        result = await retryOperation(() => cancelUpgrade(userId, stripeCustomerId, redisClient));
+        result = await retryOperation(() => cancelUpgrade(userId, customer.id, redisClient));
         break;
       case 'downgrade':
-        result = await retryOperation(() => downgradeSubscription(userId, stripeCustomerId, redisClient, planName));
-        break;
-      case 'upgrade':
-        // Always use scheduled upgrade for existing paid subscriptions
-        result = await retryOperation(() => scheduleUpgradeSubscription(userId, stripeCustomerId, redisClient, newPlanId));
+        result = await retryOperation(() => downgradeSubscription(userId, customer.id, redisClient, planName));
         break;
       case 'renew':
-        result = await retryOperation(() => renewSubscription(userId, stripeCustomerId, redisClient));
+        result = await retryOperation(() => renewSubscription(userId, customer.id, redisClient));
         break;
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
@@ -115,22 +113,10 @@ export async function POST(req: Request) {
     return NextResponse.json(result);
   } catch (error) {
     console.error(`Error in subscription management (${action}):`, error);
-    
-    if (error instanceof Error) {
-      console.error('Error name:', error.name);
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-    }
-
     return NextResponse.json({ error: "Internal server error", details: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
 
-/**
- * Batch update Redis keys
- * @param redisClient Redis client
- * @param operations Array of key-value pairs to update
- */
 async function batchUpdateRedis(redisClient: RedisClientType, operations: Array<[string, string]>) {
   const pipeline = redisClient.multi();
   
@@ -333,12 +319,11 @@ async function scheduleUpgradeSubscription(userId: string, stripeCustomerId: str
   });
 
   if (subscriptions.data.length === 0) {
-    return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
+    throw new Error('No active subscription found');
   }
 
   const subscription = subscriptions.data[0];
 
-  // Schedule upgrade for next billing cycle
   const schedule = await stripe.subscriptionSchedules.create({
     from_subscription: subscription.id,
   });
@@ -361,19 +346,7 @@ async function scheduleUpgradeSubscription(userId: string, stripeCustomerId: str
   const newPlan = await stripe.prices.retrieve(newPlanId);
   const newProductId = newPlan.product as string;
   const newProduct = await stripe.products.retrieve(newProductId);
-  let subscriptionTier: SubscriptionTier = 'basic';
-
-  switch (newProduct.name.toLowerCase()) {
-    case 'pro':
-      subscriptionTier = 'pro';
-      break;
-    case 'premium':
-      subscriptionTier = 'premium';
-      break;
-    case 'ultimate':
-      subscriptionTier = 'ultimate';
-      break;
-  }
+  const subscriptionTier = getSubscriptionTierFromProductName(newProduct.name);
 
   await redisClient.set(`${PENDING_UPGRADE_KEY_PREFIX}${userId}`, subscriptionTier);
   const nextBillingDate = new Date(subscription.current_period_end * 1000).toISOString();
@@ -386,9 +359,6 @@ async function scheduleUpgradeSubscription(userId: string, stripeCustomerId: str
       updated_at: new Date().toISOString(),
     })
     .eq('clerk_id', userId);
-
-  await invalidateCache(userId);
-  console.log(`Subscription upgrade scheduled for user ${userId} to ${subscriptionTier}`);
 
   return { 
     message: 'Subscription upgrade scheduled successfully',
@@ -477,7 +447,41 @@ function getPlanIdFromName(planName: string): string | null {
   return planMap[planName] || null;
 }
 
-// Add this new function to create a checkout session
+async function upgradeSubscription(userId: string, stripeCustomerId: string, redisClient: RedisClientType, newPlanId: string, subAction: string) {
+  const subscriptions = await stripe.subscriptions.list({
+    customer: stripeCustomerId,
+    status: 'active',
+    limit: 1,
+  });
+
+  if (subscriptions.data.length === 0) {
+    // No active subscription, create a new one
+    const session = await createCheckoutSession(stripeCustomerId, userId, newPlanId);
+    return { url: session.url };
+  }
+
+  const subscription = subscriptions.data[0];
+  const currentPlanId = subscription.items.data[0].price.id;
+
+  if (currentPlanId === newPlanId) {
+    return { message: 'Already subscribed to this plan' };
+  }
+
+  if (subAction === 'immediate') {
+    // Perform immediate upgrade
+    const updatedSubscription = await stripe.subscriptions.update(subscription.id, {
+      items: [{ id: subscription.items.data[0].id, price: newPlanId }],
+      proration_behavior: 'always_invoice',
+    });
+
+    await updateUserSubscription(userId, updatedSubscription, redisClient);
+    return { message: 'Subscription upgraded successfully' };
+  } else {
+    // Schedule upgrade for next billing cycle
+    return scheduleUpgradeSubscription(userId, stripeCustomerId, redisClient, newPlanId);
+  }
+}
+
 async function createCheckoutSession(customerId: string, userId: string, priceId: string) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
   const successUrl = `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}`;
@@ -494,4 +498,17 @@ async function createCheckoutSession(customerId: string, userId: string, priceId
     },
     metadata: { userId }
   });
+}
+
+function getSubscriptionTierFromProductName(productName: string): SubscriptionTier {
+  switch (productName.toLowerCase()) {
+    case 'pro':
+      return 'pro';
+    case 'premium':
+      return 'premium';
+    case 'ultimate':
+      return 'ultimate';
+    default:
+      return 'basic';
+  }
 }

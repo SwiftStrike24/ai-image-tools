@@ -49,10 +49,27 @@ export function PlanContent({
 
     if (currentSubscription === 'basic' || currentSubscription === 'inactive') {
       await handleSubscribe();
-    } else if (buttonProps.text.startsWith('Upgrade')) {
-      setIsScheduleUpgradeModalOpen(true);
-    } else if (buttonProps.text.startsWith('Downgrade')) {
-      setIsDowngradeModalOpen(true);
+    } else {
+      // For paid plans, redirect to Stripe Customer Portal
+      await handleManageSubscription();
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    try {
+      const response = await fetch('/api/subscription/create-portal-session', {
+        method: 'POST',
+      });
+      if (!response.ok) throw new Error('Failed to create portal session');
+      const { url } = await response.json();
+      window.location.href = url;
+    } catch (error) {
+      console.error('Error creating portal session:', error);
+      toast({
+        title: "Error",
+        description: "Failed to open subscription management. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -267,95 +284,6 @@ export function PlanContent({
           </div>
         )}
       </div>
-
-      {/* Downgrade Confirmation Modal */}
-      <AlertDialog open={isDowngradeModalOpen} onOpenChange={setIsDowngradeModalOpen}>
-        <AlertDialogContent className="bg-gray-800 text-gray-100 border border-gray-700">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl font-bold">Confirm Downgrade</AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-300">
-              Are you sure you want to downgrade from the {currentSubscription} plan to the {plan.name} plan?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="mt-4 space-y-4">
-            <div className="flex items-start space-x-2">
-              <CalendarIcon className="w-5 h-5 text-blue-400 mt-0.5" />
-              <p className="text-sm text-gray-300">
-                Your new plan will take effect at the end of your current billing period:
-                <span className="block font-semibold text-white mt-1">
-                  {nextBillingDate ? new Date(nextBillingDate).toLocaleDateString() : 'Loading...'}
-                </span>
-              </p>
-            </div>
-            <div className="flex items-start space-x-2">
-              <AlertTriangleIcon className="w-5 h-5 text-yellow-400 mt-0.5" />
-              <p className="text-sm text-gray-300">
-                Tip: To maximize your current plan&apos;s benefits, consider waiting until the end of your billing period before downgrading.
-              </p>
-            </div>
-            <p className="text-sm text-gray-300 font-semibold">
-              You will lose access to the following features:
-            </p>
-            <ul className="space-y-2 max-h-40 overflow-y-auto">
-              {getLostFeatures(currentSubscription, plan.name).map((feature: string, index: number) => (
-                <li key={index} className="flex items-start text-sm">
-                  <span className="text-red-400 mr-2">•</span>
-                  <span className="text-gray-300">{feature}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <AlertDialogFooter className="mt-6">
-            <AlertDialogCancel className="bg-gray-700 text-gray-100 hover:bg-gray-600">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDowngradeClick} className="bg-purple-600 text-white hover:bg-purple-700">
-              Confirm Downgrade
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Update the Schedule Upgrade Modal */}
-      <AlertDialog open={isScheduleUpgradeModalOpen} onOpenChange={setIsScheduleUpgradeModalOpen}>
-        <AlertDialogContent className="bg-gray-800 text-gray-100 border border-gray-700">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl font-bold">Schedule Upgrade</AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-300">
-              Are you sure you want to schedule an upgrade from the {currentSubscription} plan to the {plan.name} plan?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="mt-4 space-y-4">
-            <div className="flex items-start space-x-2">
-              <CalendarIcon className="w-5 h-5 text-blue-400 mt-0.5" />
-              <p className="text-sm text-gray-300">
-                Your new plan will take effect at the start of your next billing cycle:
-                <span className="block font-semibold text-white mt-1">
-                  {nextBillingDate ? new Date(nextBillingDate).toLocaleDateString() : 'Loading...'}
-                </span>
-              </p>
-            </div>
-            <p className="text-sm text-gray-300 font-semibold">
-              You will gain access to the following features:
-            </p>
-            <ul className="space-y-2 max-h-40 overflow-y-auto">
-              {getNewFeatures(currentSubscription, plan.name).map((feature: string, index: number) => (
-                <li key={index} className="flex items-start text-sm">
-                  <span className="text-green-400 mr-2">•</span>
-                  <span className="text-gray-300">{feature}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <AlertDialogFooter className="mt-6">
-            <AlertDialogCancel className="bg-gray-700 text-gray-100 hover:bg-gray-600">Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleScheduleUpgrade} 
-              className="bg-purple-600 text-white hover:bg-purple-700"
-            >
-              Confirm Scheduled Upgrade
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

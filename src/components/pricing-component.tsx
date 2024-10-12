@@ -151,6 +151,24 @@ export function PricingComponentComponent() {
     }
   }
 
+  const handleManageSubscription = async () => {
+    try {
+      const response = await fetch('/api/subscription/create-portal-session', {
+        method: 'POST',
+      });
+      if (!response.ok) throw new Error('Failed to create portal session');
+      const { url } = await response.json();
+      window.location.href = url;
+    } catch (error) {
+      console.error('Error creating portal session:', error);
+      toast({
+        title: "Error",
+        description: "Failed to open subscription management. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getButtonProps = (planName: string) => {
     if (!isSignedIn) {
       return { text: 'Sign In to Subscribe', style: 'bg-purple-600 hover:bg-purple-700' };
@@ -255,29 +273,15 @@ export function PricingComponentComponent() {
                       </>
                     )}
                   </div>
-                  {displayCurrentSubscription !== 'basic' && !pendingDowngrade && !pendingUpgrade && (
-                    <div>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="sm" className="mt-2" disabled={isCancelling}>
-                            <XCircle className="w-4 h-4 mr-2" />
-                            Cancel Subscription
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure you want to cancel?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Your subscription will remain active until the end of your current billing period. After that, you&apos;ll be downgraded to the Basic plan.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>No, keep my subscription</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleCancelSubscription}>Yes, cancel my subscription</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
+                  {displayCurrentSubscription !== 'basic' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 text-white bg-purple-600 hover:bg-purple-700"
+                      onClick={handleManageSubscription}
+                    >
+                      Manage Subscription
+                    </Button>
                   )}
                 </div>
               </div>
