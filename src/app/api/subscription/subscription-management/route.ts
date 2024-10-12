@@ -99,7 +99,8 @@ export async function POST(req: Request) {
         result = await retryOperation(() => downgradeSubscription(userId, stripeCustomerId, redisClient, planName));
         break;
       case 'upgrade':
-        result = await retryOperation(() => upgradeSubscription(userId, stripeCustomerId, redisClient, newPlanId, subAction));
+        // Always use scheduled upgrade for existing paid subscriptions
+        result = await retryOperation(() => scheduleUpgradeSubscription(userId, stripeCustomerId, redisClient, newPlanId));
         break;
       case 'renew':
         result = await retryOperation(() => renewSubscription(userId, stripeCustomerId, redisClient));
@@ -324,193 +325,76 @@ async function downgradeSubscription(userId: string, stripeCustomerId: string, r
 }
 
 
-async function upgradeSubscription(userId: string, stripeCustomerId: string, redisClient: RedisClientType, newPlanId: string, subAction: string) {
+async function scheduleUpgradeSubscription(userId: string, stripeCustomerId: string, redisClient: RedisClientType, newPlanId: string) {
   const subscriptions = await stripe.subscriptions.list({
     customer: stripeCustomerId,
     status: 'active',
     limit: 1,
   });
 
-  let subscription = subscriptions.data[0];
-
-  if (!subscription) {
-    // If there's no active subscription, create a new one
-    if (subAction === 'confirm') {
-      const newSubscription = await stripe.subscriptions.create({
-        customer: stripeCustomerId,
-        items: [{ price: newPlanId }],
-      });
-
-      const newPlan = await stripe.prices.retrieve(newPlanId);
-      const newProductId = newPlan.product as string;
-      const newProduct = await stripe.products.retrieve(newProductId);
-      let subscriptionTier: SubscriptionTier = 'basic';
-
-      switch (newProduct.name.toLowerCase()) {
-        case 'pro':
-          subscriptionTier = 'pro';
-          break;
-        case 'premium':
-          subscriptionTier = 'premium';
-          break;
-        case 'ultimate':
-          subscriptionTier = 'ultimate';
-          break;
-      }
-
-      await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, subscriptionTier);
-
-      await supabaseAdmin
-        .from('subscriptions')
-        .upsert({
-          clerk_id: userId,
-          plan: subscriptionTier,
-          status: 'active',
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'clerk_id'
-        });
-
-      await invalidateCache(userId);
-      console.log(`Subscription upgraded for user ${userId} to ${subscriptionTier}`);
-
-      return NextResponse.json({ 
-        message: 'Subscription created successfully',
-        newSubscriptionTier: subscriptionTier
-      });
-    } else {
-      // For 'calculate' action, return 0 as there's no proration
-      return NextResponse.json({ 
-        proratedAmount: 0,
-        currentPlanId: null
-      });
-    }
+  if (subscriptions.data.length === 0) {
+    return NextResponse.json({ error: 'No active subscription found' }, { status: 400 });
   }
 
-  if (subAction === 'calculate') {
-    // Calculate prorated amount
-    const invoice = await stripe.invoices.retrieveUpcoming({
-      customer: stripeCustomerId,
-      subscription: subscription.id,
-      subscription_items: [{ 
-        id: subscription.items.data[0].id, 
-        price: newPlanId 
-      }],
-    });
+  const subscription = subscriptions.data[0];
 
-    const proratedAmount = invoice.amount_due / 100; // Convert cents to dollars
+  // Schedule upgrade for next billing cycle
+  const schedule = await stripe.subscriptionSchedules.create({
+    from_subscription: subscription.id,
+  });
 
-    return NextResponse.json({ 
-      proratedAmount,
-      currentPlanId: subscription.items.data[0].price.id
-    });
-  } else if (subAction === 'confirm') {
-    // Immediate upgrade
-    subscription = await stripe.subscriptions.update(subscription.id, {
-      items: [{ id: subscription.items.data[0].id, price: newPlanId }],
-      proration_behavior: 'always_invoice',
-    });
+  await stripe.subscriptionSchedules.update(schedule.id, {
+    end_behavior: 'release',
+    phases: [
+      {
+        start_date: subscription.current_period_start,
+        end_date: subscription.current_period_end,
+        items: [{ price: subscription.items.data[0].price.id, quantity: 1 }],
+      },
+      {
+        start_date: subscription.current_period_end,
+        items: [{ price: newPlanId, quantity: 1 }],
+      },
+    ],
+  });
 
-    const newPlan = await stripe.prices.retrieve(newPlanId);
-    const newProductId = newPlan.product as string;
-    const newProduct = await stripe.products.retrieve(newProductId);
-    let subscriptionTier: SubscriptionTier = 'basic';
+  const newPlan = await stripe.prices.retrieve(newPlanId);
+  const newProductId = newPlan.product as string;
+  const newProduct = await stripe.products.retrieve(newProductId);
+  let subscriptionTier: SubscriptionTier = 'basic';
 
-    switch (newProduct.name.toLowerCase()) {
-      case 'pro':
-        subscriptionTier = 'pro';
-        break;
-      case 'premium':
-        subscriptionTier = 'premium';
-        break;
-      case 'ultimate':
-        subscriptionTier = 'ultimate';
-        break;
-    }
-
-    await redisClient.set(`${SUBSCRIPTION_KEY_PREFIX}${userId}`, subscriptionTier);
-    await redisClient.del(`${PENDING_UPGRADE_KEY_PREFIX}${userId}`);
-
-    await supabaseAdmin
-      .from('subscriptions')
-      .upsert({
-        clerk_id: userId,
-        plan: subscriptionTier,
-        status: 'active',
-        updated_at: new Date().toISOString(),
-        pending_upgrade: null,
-      }, {
-        onConflict: 'clerk_id'
-      });
-
-    await invalidateCache(userId);
-    console.log(`Subscription upgraded for user ${userId} to ${subscriptionTier}`);
-
-    return NextResponse.json({ 
-      message: 'Subscription upgraded successfully',
-      newSubscriptionTier: subscriptionTier
-    });
-  } else if (subAction === 'schedule') {
-    // Schedule upgrade for next billing cycle
-    const schedule = await stripe.subscriptionSchedules.create({
-      from_subscription: subscription.id,
-    });
-
-    await stripe.subscriptionSchedules.update(schedule.id, {
-      end_behavior: 'release',
-      phases: [
-        {
-          start_date: subscription.current_period_start,
-          end_date: subscription.current_period_end,
-          items: [{ price: subscription.items.data[0].price.id, quantity: 1 }],
-        },
-        {
-          start_date: subscription.current_period_end,
-          items: [{ price: newPlanId, quantity: 1 }],
-        },
-      ],
-    });
-
-    const newPlan = await stripe.prices.retrieve(newPlanId);
-    const newProductId = newPlan.product as string;
-    const newProduct = await stripe.products.retrieve(newProductId);
-    let subscriptionTier: SubscriptionTier = 'basic';
-
-    switch (newProduct.name.toLowerCase()) {
-      case 'pro':
-        subscriptionTier = 'pro';
-        break;
-      case 'premium':
-        subscriptionTier = 'premium';
-        break;
-      case 'ultimate':
-        subscriptionTier = 'ultimate';
-        break;
-    }
-
-    await redisClient.set(`${PENDING_UPGRADE_KEY_PREFIX}${userId}`, subscriptionTier);
-    const nextBillingDate = new Date(subscription.current_period_end * 1000).toISOString();
-    await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
-
-    await supabaseAdmin
-      .from('subscriptions')
-      .update({
-        pending_upgrade: subscriptionTier,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('clerk_id', userId);
-
-    await invalidateCache(userId);
-    console.log(`Subscription upgraded for user ${userId} to ${subscriptionTier}`);
-
-    return NextResponse.json({ 
-      message: 'Subscription upgrade scheduled successfully',
-      pendingUpgrade: subscriptionTier,
-      nextBillingDate
-    });
-  } else {
-    return NextResponse.json({ error: 'Invalid subAction' }, { status: 400 });
+  switch (newProduct.name.toLowerCase()) {
+    case 'pro':
+      subscriptionTier = 'pro';
+      break;
+    case 'premium':
+      subscriptionTier = 'premium';
+      break;
+    case 'ultimate':
+      subscriptionTier = 'ultimate';
+      break;
   }
+
+  await redisClient.set(`${PENDING_UPGRADE_KEY_PREFIX}${userId}`, subscriptionTier);
+  const nextBillingDate = new Date(subscription.current_period_end * 1000).toISOString();
+  await redisClient.set(`${NEXT_BILLING_DATE_KEY_PREFIX}${userId}`, nextBillingDate);
+
+  await supabaseAdmin
+    .from('subscriptions')
+    .update({
+      pending_upgrade: subscriptionTier,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('clerk_id', userId);
+
+  await invalidateCache(userId);
+  console.log(`Subscription upgrade scheduled for user ${userId} to ${subscriptionTier}`);
+
+  return { 
+    message: 'Subscription upgrade scheduled successfully',
+    pendingUpgrade: subscriptionTier,
+    nextBillingDate
+  };
 }
 
 async function renewSubscription(userId: string, stripeCustomerId: string, redisClient: RedisClientType) {

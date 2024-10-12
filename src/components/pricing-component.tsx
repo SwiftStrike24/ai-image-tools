@@ -313,7 +313,7 @@ export function PricingComponentComponent() {
                       isMonthly={isMonthly} 
                       buttonProps={getButtonProps(plan.name)}
                       isSignedIn={isSignedIn ?? false}
-                      currentSubscription={currentSubscription}
+                      currentSubscription={displayCurrentSubscription}
                       pendingUpgrade={pendingUpgrade}
                       pendingDowngrade={pendingDowngrade}
                       nextBillingDate={nextBillingDate}
@@ -325,7 +325,7 @@ export function PricingComponentComponent() {
                     isMonthly={isMonthly} 
                     buttonProps={getButtonProps(plan.name)}
                     isSignedIn={isSignedIn ?? false}
-                    currentSubscription={currentSubscription}
+                    currentSubscription={displayCurrentSubscription}
                     pendingUpgrade={pendingUpgrade}
                     pendingDowngrade={pendingDowngrade}
                     nextBillingDate={nextBillingDate}

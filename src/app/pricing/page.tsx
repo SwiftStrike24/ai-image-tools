@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from 'react'
 import { PricingComponentComponent } from '@/components/pricing-component'
 import { motion, useAnimation } from 'framer-motion'
 import GridPattern from "@/components/magicui/animated-grid-pattern"
@@ -15,6 +16,11 @@ export default function PricingPage() {
   const router = useRouter()
   const { isLoaded, isSignedIn } = useAuth()
   const controls = useAnimation()
+  const [isClientSide, setIsClientSide] = useState(false)
+
+  useEffect(() => {
+    setIsClientSide(true)
+  }, [])
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -46,15 +52,16 @@ export default function PricingPage() {
   ]
 
   const handleLoginClick = async () => {
-    // Start the animation
     await controls.start({
       scale: [1, 0.9, 1.1, 1],
       rotate: [0, -10, 10, 0],
       transition: { duration: 0.4 }
     })
-
-    // After animation completes, navigate to sign-in page with redirect
     router.push('/sign-in?redirect=/pricing')
+  }
+
+  if (!isClientSide || !isLoaded) {
+    return null // or a loading spinner
   }
 
   return (
@@ -79,7 +86,7 @@ export default function PricingPage() {
       
       <div className="relative z-20 container mx-auto px-4 py-16 pt-24">
         <div className="absolute top-4 right-4">
-          {isLoaded && !isSignedIn ? (
+          {!isSignedIn ? (
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}

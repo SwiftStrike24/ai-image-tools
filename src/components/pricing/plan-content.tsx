@@ -43,14 +43,14 @@ export function PlanContent({
 
   const handleUpgradeOrSubscribe = async () => {
     if (!isSignedIn) {
-      router.push(`/sign-in?redirect=${encodeURIComponent('/pricing')}`)
-      return
+      router.push(`/sign-in?redirect=${encodeURIComponent('/pricing')}`);
+      return;
     }
 
     if (currentSubscription === 'basic' || currentSubscription === 'inactive') {
       await handleSubscribe();
     } else if (buttonProps.text.startsWith('Upgrade')) {
-      await handleUpgradeClick();
+      setIsScheduleUpgradeModalOpen(true);
     } else if (buttonProps.text.startsWith('Downgrade')) {
       setIsDowngradeModalOpen(true);
     }
@@ -99,117 +99,6 @@ export function PlanContent({
     }
   };
 
-  const handleUpgradeClick = async () => {
-    try {
-      const response = await fetch('/api/subscription/subscription-management', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action: 'upgrade', newPlanId: plan.priceId, subAction: 'calculate' }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'An error occurred');
-      }
-
-      const data = await response.json();
-      setProratedAmount(data.proratedAmount);
-      setIsUpgradeModalOpen(true);
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const confirmUpgrade = async () => {
-    setIsConfirmingUpgrade(true);
-    try {
-      const response = await fetch('/api/subscription/subscription-management', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action: 'upgrade', newPlanId: plan.priceId, subAction: 'confirm' }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'An error occurred');
-      }
-
-      const data = await response.json();
-      
-      setSubscriptionData({
-        currentSubscription: plan.name.toLowerCase(),
-        pendingUpgrade: null,
-      });
-
-      toast({
-        title: "Upgrade Successful",
-        description: `Your subscription has been upgraded to ${plan.name}.`,
-        variant: "default",
-      });
-
-      setIsUpgradeModalOpen(false);
-      await fetchSubscriptionData();
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsConfirmingUpgrade(false);
-    }
-  };
-
-  const handleDowngradeClick = async () => {
-    try {
-      const response = await fetch('/api/subscription/subscription-management', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action: 'downgrade', planName: plan.name }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'An error occurred');
-      }
-
-      const data = await response.json();
-      
-      setSubscriptionData({
-        pendingDowngrade: plan.name.toLowerCase(),
-        nextBillingDate: data.nextBillingDate,
-      });
-
-      toast({
-        title: "Downgrade Scheduled",
-        description: `Your subscription will be downgraded to ${plan.name} on ${new Date(data.nextBillingDate).toLocaleDateString()}.`,
-        variant: "default",
-      });
-
-      setIsDowngradeModalOpen(false);
-      await fetchSubscriptionData();
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
   const handleScheduleUpgrade = async () => {
     if (!plan.priceId) {
       toast({
@@ -248,6 +137,46 @@ export function PlanContent({
       });
 
       setIsScheduleUpgradeModalOpen(false);
+      await fetchSubscriptionData();
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDowngradeClick = async () => {
+    try {
+      const response = await fetch('/api/subscription/subscription-management', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'downgrade', planName: plan.name }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'An error occurred');
+      }
+
+      const data = await response.json();
+      
+      setSubscriptionData({
+        pendingDowngrade: plan.name.toLowerCase(),
+        nextBillingDate: data.nextBillingDate,
+      });
+
+      toast({
+        title: "Downgrade Scheduled",
+        description: `Your subscription will be downgraded to ${plan.name} on ${new Date(data.nextBillingDate).toLocaleDateString()}.`,
+        variant: "default",
+      });
+
+      setIsDowngradeModalOpen(false);
       await fetchSubscriptionData();
     } catch (error) {
       console.error('Error:', error);
@@ -304,7 +233,7 @@ export function PlanContent({
           </li>
         ))}
       </ul>
-      <div className="mt-auto space-y-2">
+      <div className="mt-auto">
         <motion.button
           whileHover={{ scale: !isSignedIn || (buttonProps.text !== 'Current Plan' && plan.name !== 'Basic' && !pendingDowngrade && !pendingUpgrade) ? 1.05 : 1 }}
           whileTap={{ scale: !isSignedIn || (buttonProps.text !== 'Current Plan' && plan.name !== 'Basic' && !pendingDowngrade && !pendingUpgrade) ? 0.95 : 1 }}
@@ -331,16 +260,6 @@ export function PlanContent({
               : buttonProps.text)
             : 'Sign In to Subscribe'}
         </motion.button>
-        {isSignedIn && plan.name !== 'Basic' && buttonProps.text.startsWith('Upgrade') && currentSubscription !== 'basic' && !pendingUpgrade && !pendingDowngrade && (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsScheduleUpgradeModalOpen(true)}
-            className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-100 bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-200"
-          >
-            Schedule Upgrade for Next Billing Cycle
-          </motion.button>
-        )}
         {isSignedIn && pendingUpgrade === plan.name.toLowerCase() && (
           <div className="mt-2 text-sm text-gray-300">
             <CalendarIcon className="inline-block mr-1" size={16} />
@@ -395,54 +314,7 @@ export function PlanContent({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Upgrade Confirmation Modal */}
-      <AlertDialog open={isUpgradeModalOpen} onOpenChange={setIsUpgradeModalOpen}>
-        <AlertDialogContent className="bg-gray-800 text-gray-100 border border-gray-700">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl font-bold">Confirm Upgrade</AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-300">
-              Are you sure you want to upgrade from the {currentSubscription} plan to the {plan.name} plan?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="mt-4 space-y-4">
-            <div className="flex items-start space-x-2">
-              <CalendarIcon className="w-5 h-5 text-blue-400 mt-0.5" />
-              <p className="text-sm text-gray-300">
-                Your new plan will take effect immediately.
-              </p>
-            </div>
-            <div className="flex items-start space-x-2">
-              <AlertTriangleIcon className="w-5 h-5 text-yellow-400 mt-0.5" />
-              <p className="text-sm text-gray-300">
-                You will be charged a prorated amount of ${proratedAmount?.toFixed(2)} for the remainder of your current billing cycle.
-              </p>
-            </div>
-            <p className="text-sm text-gray-300 font-semibold">
-              You will gain access to the following features:
-            </p>
-            <ul className="space-y-2 max-h-40 overflow-y-auto">
-              {getNewFeatures(currentSubscription, plan.name).map((feature: string, index: number) => (
-                <li key={index} className="flex items-start text-sm">
-                  <span className="text-green-400 mr-2">•</span>
-                  <span className="text-gray-300">{feature}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <AlertDialogFooter className="mt-6">
-            <AlertDialogCancel className="bg-gray-700 text-gray-100 hover:bg-gray-600">Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmUpgrade} 
-              className="bg-purple-600 text-white hover:bg-purple-700"
-              disabled={isConfirmingUpgrade}
-            >
-              {isConfirmingUpgrade ? 'Upgrading...' : 'Confirm Upgrade'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Schedule Upgrade Modal */}
+      {/* Update the Schedule Upgrade Modal */}
       <AlertDialog open={isScheduleUpgradeModalOpen} onOpenChange={setIsScheduleUpgradeModalOpen}>
         <AlertDialogContent className="bg-gray-800 text-gray-100 border border-gray-700">
           <AlertDialogHeader>
