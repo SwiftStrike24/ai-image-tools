@@ -14,22 +14,18 @@ interface UsageCounterProps {
 }
 
 const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onUsageUpdate, forceUpdate }) => {
-  const { subscription, refreshSubscriptionData } = useSubscription();
-  const [usage, setUsage] = useState(0);
-  const [resetsIn, setResetsIn] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-
+  const { 
+    subscriptionType,
+    usage: subscriptionUsage,
+    resetsIn,
+    isLoading: isSubscriptionLoading,
+    refreshSubscriptionData,
+    checkAndUpdateLimit,
+    fetchUsage
+  } = useSubscription(type);
   const [limit, setLimit] = useState<number | null>(null);
   const { currentSubscription, fetchSubscriptionData } = useSubscriptionStore();
   const { user } = useUser();
-
-  const fetchUsage = useCallback(async () => {
-    // Implement this function to fetch usage data
-    // For now, we'll use a placeholder
-    setUsage(0);
-    setResetsIn('24 hours');
-    setIsLoading(false);
-  }, []);
 
   const updateSubscriptionAndUsage = useCallback(async () => {
     await fetchSubscriptionData();
@@ -46,8 +42,8 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onU
   }, [updateSubscriptionAndUsage, forceUpdate]);
 
   useEffect(() => {
-    onUsageUpdate(usage);
-  }, [usage, onUsageUpdate]);
+    onUsageUpdate(subscriptionUsage);
+  }, [subscriptionUsage, onUsageUpdate]);
 
   useEffect(() => {
     if (user) {
@@ -63,11 +59,11 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onU
     }
   }, [user, updateSubscriptionAndUsage]);
 
-  if (isLoading || limit === null) {
+  if (isSubscriptionLoading || limit === null) {
     return <div>Loading usage information...</div>;
   }
 
-  const displaySubscription = currentSubscription || subscription;
+  const displaySubscription = currentSubscription || subscriptionType;
 
   console.log('Rendering UsageCounter with subscription:', displaySubscription);
 
@@ -83,18 +79,18 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode, onU
           <span className="text-sm font-medium">Simulation Mode</span>
         ) : (
           <span className="text-sm font-medium">
-            {usage} / {limit ?? 'N/A'}
+            {subscriptionUsage} / {limit ?? 'N/A'}
           </span>
         )}
       </div>
       {!isSimulationMode && (
         <>
           <Progress 
-            value={(usage / (limit || 1)) * 100} 
+            value={(subscriptionUsage / (limit || 1)) * 100} 
             className="h-2" 
           />
           <p className="text-xs text-purple-300">
-            {limit - usage} {type === 'generator' ? 'generations' : type === 'upscaler' ? 'upscales' : 'enhancements'} remaining. 
+            {limit - subscriptionUsage} {type === 'generator' ? 'generations' : type === 'upscaler' ? 'upscales' : 'enhancements'} remaining. 
             Resets in {resetsIn}.
           </p>
         </>

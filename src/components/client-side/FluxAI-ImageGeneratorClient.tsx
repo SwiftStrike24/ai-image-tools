@@ -118,7 +118,7 @@ export default function FluxAIImageGenerator() {
 
     try {
       if (!isSimulationMode) {
-        const result = await checkAndUpdateGeneratorLimit(numOutputs);
+        const result = await checkAndUpdateGeneratorLimit();
         if (!result) {
           setError(`You've reached your image generation limit. Please try again later or upgrade your plan.`);
           setIsLoading(false);

@@ -66,12 +66,12 @@ function ImageUpscalerComponent() {
   const [upscalerUpdateTrigger, setUpscalerUpdateTrigger] = useState(0)
 
   const { 
-    subscriptionType, 
-    usage,
-    resetsIn, 
-    isLoading: isSubscriptionLoading,
-    checkAndUpdateLimit,
-    fetchUsage
+    subscriptionType: upscalerSubscriptionType,
+    usage: upscalerUsage,
+    resetsIn: upscalerResetsIn, 
+    isLoading: isUpscalerSubscriptionLoading,
+    checkAndUpdateLimit: checkAndUpdateUpscalerLimit,
+    fetchUsage: fetchUpscalerUsage
   } = useSubscription('upscaler');
 
   const handleUpscalerUsageUpdate = useCallback((newUsage: number) => {
@@ -192,14 +192,14 @@ function ImageUpscalerComponent() {
     setError(null);
 
     try {
-      const canProceed = await checkAndUpdateLimit(1);
+      const canProceed = await checkAndUpdateUpscalerLimit();
 
       if (!canProceed) {
-        const limit = subscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : 
-                      subscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : 
-                      subscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : 
+        const limit = upscalerSubscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : 
+                      upscalerSubscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : 
+                      upscalerSubscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : 
                       UPSCALER_DAILY_LIMIT;
-        setError(`You've reached your ${subscriptionType === 'basic' ? 'daily' : 'monthly'} limit of ${limit} upscales. Please try again later.`);
+        setError(`You've reached your ${upscalerSubscriptionType === 'basic' ? 'daily' : 'monthly'} limit of ${limit} upscales. Please try again later.`);
         setIsLoading(false);
         return;
       }
@@ -229,7 +229,7 @@ function ImageUpscalerComponent() {
       setUpscaledImage(upscaledImageUrl);
 
       setUpscalerUpdateTrigger(prev => prev + 1);
-      await fetchUsage();
+      await fetchUpscalerUsage();
 
       toast({
         title: "Upscaling Complete",
@@ -249,9 +249,9 @@ function ImageUpscalerComponent() {
       });
     } finally {
       setIsLoading(false);
-      await fetchUsage(); // Fetch updated usage after upscaling
+      await fetchUpscalerUsage(); // Fetch updated usage after upscaling
     }
-  }, [originalFile, upscaleOption, faceEnhance, isLoading, isSimulationMode, simulateUpscale, toast, subscriptionType, checkAndUpdateLimit, fetchUsage]);
+  }, [originalFile, upscaleOption, faceEnhance, isLoading, isSimulationMode, simulateUpscale, toast, upscalerSubscriptionType, checkAndUpdateUpscalerLimit, fetchUpscalerUsage]);
 
   // Function to clear the uploaded image
   const handleClearImage = useCallback(() => {
@@ -370,9 +370,9 @@ function ImageUpscalerComponent() {
 
   useEffect(() => {
     if (!isSimulationMode) {
-      fetchUsage();
+      fetchUpscalerUsage();
     }
-  }, [isSimulationMode, fetchUsage]);
+  }, [isSimulationMode, fetchUpscalerUsage]);
 
   if (!isAuthenticated) {
     return (
@@ -576,18 +576,18 @@ function ImageUpscalerComponent() {
               <div className="relative">
                 <ShinyButton
                   onClick={handleUpscale}
-                  disabled={!uploadedImage || isLoading || usage >= (subscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : subscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : subscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT)}
+                  disabled={!uploadedImage || isLoading || upscalerUsage >= (upscalerSubscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT)}
                   className={cn(
                     "w-full py-2 md:py-3 text-base md:text-lg font-semibold",
-                    (!uploadedImage || isLoading || usage >= (subscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : subscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : subscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT)) && "opacity-50 cursor-not-allowed"
+                    (!uploadedImage || isLoading || upscalerUsage >= (upscalerSubscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT)) && "opacity-50 cursor-not-allowed"
                   )}
-                  text={isLoading ? "Processing..." : usage >= (subscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : subscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : subscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT) ? `${subscriptionType === 'basic' ? 'Daily' : 'Monthly'} Limit Reached` : 'Upscale'}
+                  text={isLoading ? "Processing..." : upscalerUsage >= (upscalerSubscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT) ? `${upscalerSubscriptionType === 'basic' ? 'Daily' : 'Monthly'} Limit Reached` : 'Upscale'}
                 >
                   {isLoading && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
                 </ShinyButton>
-                {usage >= (subscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : subscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : subscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT) && (
+                {upscalerUsage >= (upscalerSubscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT) && (
                   <p className="text-xs text-red-400 mt-2">
-                    You&apos;ve reached your {subscriptionType === 'basic' ? 'daily' : 'monthly'} limit. Please try again {subscriptionType === 'basic' ? 'tomorrow' : 'next month'} or upgrade your plan.
+                    You&apos;ve reached your {upscalerSubscriptionType === 'basic' ? 'daily' : 'monthly'} limit. Please try again {upscalerSubscriptionType === 'basic' ? 'tomorrow' : 'next month'} or upgrade your plan.
                   </p>
                 )}
               </div>
