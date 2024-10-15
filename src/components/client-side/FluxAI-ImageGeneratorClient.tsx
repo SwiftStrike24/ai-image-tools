@@ -38,6 +38,7 @@ import Link from 'next/link'
 import { useDebounce } from '@/hooks/useDebounce'
 import BlurFade from "@/components/magicui/blur-fade"
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
+import { LoadingBeam } from "@/components/loading-beam"
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -767,15 +768,21 @@ export default function FluxAIImageGenerator() {
                   )}
                 </div>
 
-                <ShinyButton
+                <LoadingBeam
                   onClick={handleSubmit}
+                  isLoading={isLoading}
                   disabled={isLoading || (!showSeedInput && !prompt.trim()) || (showSeedInput && !followUpPrompt?.trim())}
                   className={cn(
                     "w-full py-2 md:py-3 text-base md:text-lg font-semibold",
                     (isLoading || (!showSeedInput && !prompt.trim()) || (showSeedInput && !followUpPrompt?.trim())) && "opacity-50 cursor-not-allowed"
                   )}
-                  text={isLoading ? "Generating..." : 'Generate Image(s)'}
-                />
+                  loadingText="Generating..."
+                  waveColor="rgba(255, 255, 255, 0.5)" // White wave color with 50% opacity
+                  waveSpeed={1.2}
+                  waveWidth={120}
+                >
+                  Generate Image(s)
+                </LoadingBeam>
               </form>
             </div>
 

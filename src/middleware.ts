@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 import { saveUserToSupabase, syncUserDataWithRedis, getUserSubscription } from "@/lib/supabase";
 
 // Define the routes to be excluded from middleware processing
-const excludedRoutes = ['/api/webhooks/stripe', '/api/webhooks/clerk', '/api/usage/sync'];
+const excludedRoutes = ['/api/webhooks/stripe', '/api/webhooks/clerk'];
 
 /**
  * Middleware to handle user authentication and data synchronization.
@@ -51,6 +51,6 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
   matcher: [
-    '/((?!api/webhooks/stripe|api/webhooks/clerk|api/usage/sync|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api/webhooks/stripe|api/webhooks/clerk|_next/static|_next/image|favicon.ico).*)',
   ],
 };

@@ -1,12 +1,8 @@
 import { AppProps } from 'next/app'
-import { useEffect } from 'react'
-import { setupUsageSync } from '@/utils/usageSync'
+import { useUsageSync } from '@/utils/usageSync'
 
 function MyApp({ Component, pageProps }: AppProps) {
-  useEffect(() => {
-    const cleanupSync = setupUsageSync()
-    return () => cleanupSync()
-  }, [])
+  useUsageSync();  // This will set up the usage sync
 
   return <Component {...pageProps} />
 }

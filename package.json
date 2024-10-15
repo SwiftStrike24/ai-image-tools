@@ -41,7 +41,7 @@
     "clsx": "^2.1.1",
     "dotenv": "^16.4.5",
     "embla-carousel-react": "^8.3.0",
-    "framer-motion": "^11.11.7",
+    "framer-motion": "^11.11.9",
     "heic2any": "^0.0.4",
     "inquirer": "^11.0.2",
     "lucide-react": "^0.438.0",

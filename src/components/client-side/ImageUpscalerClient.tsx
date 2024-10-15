@@ -32,6 +32,7 @@ import { getTimeUntilReset } from '@/utils/dateUtils'
 import UsageCounter from '@/components/UsageCounter'
 import { checkAndUpdateUpscalerLimit } from "@/actions/rateLimit"
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
+import { LoadingBeam } from "@/components/loading-beam"
 
 // Constants
 const MAX_FILE_SIZE_MB = 50; // 50MB
@@ -574,17 +575,21 @@ function ImageUpscalerComponent() {
                 </TooltipProvider>
               </div>
               <div className="relative">
-                <ShinyButton
+                <LoadingBeam
                   onClick={handleUpscale}
+                  isLoading={isLoading}
                   disabled={!uploadedImage || isLoading || upscalerUsage >= (upscalerSubscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT)}
                   className={cn(
                     "w-full py-2 md:py-3 text-base md:text-lg font-semibold",
                     (!uploadedImage || isLoading || upscalerUsage >= (upscalerSubscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT)) && "opacity-50 cursor-not-allowed"
                   )}
-                  text={isLoading ? "Processing..." : upscalerUsage >= (upscalerSubscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT) ? `${upscalerSubscriptionType === 'basic' ? 'Daily' : 'Monthly'} Limit Reached` : 'Upscale'}
+                  loadingText="Processing..."
+                  waveColor="rgba(255, 255, 255, 0.5)" // White wave color with 50% opacity
+                  waveSpeed={1.2}
+                  waveWidth={120}
                 >
-                  {isLoading && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
-                </ShinyButton>
+                  {upscalerUsage >= (upscalerSubscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT) ? `${upscalerSubscriptionType === 'basic' ? 'Daily' : 'Monthly'} Limit Reached` : 'Upscale'}
+                </LoadingBeam>
                 {upscalerUsage >= (upscalerSubscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : upscalerSubscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : UPSCALER_DAILY_LIMIT) && (
                   <p className="text-xs text-red-400 mt-2">
                     You&apos;ve reached your {upscalerSubscriptionType === 'basic' ? 'daily' : 'monthly'} limit. Please try again {upscalerSubscriptionType === 'basic' ? 'tomorrow' : 'next month'} or upgrade your plan.

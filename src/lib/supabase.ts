@@ -247,10 +247,15 @@ export async function getUserUsage(userId: string) {
     const { data, error } = await supabaseAdmin
       .from('usage_tracking')
       .select('*')
-      .eq('user_id', userId)
+      .eq('clerk_id', userId)
       .single();
 
     if (error) {
+      if (error.code === 'PGRST116') {
+        // No usage data found
+        console.log(`No usage data found for user ${userId}`);
+        return null;
+      }
       console.error('Error fetching user usage:', error);
       return null;
     }
@@ -437,19 +442,55 @@ export async function updateUserUsage(clerkId: string, usage: { generator: numbe
         },
         {
           onConflict: 'clerk_id',
+          ignoreDuplicates: false,
         }
       )
-      .select();
+      .select()
+      .single();
 
     if (error) {
       console.error('Error updating user usage:', error);
       throw error;
     }
 
-    console.log('User usage updated in Supabase:', data);
+    console.log('User usage updated in Supabase:', JSON.stringify(data, null, 2));
     return data;
   } catch (error) {
     console.error('Unexpected error updating user usage:', error);
+    throw error;
+  }
+}
+
+/**
+ * Creates a new user usage entry in Supabase.
+ * @param clerkId - The Clerk user ID.
+ */
+export async function createUserUsage(clerkId: string) {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('usage_tracking')
+      .insert({
+        clerk_id: clerkId,
+        generator: 0,
+        upscaler: 0,
+        enhance_prompt: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') { // Unique violation error code
+        console.log('User usage entry already exists, fetching existing data');
+        return await getUserUsage(clerkId);
+      }
+      throw error;
+    }
+    console.log('New user usage entry created:', JSON.stringify(data, null, 2));
+    return data;
+  } catch (error) {
+    console.error('Error creating user usage entry:', error);
     throw error;
   }
 }
