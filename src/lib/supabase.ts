@@ -417,3 +417,39 @@ export async function saveUserToSupabase(userId: string) {
     throw error;
   }
 }
+
+/**
+ * Updates the usage data for a user in Supabase.
+ * @param clerkId - The Clerk user ID.
+ * @param usage - The usage data to update.
+ */
+export async function updateUserUsage(clerkId: string, usage: { generator: number; upscaler: number; enhance_prompt: number }) {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('usage_tracking')
+      .upsert(
+        {
+          clerk_id: clerkId,
+          generator: usage.generator,
+          upscaler: usage.upscaler,
+          enhance_prompt: usage.enhance_prompt,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'clerk_id',
+        }
+      )
+      .select();
+
+    if (error) {
+      console.error('Error updating user usage:', error);
+      throw error;
+    }
+
+    console.log('User usage updated in Supabase:', data);
+    return data;
+  } catch (error) {
+    console.error('Unexpected error updating user usage:', error);
+    throw error;
+  }
+}

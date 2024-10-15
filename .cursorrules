@@ -41,16 +41,23 @@ Performance Optimization
 - Use dynamic loading for non-critical components.
 - Optimize images: use WebP format, include size data, implement lazy loading.
 - Implement virtualization for long lists using react-virtualized or react-window.
+- Implement lazy loading for images and components.
+- Use debouncing for input fields to reduce unnecessary API calls.
+- Implement caching strategies for frequently accessed data.
 
 Error Handling
 - Use try-catch blocks for async operations, especially in server actions.
 - Provide user-friendly error messages using the toast component.
 - Implement error boundaries for client-side error handling.
+- Implement comprehensive error handling for API calls and user actions.
+- Use toast notifications for user feedback on actions and errors.
+- Provide clear error messages and suggestions for resolution.
 
 State Management
 - Use React hooks for local state management.
 - Implement useReducer for complex state logic.
 - Use Vercel KV (Redis) for server-side state persistence.
+- Utilize the subscriptionStore for managing subscription and usage data.
 
 API Integration
 - Use server actions for data fetching and mutations.
@@ -82,6 +89,7 @@ Accessibility
 - Ensure all interactive elements are keyboard accessible.
 - Use proper ARIA attributes where necessary.
 - Implement focus management for modals and dialogs.
+- Provide proper ARIA labels and roles for custom components.
 
 Custom Components and Features
 - Use the Dock component for navigation, with hover effects and labels.
@@ -129,6 +137,7 @@ State Management and Data Persistence
 - Implement error handling and loading states for API calls and state updates.
 - Use Supabase for long-term data storage and subscription tracking.
 - Ensure consistency between Redis, Supabase, and Stripe data.
+- Utilize the subscriptionStore for centralized subscription and usage data management.
 
 API Routes and Server Actions
 - Organize API routes logically in the src/app/api folder.
@@ -188,3 +197,30 @@ User Experience
   - Include any applicable terms or changes in the confirmation modal.
   - Ensure users can easily differentiate between immediate and scheduled upgrade options.
 
+Usage Tracking and Limits
+- Implement local usage tracking with periodic syncing to the server.
+- Use the subscriptionStore for managing usage data across components.
+- Implement usage limits based on subscription tiers.
+- Provide clear feedback to users when approaching or reaching usage limits.
+- Use the UsageCounter component to display current usage and limits.
+
+Image Generation and Upscaling
+- Implement image generation using the Replicate API (FLUX.1 model).
+- Implement image upscaling using the Real-ESRGAN model.
+- Provide options for different aspect ratios, output formats, and upscale factors.
+- Implement face enhancement option for upscaling.
+- Handle image uploads, including file size limits and format conversions.
+
+Simulation Mode
+- Implement a simulation mode for testing UI without making API calls.
+- Provide clear visual indicators when simulation mode is active.
+- Ensure simulation mode accurately reflects the real app behavior.
+
+Responsive Design
+- Ensure all components and layouts are responsive across different device sizes.
+- Use Tailwind CSS for consistent and efficient responsive styling.
+
+Animation and Transitions
+- Use Framer Motion for smooth animations and transitions.
+- Implement loading animations for async operations.
+- Use transition effects for component mounting/unmounting.

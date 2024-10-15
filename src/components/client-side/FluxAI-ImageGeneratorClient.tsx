@@ -37,6 +37,7 @@ import UsageCounter from '@/components/UsageCounter'
 import Link from 'next/link'
 import { useDebounce } from '@/hooks/useDebounce'
 import BlurFade from "@/components/magicui/blur-fade"
+import { useSubscriptionStore } from '@/stores/subscriptionStore'
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -76,10 +77,8 @@ export default function FluxAIImageGenerator() {
   const { 
     subscriptionType: enhancePromptSubscriptionType, 
     usage: enhancePromptUsage,
-    resetsIn: enhancePromptResetsIn, 
     isLoading: isEnhancePromptSubscriptionLoading,
     checkAndUpdateLimit: checkAndUpdateEnhancePromptLimit,
-    fetchUsage: fetchEnhancePromptUsage
   } = useSubscription('enhance_prompt');
   const [enhancePromptError, setEnhancePromptError] = useState<string | null>(null)
   const [isCheckingEnhancePrompt, setIsCheckingEnhancePrompt] = useState(false)
@@ -88,16 +87,15 @@ export default function FluxAIImageGenerator() {
   const { 
     subscriptionType: generatorSubscriptionType,
     usage: generatorUsage,
-    resetsIn: generatorResetsIn, 
     isLoading: isGeneratorSubscriptionLoading,
     checkAndUpdateLimit: checkAndUpdateGeneratorLimit,
-    fetchUsage: fetchGeneratorUsage
   } = useSubscription('generator');
 
   const [generatorUpdateTrigger, setGeneratorUpdateTrigger] = useState(0)
   const [upscalerUpdateTrigger, setUpscalerUpdateTrigger] = useState(0)
   const [enhancePromptUpdateTrigger, setEnhancePromptUpdateTrigger] = useState(0)
   const [enhancedOriginalPrompt, setEnhancedOriginalPrompt] = useState('')
+  const { incrementUsage, syncUsageData } = useSubscriptionStore()
 
   const handleGeneratorUsageUpdate = useCallback((newUsage: number) => {
     console.log("New generator usage:", newUsage);
@@ -118,13 +116,13 @@ export default function FluxAIImageGenerator() {
 
     try {
       if (!isSimulationMode) {
-        const result = await checkAndUpdateGeneratorLimit();
-        if (!result) {
+        // We'll check the limit, but not update it yet
+        const canProceed = await checkAndUpdateGeneratorLimit(numOutputs, false);
+        if (!canProceed) {
           setError(`You've reached your image generation limit. Please try again later or upgrade your plan.`);
           setIsLoading(false);
           return;
         }
-        // The usage is already updated by checkAndUpdateGeneratorLimit, so we don't need to set it here
       }
 
       let currentPrompt = showSeedInput ? followUpPrompt : prompt
@@ -210,6 +208,12 @@ export default function FluxAIImageGenerator() {
       console.log("Results received from generateFluxImage:", results)
 
       if (results.length > 0) {
+        // The API call was successful, now we can update the usage
+        if (!isSimulationMode) {
+          await checkAndUpdateGeneratorLimit(numOutputs, true);
+          syncUsageData();
+        }
+
         const newImageResults = results.map((result, index) => ({
           ...result,
           followUpLevel: isFollowUp ? followUpLevel : 1,
@@ -267,12 +271,9 @@ export default function FluxAIImageGenerator() {
         setSimulationId(uuidv4())
       }
 
-      // After successful generation, update the generator usage
-      setGeneratorUpdateTrigger(prev => prev + 1)
-
       // If enhance prompt was used, update its usage as well
-      if (isEnhancePromptEnabled) {
-        setEnhancePromptUpdateTrigger(prev => prev + 1)
+      if (isEnhancePromptEnabled && !isSimulationMode) {
+        await checkAndUpdateEnhancePromptLimit(1);  // Enhance prompt is used once per request
       }
     } catch (error) {
       console.error('Image generation error:', error)
@@ -284,10 +285,6 @@ export default function FluxAIImageGenerator() {
       })
     } finally {
       setIsLoading(false)
-      if (!isSimulationMode) {
-        await fetchGeneratorUsage();
-        await fetchEnhancePromptUsage();
-      }
     }
   }
 
@@ -540,8 +537,6 @@ export default function FluxAIImageGenerator() {
           <UsageCounter 
             type="generator" 
             isSimulationMode={isSimulationMode}
-            onUsageUpdate={handleGeneratorUsageUpdate}
-            forceUpdate={generatorUpdateTrigger}
           />
 
           <div className="flex items-center justify-between">

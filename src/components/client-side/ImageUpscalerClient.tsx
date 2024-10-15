@@ -31,6 +31,7 @@ import { useSubscription } from '@/hooks/useSubscription'
 import { getTimeUntilReset } from '@/utils/dateUtils'
 import UsageCounter from '@/components/UsageCounter'
 import { checkAndUpdateUpscalerLimit } from "@/actions/rateLimit"
+import { useSubscriptionStore } from '@/stores/subscriptionStore'
 
 // Constants
 const MAX_FILE_SIZE_MB = 50; // 50MB
@@ -64,14 +65,13 @@ function ImageUpscalerComponent() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(true)
   const [upscalerUpdateTrigger, setUpscalerUpdateTrigger] = useState(0)
+  const { incrementUsage, syncUsageData } = useSubscriptionStore()
 
   const { 
     subscriptionType: upscalerSubscriptionType,
     usage: upscalerUsage,
-    resetsIn: upscalerResetsIn, 
     isLoading: isUpscalerSubscriptionLoading,
     checkAndUpdateLimit: checkAndUpdateUpscalerLimit,
-    fetchUsage: fetchUpscalerUsage
   } = useSubscription('upscaler');
 
   const handleUpscalerUsageUpdate = useCallback((newUsage: number) => {
@@ -192,7 +192,8 @@ function ImageUpscalerComponent() {
     setError(null);
 
     try {
-      const canProceed = await checkAndUpdateUpscalerLimit();
+      // We'll check the limit, but not update it yet
+      const canProceed = await checkAndUpdateUpscalerLimit(1, false);
 
       if (!canProceed) {
         const limit = upscalerSubscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : 
@@ -226,10 +227,12 @@ function ImageUpscalerComponent() {
 
       console.log("Received upscaled image URL:", upscaledImageUrl);
 
-      setUpscaledImage(upscaledImageUrl);
+      // The API call was successful, now we can update the usage
+      await checkAndUpdateUpscalerLimit(1, true);
+      syncUsageData();
 
+      setUpscaledImage(upscaledImageUrl);
       setUpscalerUpdateTrigger(prev => prev + 1);
-      await fetchUpscalerUsage();
 
       toast({
         title: "Upscaling Complete",
@@ -249,9 +252,8 @@ function ImageUpscalerComponent() {
       });
     } finally {
       setIsLoading(false);
-      await fetchUpscalerUsage(); // Fetch updated usage after upscaling
     }
-  }, [originalFile, upscaleOption, faceEnhance, isLoading, isSimulationMode, simulateUpscale, toast, upscalerSubscriptionType, checkAndUpdateUpscalerLimit, fetchUpscalerUsage]);
+  }, [originalFile, upscaleOption, faceEnhance, isLoading, isSimulationMode, simulateUpscale, toast, upscalerSubscriptionType, checkAndUpdateUpscalerLimit, syncUsageData]);
 
   // Function to clear the uploaded image
   const handleClearImage = useCallback(() => {
@@ -370,9 +372,9 @@ function ImageUpscalerComponent() {
 
   useEffect(() => {
     if (!isSimulationMode) {
-      fetchUpscalerUsage();
+      syncUsageData();
     }
-  }, [isSimulationMode, fetchUpscalerUsage]);
+  }, [isSimulationMode, syncUsageData]);
 
   if (!isAuthenticated) {
     return (
@@ -392,8 +394,6 @@ function ImageUpscalerComponent() {
           <UsageCounter 
             type="upscaler" 
             isSimulationMode={isSimulationMode} 
-            onUsageUpdate={handleUpscalerUsageUpdate}
-            forceUpdate={upscalerUpdateTrigger}
           />
 
           <div className="flex justify-between items-center">

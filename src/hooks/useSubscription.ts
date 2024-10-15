@@ -1,64 +1,33 @@
-import { useCallback, useState, useEffect } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import { useCallback } from 'react';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { getLimitForTier, SubscriptionTier } from "@/actions/rateLimit";
 
-interface SubscriptionData {
-  subscriptionType: SubscriptionTier;
-  usage: number;
-  resetsIn: string;
-  isLoading: boolean;
-}
-
 export function useSubscription(type: 'generator' | 'upscaler' | 'enhance_prompt') {
-  const { userId } = useAuth();
-  const { currentSubscription, fetchSubscriptionData } = useSubscriptionStore();
-  const [subscriptionData, setSubscriptionData] = useState<SubscriptionData>({
-    subscriptionType: 'basic',
-    usage: 0,
-    resetsIn: '',
-    isLoading: true,
-  });
+  const { 
+    currentSubscription, 
+    usage, 
+    isLoading, 
+    fetchSubscriptionData, 
+    incrementUsage, 
+    syncUsageData 
+  } = useSubscriptionStore();
 
-  const fetchUsage = useCallback(async () => {
-    // Implement this function to fetch usage data from your backend
-    // For now, we'll use placeholder data
-    return {
-      usage: 0,
-      resetsIn: '24 hours',
-    };
-  }, []);
-
-  const refreshSubscriptionData = useCallback(async () => {
-    if (userId) {
-      setSubscriptionData(prev => ({ ...prev, isLoading: true }));
-      await fetchSubscriptionData();
-      const { usage, resetsIn } = await fetchUsage();
-      const limit = await getLimitForTier(currentSubscription as SubscriptionTier, type);
-      setSubscriptionData({
-        subscriptionType: currentSubscription as SubscriptionTier,
-        usage,
-        resetsIn,
-        isLoading: false,
-      });
+  const checkAndUpdateLimit = useCallback(async (count: number = 1, updateUsage: boolean = true) => {
+    const limit = await getLimitForTier(currentSubscription as SubscriptionTier, type);
+    if (usage[type] + count > limit) {
+      return false;
     }
-  }, [userId, fetchSubscriptionData, fetchUsage, currentSubscription, type]);
-
-  useEffect(() => {
-    refreshSubscriptionData();
-  }, [refreshSubscriptionData]);
-
-  const checkAndUpdateLimit = useCallback(async (count: number = 1) => {
-    // Implement this function to check and update the usage limit
-    // Use the 'count' parameter to determine how many items to check for
-    // Return true if the operation is allowed, false otherwise
+    if (updateUsage) {
+      incrementUsage(type, count);
+    }
     return true;
-  }, []);
+  }, [currentSubscription, usage, type, incrementUsage]);
 
   return {
-    ...subscriptionData,
-    refreshSubscriptionData,
+    subscriptionType: currentSubscription,
+    usage: usage[type],
+    isLoading,
+    refreshSubscriptionData: fetchSubscriptionData,
     checkAndUpdateLimit,
-    fetchUsage,
   };
 }
