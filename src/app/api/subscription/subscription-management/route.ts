@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getRedisClient } from "@/lib/redis";
 import Stripe from 'stripe';
 import { SubscriptionTier } from '@/actions/rateLimit';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { invalidateCache } from '@/lib/subscriptionUtils';
 import { triggerPusherEvent } from '@/lib/pusher';
 import { RedisClientType } from 'redis';

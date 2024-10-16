@@ -4,7 +4,7 @@ import { getRedisClient } from "@/lib/redis";
 import Stripe from 'stripe';
 import { RedisClientType } from 'redis';
 import { getSubscriptionData as getStripeSubscriptionData, updateRedisWithSubscriptionData as updateRedisData } from '@/lib/subscriptionUtils';
-import { saveUserToSupabase, getUserSubscription } from '@/lib/supabase';
+import { saveUserToSupabase, getUserSubscription } from '@/lib/supabaseAdmin';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',

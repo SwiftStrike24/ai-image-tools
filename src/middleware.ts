@@ -1,7 +1,7 @@
 import { clerkMiddleware, auth } from "@clerk/nextjs/server";
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { saveUserToSupabase, syncUserDataWithRedis, getUserSubscription } from "@/lib/supabase";
+import { saveUserToSupabase, syncUserDataWithRedis, getUserSubscription } from "@/lib/supabaseAdmin";
 
 // Define the routes to be excluded from middleware processing
 const excludedRoutes = ['/api/webhooks/stripe', '/api/webhooks/clerk'];

@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { getRedisClient } from "@/lib/redis";
 import { SubscriptionTier } from '@/actions/rateLimit';
 import { headers } from 'next/headers';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { pusherServer } from '@/lib/pusher';
 import { triggerPusherEvent } from '@/lib/pusher';
 

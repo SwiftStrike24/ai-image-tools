@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { updateUserUsage, getUserUsage, createUserUsage } from '@/lib/supabase';
+import { updateUserUsage, getUserUsage, createUserUsage } from '@/lib/supabaseAdmin';
 import { UsageData } from '@/stores/subscriptionStore';
 
 export async function POST(req: NextRequest) {
@@ -20,18 +20,21 @@ export async function POST(req: NextRequest) {
       currentUsage = await createUserUsage(userId);
     }
 
-    // Ensure all values are numbers
+    // Ensure all values are numbers and only update if there's a change
     const updatedUsage: UsageData = {
-      generator: Number(generator) || 0,
-      upscaler: Number(upscaler) || 0,
-      enhance_prompt: Number(enhance_prompt) || 0,
+      generator: Math.max(Number(generator) || 0, currentUsage.generator),
+      upscaler: Math.max(Number(upscaler) || 0, currentUsage.upscaler),
+      enhance_prompt: Math.max(Number(enhance_prompt) || 0, currentUsage.enhance_prompt),
     };
 
-    const result = await updateUserUsage(userId, updatedUsage);
-    
-    console.log('Usage sync result:', JSON.stringify(result, null, 2));
-    
-    return NextResponse.json({ success: true, updatedUsage: result });
+    if (JSON.stringify(updatedUsage) !== JSON.stringify(currentUsage)) {
+      const result = await updateUserUsage(userId, updatedUsage);
+      console.log('Usage sync result:', JSON.stringify(result, null, 2));
+      return NextResponse.json({ success: true, updatedUsage: result });
+    } else {
+      console.log('No changes in usage, skipping update');
+      return NextResponse.json({ success: true, updatedUsage: currentUsage });
+    }
   } catch (error: any) {
     console.error('Error syncing usage data:', error);
     return NextResponse.json({ 

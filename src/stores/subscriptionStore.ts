@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { subscribeToUsageChanges } from '@/lib/supabase';
 
 export interface UsageData {
   generator: number;
@@ -18,7 +19,7 @@ interface SubscriptionState {
   setSubscriptionData: (data: Partial<SubscriptionState>) => void
   fetchSubscriptionData: () => Promise<void>
   clearSubscriptionData: () => void
-  initializeStore: () => Promise<void>
+  initializeStore: (userId: string) => Promise<void>
   incrementUsage: (type: keyof UsageData, count: number) => void
   syncUsageData: () => Promise<void>
 }
@@ -99,9 +100,14 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           },
         })
       },
-      initializeStore: async () => {
-        const state = get()
-        await state.fetchSubscriptionData()
+      initializeStore: async (userId: string) => {
+        const state = get();
+        await state.fetchSubscriptionData();
+        
+        // Subscribe to real-time usage updates
+        subscribeToUsageChanges(userId, (newUsage) => {
+          set({ usage: newUsage });
+        });
       },
       incrementUsage: (type, count) => {
         set((state) => ({
