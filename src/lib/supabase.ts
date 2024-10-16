@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/types/database.types';
 import { getRedisClient } from '@/lib/redis';
+import { UsageData } from '@/stores/subscriptionStore';
 import { clerkClient } from '@clerk/nextjs/server';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -242,25 +243,29 @@ export async function getUserSubscription(userId: string) {
  * @param userId - The Clerk user ID.
  * @returns The usage data or null.
  */
-export async function getUserUsage(userId: string) {
+export async function getUserUsage(userId: string): Promise<UsageData | null> {
   try {
     const { data, error } = await supabaseAdmin
       .from('usage_tracking')
-      .select('*')
+      .select('generator, upscaler, enhance_prompt')
       .eq('clerk_id', userId)
       .single();
 
     if (error) {
       if (error.code === 'PGRST116') {
-        // No usage data found
-        console.log(`No usage data found for user ${userId}`);
-        return null;
+        console.log(`No usage data found for user ${userId}, returning default values`);
+        return { generator: 0, upscaler: 0, enhance_prompt: 0 };
       }
       console.error('Error fetching user usage:', error);
-      return null;
+      throw error;
     }
 
-    return data;
+    console.log('Fetched user usage from Supabase:', data);
+    return {
+      generator: Number(data.generator) || 0,
+      upscaler: Number(data.upscaler) || 0,
+      enhance_prompt: Number(data.enhance_prompt) || 0,
+    };
   } catch (error) {
     console.error('Unexpected error fetching user usage:', error);
     return null;
@@ -428,7 +433,7 @@ export async function saveUserToSupabase(userId: string) {
  * @param clerkId - The Clerk user ID.
  * @param usage - The usage data to update.
  */
-export async function updateUserUsage(clerkId: string, usage: { generator: number; upscaler: number; enhance_prompt: number }) {
+export async function updateUserUsage(clerkId: string, usage: UsageData) {
   try {
     const { data, error } = await supabaseAdmin
       .from('usage_tracking')
@@ -440,7 +445,7 @@ export async function updateUserUsage(clerkId: string, usage: { generator: numbe
           enhance_prompt: usage.enhance_prompt,
           updated_at: new Date().toISOString(),
         },
-        {
+        { 
           onConflict: 'clerk_id',
           ignoreDuplicates: false,
         }
@@ -448,11 +453,7 @@ export async function updateUserUsage(clerkId: string, usage: { generator: numbe
       .select()
       .single();
 
-    if (error) {
-      console.error('Error updating user usage:', error);
-      throw error;
-    }
-
+    if (error) throw error;
     console.log('User usage updated in Supabase:', JSON.stringify(data, null, 2));
     return data;
   } catch (error) {
@@ -465,32 +466,12 @@ export async function updateUserUsage(clerkId: string, usage: { generator: numbe
  * Creates a new user usage entry in Supabase.
  * @param clerkId - The Clerk user ID.
  */
-export async function createUserUsage(clerkId: string) {
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('usage_tracking')
-      .insert({
-        clerk_id: clerkId,
-        generator: 0,
-        upscaler: 0,
-        enhance_prompt: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (error) {
-      if (error.code === '23505') { // Unique violation error code
-        console.log('User usage entry already exists, fetching existing data');
-        return await getUserUsage(clerkId);
-      }
-      throw error;
-    }
-    console.log('New user usage entry created:', JSON.stringify(data, null, 2));
-    return data;
-  } catch (error) {
-    console.error('Error creating user usage entry:', error);
-    throw error;
-  }
+export async function createUserUsage(clerkId: string): Promise<UsageData> {
+  const initialUsage: UsageData = { generator: 0, upscaler: 0, enhance_prompt: 0 };
+  const result = await updateUserUsage(clerkId, initialUsage);
+  return {
+    generator: result.generator ?? 0,
+    upscaler: result.upscaler ?? 0,
+    enhance_prompt: result.enhance_prompt ?? 0
+  };
 }

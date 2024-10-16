@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { updateUserUsage, getUserUsage, createUserUsage } from '@/lib/supabase';
+import { UsageData } from '@/stores/subscriptionStore';
 
 export async function POST(req: NextRequest) {
   const { userId } = auth();
@@ -10,21 +11,20 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const body = await req.json();
+    const { generator, upscaler, enhance_prompt } = body as UsageData;
+
     let currentUsage = await getUserUsage(userId);
 
     if (!currentUsage) {
-      // If no usage data found, create a new entry
       currentUsage = await createUserUsage(userId);
-      if (!currentUsage) {
-        throw new Error('Failed to create new user usage entry');
-      }
     }
 
-    // Always update the usage, ensuring no null values
-    const updatedUsage = {
-      generator: currentUsage.generator ?? 0,
-      upscaler: currentUsage.upscaler ?? 0,
-      enhance_prompt: currentUsage.enhance_prompt ?? 0,
+    // Ensure all values are numbers
+    const updatedUsage: UsageData = {
+      generator: Number(generator) || 0,
+      upscaler: Number(upscaler) || 0,
+      enhance_prompt: Number(enhance_prompt) || 0,
     };
 
     const result = await updateUserUsage(userId, updatedUsage);
@@ -32,8 +32,11 @@ export async function POST(req: NextRequest) {
     console.log('Usage sync result:', JSON.stringify(result, null, 2));
     
     return NextResponse.json({ success: true, updatedUsage: result });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error syncing usage data:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Internal Server Error', 
+      details: error.message 
+    }, { status: 500 });
   }
 }

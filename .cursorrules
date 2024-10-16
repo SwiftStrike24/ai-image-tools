@@ -9,6 +9,25 @@ Code Style and Structure
 - Prioritize using existing files, especially for API routes in src/app/api folder, unless a new file is absolutely necessary for maintainability or separation of concerns.
 - Always consider maintainability, manageability, and scalability when organizing code and creating new files or components.
 
+Next.js 14 and SaaS Best Practices
+- Strictly separate client-side and server-side code.
+- Use 'use client' directive only in client components.
+- Keep server-side logic in API routes or server components.
+- Avoid importing server-only modules in client components.
+- Utilize Next.js API routes for server-side operations.
+- Implement proper error handling and logging in both client and server code.
+- Use environment variables for configuration and sensitive data.
+- Implement proper authentication and authorization checks.
+- Optimize for performance using Next.js features like Image component and dynamic imports.
+- Implement proper state management using React hooks or libraries like Zustand.
+- Use TypeScript for type safety and better developer experience.
+- Implement proper testing strategies for both client and server code.
+- Use Next.js middleware for request/response modifications and redirects.
+- Implement proper caching strategies for API routes and database queries.
+- Use Next.js ISR (Incremental Static Regeneration) for dynamic content that doesn't change frequently.
+- Implement proper error boundaries and fallback UI for better user experience.
+- Use Next.js custom App and Document for global configurations and optimizations.
+
 Naming Conventions
 - Use lowercase with dashes for directories (e.g., components/auth-wizard).
 - Favor named exports for components.
@@ -99,27 +118,6 @@ Custom Components and Features
 - Use MagicCard for visually appealing card components.
 - Implement shadcn or magicui components for interactive and visually engaging buttons and other UI elements, like shimmer button, animated checkmark, etc.
 
-Pricing and Subscription
-- Use Stripe for handling payments and subscriptions.
-- Implement a clear pricing structure with feature comparisons.
-- Use dialogs for confirming subscription changes or downgrades.
-- Handle immediate upgrades with prorated charges.
-- Implement a two-step process for upgrades: calculate prorated amount, then confirm upgrade.
-- Allow direct checkout for users on the basic (free) plan.
-- Handle various scenarios in subscription management, including customer deletion and recreation.
-- Implement robust error handling for all subscription-related operations.
-- Use separate API routes for different subscription actions (upgrade, downgrade, cancel, etc.).
-- Ensure proper handling of Stripe webhook events for real-time updates.
-- Offer users the option to upgrade immediately or schedule for the next billing cycle:
-  - Use a dual button layout: one for immediate upgrade, one for scheduled upgrade.
-  - Keep the immediate upgrade button more prominent (e.g., purple), and the scheduled upgrade button less prominent (e.g., gray or lighter purple).
-  - Show a confirmation modal for scheduled upgrades, explaining when the upgrade will occur.
-  - Example layout:
-    [Upgrade to Ultimate]  (Immediate Upgrade)
-    [Schedule Upgrade for Next Billing Cycle]  (Less prominent color)
-- Maintain clear visual hierarchy and distinction between immediate and scheduled upgrade options.
-- Provide clear explanations in confirmation modals for both immediate and scheduled upgrades.
-
 Subscription Management
 - Implement robust subscription management with Stripe API.
 - Use Redis for caching subscription data and managing pending downgrades.
@@ -192,10 +190,6 @@ User Experience
 - Offer clear options for immediate upgrades and scheduled upgrades at the next billing cycle.
 - Use visual cues (like button colors and placement) to differentiate between upgrade options.
 - Provide detailed information in confirmation modals about when changes will take effect.
-- For scheduled upgrades:
-  - Show a confirmation modal explaining that the upgrade will occur on the next billing date.
-  - Include any applicable terms or changes in the confirmation modal.
-  - Ensure users can easily differentiate between immediate and scheduled upgrade options.
 
 Usage Tracking and Limits
 - Implement local usage tracking with periodic syncing to the server.

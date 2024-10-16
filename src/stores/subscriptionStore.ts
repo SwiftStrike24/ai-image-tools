@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
-interface UsageData {
+export interface UsageData {
   generator: number;
   upscaler: number;
   enhance_prompt: number;
@@ -71,6 +71,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
           const response = await fetch(`${baseUrl}/api/subscription/subscription-info`)
           const data = await response.json()
           console.log('Fetched subscription data:', data)
+
           set((state) => ({
             ...state,
             currentSubscription: data.subscriptionType ?? state.currentSubscription,
@@ -118,14 +119,19 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         }
         try {
           const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
-          await fetch(`${baseUrl}/api/usage/sync`, {
+          const response = await fetch(`${baseUrl}/api/usage/sync`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(state.usage),
           })
-          set({ lastSyncTime: currentTime })
+          const result = await response.json()
+          if (result.success) {
+            set({ lastSyncTime: currentTime, usage: result.updatedUsage })
+          } else {
+            throw new Error(result.error)
+          }
         } catch (error) {
           console.error('Error syncing usage data:', error)
         }

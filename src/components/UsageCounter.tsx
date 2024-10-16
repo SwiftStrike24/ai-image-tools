@@ -13,17 +13,17 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode }) =
     currentSubscription,
     usage,
     syncUsageData,
+    isLoading,
   } = useSubscriptionStore()
   const [limit, setLimit] = useState<number | null>(null)
 
   useEffect(() => {
-    syncUsageData()
     const fetchLimit = async () => {
       const fetchedLimit = await getLimitForTier(currentSubscription as SubscriptionTier, type)
       setLimit(fetchedLimit)
     }
     fetchLimit()
-  }, [currentSubscription, type, syncUsageData])
+  }, [currentSubscription, type])
 
   if (isSimulationMode) {
     return (
@@ -36,7 +36,7 @@ const UsageCounter: React.FC<UsageCounterProps> = ({ type, isSimulationMode }) =
     )
   }
 
-  if (limit === null) {
+  if (isLoading || limit === null) {
     return <div>Loading...</div>
   }
 

@@ -1,28 +1,18 @@
 import { useAuth } from '@clerk/nextjs';
 import { useEffect } from 'react';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
 
 export function useUsageSync() {
   const { userId } = useAuth();
+  const { usage, syncUsageData } = useSubscriptionStore();
 
   useEffect(() => {
     const syncUsage = async () => {
-      try {
-        if (userId) {
-          console.log('Syncing usage for user:', userId);
-          const response = await fetch('/api/usage/sync', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({}),  // Send an empty object to just trigger the sync
-          });
-          const data = await response.json();
-          console.log('Usage sync result:', data);
-        } else {
-          console.log('No user logged in, skipping usage sync');
-        }
-      } catch (error) {
-        console.error('Error syncing usage:', error);
+      if (userId) {
+        console.log('Syncing usage for user:', userId);
+        await syncUsageData();
+      } else {
+        console.log('No user logged in, skipping usage sync');
       }
     };
 
@@ -34,5 +24,5 @@ export function useUsageSync() {
 
     // Cleanup function
     return () => clearInterval(intervalId);
-  }, [userId]);  // Re-run effect if userId changes
+  }, [userId, syncUsageData]);
 }

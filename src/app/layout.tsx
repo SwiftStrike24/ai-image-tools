@@ -7,9 +7,8 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/react";
 import { ClerkProvider } from '@clerk/nextjs'
 import Script from 'next/script';
-import { useEffect } from 'react';
-import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { metadata } from '@/app/metadata'; // Import the metadata
+import ClientInitializer from '@/components/ClientInitializer'; // We'll create this component
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,12 +17,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initializeStore = useSubscriptionStore((state) => state.initializeStore);
-
-  useEffect(() => {
-    initializeStore();
-  }, [initializeStore]);
-
   return (
     <ClerkProvider>
       <html lang="en">
@@ -60,6 +53,7 @@ export default function RootLayout({
           <Toaster />
           <SpeedInsights />
           <Analytics />
+          <ClientInitializer />
           <main>{children}</main>
         </body>
       </html>
