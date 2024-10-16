@@ -33,6 +33,7 @@ import UsageCounter from '@/components/UsageCounter'
 import { checkAndUpdateUpscalerLimit } from "@/actions/rateLimit"
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
 import { LoadingBeam } from "@/components/loading-beam"
+import { useUsageSync } from '@/utils/usageSync'
 
 // Constants
 const MAX_FILE_SIZE_MB = 50; // 50MB
@@ -66,7 +67,7 @@ function ImageUpscalerComponent() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(true)
   const [upscalerUpdateTrigger, setUpscalerUpdateTrigger] = useState(0)
-  const { incrementUsage, syncUsageData } = useSubscriptionStore()
+  const { incrementUsage, syncUsageData, incrementMultipleUsage } = useSubscriptionStore()
 
   const { 
     subscriptionType: upscalerSubscriptionType,
@@ -74,6 +75,8 @@ function ImageUpscalerComponent() {
     isLoading: isUpscalerSubscriptionLoading,
     checkAndUpdateLimit: checkAndUpdateUpscalerLimit,
   } = useSubscription('upscaler');
+
+  const { incrementUsageAndSync } = useUsageSync();
 
   const handleUpscalerUsageUpdate = useCallback((newUsage: number) => {
     console.log("New upscaler usage:", newUsage);
@@ -193,16 +196,10 @@ function ImageUpscalerComponent() {
     setError(null);
 
     try {
-      // We'll check the limit, but not update it yet
-      const canProceed = await checkAndUpdateUpscalerLimit(1, false);
-
+      // Check if upscaling is allowed, but don't increment usage yet
+      const { canProceed } = await checkAndUpdateUpscalerLimit(1, false);
       if (!canProceed) {
-        const limit = upscalerSubscriptionType === 'ultimate' ? ULTIMATE_UPSCALER_MONTHLY_LIMIT : 
-                      upscalerSubscriptionType === 'premium' ? PREMIUM_UPSCALER_MONTHLY_LIMIT : 
-                      upscalerSubscriptionType === 'pro' ? PRO_UPSCALER_MONTHLY_LIMIT : 
-                      UPSCALER_DAILY_LIMIT;
-        setError(`You've reached your ${upscalerSubscriptionType === 'basic' ? 'daily' : 'monthly'} limit of ${limit} upscales. Please try again later.`);
-        setIsLoading(false);
+        setError("You've reached your upscale limit. Please try again later or upgrade your plan.");
         return;
       }
 
@@ -228,12 +225,13 @@ function ImageUpscalerComponent() {
 
       console.log("Received upscaled image URL:", upscaledImageUrl);
 
-      // The API call was successful, now we can update the usage
-      await checkAndUpdateUpscalerLimit(1, true);
-      syncUsageData();
+      // Increment usage and sync
+      await incrementUsageAndSync('upscaler', 1);
+
+      // Sync the usage data to ensure the UI is up-to-date
+      await syncUsageData();
 
       setUpscaledImage(upscaledImageUrl);
-      setUpscalerUpdateTrigger(prev => prev + 1);
 
       toast({
         title: "Upscaling Complete",
@@ -254,7 +252,7 @@ function ImageUpscalerComponent() {
     } finally {
       setIsLoading(false);
     }
-  }, [originalFile, upscaleOption, faceEnhance, isLoading, isSimulationMode, simulateUpscale, toast, upscalerSubscriptionType, checkAndUpdateUpscalerLimit, syncUsageData]);
+  }, [originalFile, upscaleOption, faceEnhance, isLoading, isSimulationMode, simulateUpscale, toast, checkAndUpdateUpscalerLimit, syncUsageData, incrementUsageAndSync]);
 
   // Function to clear the uploaded image
   const handleClearImage = useCallback(() => {

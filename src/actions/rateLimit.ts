@@ -546,7 +546,7 @@ export async function getEnhancePromptUsage(): Promise<{ usageCount: number; res
   return { usageCount: currentUsage, resetsIn, totalEnhanced: total };
 }
 
-export async function checkAndUpdateUpscalerLimit(imagesToUpscale: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
+export async function checkAndUpdateUpscalerLimit(imagesToUpscale: number, updateUsage: boolean = false): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
   const userId = await getUserId();
   
   if (!userId) {
@@ -579,16 +579,75 @@ export async function checkAndUpdateUpscalerLimit(imagesToUpscale: number): Prom
   const canProceed = currentUsage + imagesToUpscale <= limit;
   const resetsIn = getTimeUntilReset(subscription !== 'basic');
 
-  if (canProceed) {
-    currentUsage += imagesToUpscale;
+  // Remove the usage update from here
+  // We'll update the usage only after successful upscaling
+
+  return { canProceed, usageCount: currentUsage, resetsIn };
+}
+
+// Add a new function to update usage after successful upscaling
+export async function updateUpscalerUsage(imagesToUpscale: number): Promise<void> {
+  const userId = await getUserId();
+  
+  if (!userId) {
+    throw new Error("User not authenticated");
+  }
+
+  const subscription = await getUserSubscription(userId);
+  const key = `${UPSCALER_KEY_PREFIX}${userId}`;
+  const today = new Date().toUTCString();
+
+  const redisClient = await getRedisClient();
+  await redisClient.mSet([
+    key, (await redisClient.get(key) || '0'),
+    `${key}:date`, today,
+    `${key}:total`, (parseInt(await redisClient.get(`${key}:total`) || '0', 10) + imagesToUpscale).toString()
+  ]);
+}
+
+export async function checkAndUpdateEnhancePromptLimit(count: number = 1, updateUsage: boolean = false): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
+  const userId = await getUserId();
+  
+  if (!userId) {
+    return { canProceed: false, usageCount: 0, resetsIn: "N/A" };
+  }
+
+  const subscription = await getUserSubscription(userId);
+  const key = `${ENHANCE_PROMPT_KEY_PREFIX}${userId}`;
+  let usageCount, lastUsageDate;
+  
+  try {
+    const redisClient = await getRedisClient();
+    [usageCount, lastUsageDate] = await Promise.all([
+      redisClient.get(key),
+      redisClient.get(`${key}:date`)
+    ]);
+  } catch (redisError) {
+    console.error("Error accessing Redis for usage:", redisError);
+    usageCount = 0;
+    lastUsageDate = null;
+  }
+  
+  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
+  let limit = await getLimitForTier(subscription, 'enhance_prompt');
+
+  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
+    currentUsage = 0;
+  }
+
+  const canProceed = currentUsage + count <= limit;
+  const resetsIn = getTimeUntilReset(subscription !== 'basic');
+
+  if (canProceed && updateUsage) {
+    currentUsage += count;
     const today = new Date().toUTCString();
     const redisClient = await getRedisClient();
     await redisClient.mSet([
       key, currentUsage.toString(),
       `${key}:date`, today,
-      `${key}:total`, (parseInt(await redisClient.get(`${key}:total`) || '0', 10) + imagesToUpscale).toString()
+      `${key}:total`, (parseInt(await redisClient.get(`${key}:total`) || '0', 10) + count).toString()
     ]);
   }
-  
+
   return { canProceed, usageCount: currentUsage, resetsIn };
 }

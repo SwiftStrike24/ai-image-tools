@@ -96,7 +96,7 @@ export default function FluxAIImageGenerator() {
   const [upscalerUpdateTrigger, setUpscalerUpdateTrigger] = useState(0)
   const [enhancePromptUpdateTrigger, setEnhancePromptUpdateTrigger] = useState(0)
   const [enhancedOriginalPrompt, setEnhancedOriginalPrompt] = useState('')
-  const { incrementUsage, syncUsageData } = useSubscriptionStore()
+  const { incrementUsage, syncUsageData, incrementMultipleUsage } = useSubscriptionStore()
 
   const handleGeneratorUsageUpdate = useCallback((newUsage: number) => {
     console.log("New generator usage:", newUsage);
@@ -117,12 +117,22 @@ export default function FluxAIImageGenerator() {
 
     try {
       if (!isSimulationMode) {
-        // We'll check the limit, but not update it yet
-        const canProceed = await checkAndUpdateGeneratorLimit(numOutputs, false);
-        if (!canProceed) {
+        // Check generator limit
+        const { canProceed: canGenerateImages } = await checkAndUpdateGeneratorLimit(numOutputs, false);
+        if (!canGenerateImages) {
           setError(`You've reached your image generation limit. Please try again later or upgrade your plan.`);
           setIsLoading(false);
           return;
+        }
+
+        // Check enhance prompt limit if enabled
+        if (isEnhancePromptEnabled) {
+          const { canProceed: canEnhancePrompt } = await checkAndUpdateEnhancePromptLimit(1, false);
+          if (!canEnhancePrompt) {
+            setEnhancePromptError("You've reached your plan's limit for prompt enhancements.");
+            setIsEnhancePromptEnabled(false);
+            // Continue with image generation using the original prompt
+          }
         }
       }
 
@@ -139,7 +149,7 @@ export default function FluxAIImageGenerator() {
       let usedEnhancementModel: 'meta-llama-3-8b-instruct' | 'gpt-4o-mini' | null = null
 
       if (isEnhancePromptEnabled && !isSimulationMode) {
-        const canEnhance = await checkAndUpdateEnhancePromptLimit();
+        const canEnhance = await checkAndUpdateEnhancePromptLimit(1, false);
         if (!canEnhance) {
           setEnhancePromptError("You've reached your plan's limit for prompt enhancements.")
           setIsEnhancePromptEnabled(false)
@@ -159,7 +169,7 @@ export default function FluxAIImageGenerator() {
               usedEnhancementModel = enhancementResult.usedModel
               setEnhancedPromptHistory(prev => [...prev, enhancedPrompt])
               console.log("Prompt enhancement successful:", enhancedPrompt)
-              await incrementEnhancePromptUsage();
+              // We'll update the usage after successful generation
               
               // Store the enhanced original prompt
               if (!isFollowUp) {
@@ -209,10 +219,15 @@ export default function FluxAIImageGenerator() {
       console.log("Results received from generateFluxImage:", results)
 
       if (results.length > 0) {
-        // The API call was successful, now we can update the usage
         if (!isSimulationMode) {
-          await checkAndUpdateGeneratorLimit(numOutputs, true);
-          syncUsageData();
+          // Update usage for generator and enhance_prompt if successful
+          await Promise.all([
+            checkAndUpdateGeneratorLimit(numOutputs, true),
+            enhancementSuccessful ? checkAndUpdateEnhancePromptLimit(1, true) : Promise.resolve()
+          ]);
+          
+          // Sync the updated usage data
+          await syncUsageData();
         }
 
         const newImageResults = results.map((result, index) => ({
@@ -270,11 +285,6 @@ export default function FluxAIImageGenerator() {
 
       if (isSimulationMode) {
         setSimulationId(uuidv4())
-      }
-
-      // If enhance prompt was used, update its usage as well
-      if (isEnhancePromptEnabled && !isSimulationMode) {
-        await checkAndUpdateEnhancePromptLimit(1);  // Enhance prompt is used once per request
       }
     } catch (error) {
       console.error('Image generation error:', error)

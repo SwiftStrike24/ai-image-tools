@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { generator, upscaler, enhance_prompt } = body as UsageData;
+    const clientUsage = body as UsageData;
 
     let currentUsage = await getUserUsage(userId);
 
@@ -20,11 +20,10 @@ export async function POST(req: NextRequest) {
       currentUsage = await createUserUsage(userId);
     }
 
-    // Ensure all values are numbers and only update if there's a change
     const updatedUsage: UsageData = {
-      generator: Math.max(Number(generator) || 0, currentUsage.generator),
-      upscaler: Math.max(Number(upscaler) || 0, currentUsage.upscaler),
-      enhance_prompt: Math.max(Number(enhance_prompt) || 0, currentUsage.enhance_prompt),
+      generator: Math.max(clientUsage.generator, currentUsage.generator),
+      upscaler: Math.max(clientUsage.upscaler, currentUsage.upscaler),
+      enhance_prompt: Math.max(clientUsage.enhance_prompt, currentUsage.enhance_prompt),
     };
 
     if (JSON.stringify(updatedUsage) !== JSON.stringify(currentUsage)) {

@@ -1,33 +1,63 @@
 import { useEffect, useRef } from 'react';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
+import { createClient } from '@supabase/supabase-js';
+import { useUser } from '@clerk/nextjs';
 
-export function useUsageSync(userId: string | null) {
-  const { syncUsageData } = useSubscriptionStore();
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+
+export function useUsageSync() {
+  const { user } = useUser();
+  const { syncUsageData, setUsage, usage, incrementMultipleUsage } = useSubscriptionStore();
   const lastSyncTime = useRef(0);
 
   useEffect(() => {
-    const syncUsage = async () => {
-      if (userId) {
-        const now = Date.now();
-        if (now - lastSyncTime.current > 5 * 60 * 1000) { // 5 minutes
-          console.log('Syncing usage for user:', userId);
-          await syncUsageData();
-          lastSyncTime.current = now;
-        } else {
-          console.log('Skipping usage sync, last sync was less than 5 minutes ago');
+    if (!user?.id) {
+      console.log('No user logged in, skipping usage sync');
+      return;
+    }
+
+    const channel = supabase
+      .channel('user_usage_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'user_usage',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Usage updated:', payload);
+          const { generator, upscaler, enhance_prompt } = payload.new;
+          setUsage({ generator, upscaler, enhance_prompt });
         }
-      } else {
-        console.log('No user logged in, skipping usage sync');
-      }
-    };
+      )
+      .subscribe();
 
-    // Sync on initial setup
-    syncUsage();
-
-    // Set up interval for periodic sync (every 5 minutes)
-    const intervalId = setInterval(syncUsage, 5 * 60 * 1000);
+    // Initial sync
+    syncUsageData();
 
     // Cleanup function
-    return () => clearInterval(intervalId);
-  }, [userId, syncUsageData]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, syncUsageData, setUsage]);
+
+  const syncUsageDataWithDebounce = async () => {
+    const now = Date.now();
+    if (now - lastSyncTime.current > 5000) { // 5 seconds cooldown
+      await syncUsageData();
+      lastSyncTime.current = now;
+    }
+  };
+
+  const incrementUsageAndSync = async (type: keyof typeof usage, count: number) => {
+    incrementMultipleUsage({ [type]: count });
+    await syncUsageDataWithDebounce();
+  };
+
+  return {
+    syncUsageData: syncUsageDataWithDebounce,
+    incrementUsageAndSync,
+  };
 }

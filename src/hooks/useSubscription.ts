@@ -15,12 +15,12 @@ export function useSubscription(type: 'generator' | 'upscaler' | 'enhance_prompt
   const checkAndUpdateLimit = useCallback(async (count: number = 1, updateUsage: boolean = true) => {
     const limit = await getLimitForTier(currentSubscription as SubscriptionTier, type);
     if (usage[type] + count > limit) {
-      return false;
+      return { canProceed: false, usageCount: usage[type] };
     }
     if (updateUsage) {
       incrementUsage(type, count);
     }
-    return true;
+    return { canProceed: true, usageCount: updateUsage ? usage[type] + count : usage[type] };
   }, [currentSubscription, usage, type, incrementUsage]);
 
   return {

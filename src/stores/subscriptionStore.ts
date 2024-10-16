@@ -22,6 +22,8 @@ interface SubscriptionState {
   initializeStore: (userId: string) => Promise<void>
   incrementUsage: (type: keyof UsageData, count: number) => void
   syncUsageData: () => Promise<void>
+  incrementMultipleUsage: (usages: Partial<UsageData>) => void
+  setUsage: (newUsage: UsageData) => void
 }
 
 const storage = {
@@ -118,29 +120,47 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         }))
       },
       syncUsageData: async () => {
-        const state = get()
-        const currentTime = Date.now()
+        const state = get();
+        const currentTime = Date.now();
         if (currentTime - state.lastSyncTime < 300000) { // 5 minutes
-          return
+          return;
         }
         try {
-          const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'
+          const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
           const response = await fetch(`${baseUrl}/api/usage/sync`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify(state.usage),
-          })
-          const result = await response.json()
+          });
+          const result = await response.json();
           if (result.success) {
-            set({ lastSyncTime: currentTime, usage: result.updatedUsage })
+            set({ lastSyncTime: currentTime, usage: result.updatedUsage });
+            console.log('Usage data synced successfully:', result.updatedUsage);
           } else {
-            throw new Error(result.error)
+            throw new Error(result.error);
           }
         } catch (error) {
-          console.error('Error syncing usage data:', error)
+          console.error('Error syncing usage data:', error);
         }
+      },
+      incrementMultipleUsage: (usages) => {
+        set((state) => {
+          const newUsage = { ...state.usage };
+          Object.entries(usages).forEach(([key, value]) => {
+            if (typeof value === 'number' && value > 0) {
+              newUsage[key as keyof UsageData] = (newUsage[key as keyof UsageData] || 0) + value;
+            }
+          });
+          return { usage: newUsage };
+        });
+      },
+      setUsage: (newUsage: UsageData) => {
+        set((state) => ({
+          ...state,
+          usage: newUsage,
+        }));
       },
     }),
     {
