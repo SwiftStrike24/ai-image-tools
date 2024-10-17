@@ -225,7 +225,7 @@ function ImageUpscalerComponent() {
 
       console.log("Received upscaled image URL:", upscaledImageUrl);
 
-      // Increment usage and sync
+      // Increment usage and sync immediately after successful upscale
       await incrementUsageAndSync('upscaler', 1);
 
       // Sync the usage data to ensure the UI is up-to-date

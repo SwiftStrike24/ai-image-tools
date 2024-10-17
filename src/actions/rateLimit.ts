@@ -20,6 +20,7 @@ import {
 } from "@/constants/rateLimits";
 import { isNewPeriod, getTimeUntilReset } from "@/utils/dateUtils";
 import { getRedisClient } from "@/lib/redis";
+import { UsageData } from '@/stores/subscriptionStore';
 
 export type SubscriptionTier = 'basic' | 'pro' | 'premium' | 'ultimate';
 
@@ -378,15 +379,49 @@ export async function getUserUsage(): Promise<{ usageCount: number; resetsIn: st
   return { usageCount: currentUsage, resetsIn };
 }
 
-export async function checkAndUpdateGeneratorLimit(imagesToGenerate: number): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
-  const result = await canGenerateImages(imagesToGenerate);
+export async function checkAndUpdateGeneratorLimit(
+  imagesToGenerate: number, 
+  updateUsage: boolean = false,
+  incrementUsageAndSync?: (type: keyof UsageData, count: number) => Promise<void>
+): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
+  const userId = await getUserId();
   
-  if (result.canProceed) {
-    await incrementGeneratorUsage(imagesToGenerate);
-    result.usageCount += imagesToGenerate; // Update the usage count
+  if (!userId) {
+    return { canProceed: false, usageCount: 0, resetsIn: "N/A" };
+  }
+
+  const subscription = await getUserSubscription(userId);
+  const key = `${GENERATOR_KEY_PREFIX}${userId}`;
+  
+  let usageCount, lastUsageDate;
+  
+  try {
+    const redisClient = await getRedisClient();
+    [usageCount, lastUsageDate] = await Promise.all([
+      redisClient.get(key),
+      redisClient.get(`${key}:date`)
+    ]);
+  } catch (redisError) {
+    console.error("Error accessing Redis for usage:", redisError);
+    usageCount = 0;
+    lastUsageDate = null;
   }
   
-  return result;
+  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
+  let limit = await getLimitForTier(subscription, 'generator');
+
+  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
+    currentUsage = 0;
+  }
+
+  const canProceed = currentUsage + imagesToGenerate <= limit;
+  const resetsIn = getTimeUntilReset(subscription !== 'basic');
+
+  if (canProceed && updateUsage && incrementUsageAndSync) {
+    await incrementUsageAndSync('generator', imagesToGenerate);
+  }
+
+  return { canProceed, usageCount: currentUsage, resetsIn };
 }
 
 export async function getGeneratorUsage(): Promise<{ usageCount: number; resetsIn: string; totalGenerated: number }> {

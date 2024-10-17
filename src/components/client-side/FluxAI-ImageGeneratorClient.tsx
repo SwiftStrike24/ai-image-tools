@@ -39,6 +39,7 @@ import { useDebounce } from '@/hooks/useDebounce'
 import BlurFade from "@/components/magicui/blur-fade"
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
 import { LoadingBeam } from "@/components/loading-beam"
+import { useUsageSync } from '@/utils/usageSync'
 
 export default function FluxAIImageGenerator() {
   const [prompt, setPrompt] = useState('')
@@ -97,6 +98,7 @@ export default function FluxAIImageGenerator() {
   const [enhancePromptUpdateTrigger, setEnhancePromptUpdateTrigger] = useState(0)
   const [enhancedOriginalPrompt, setEnhancedOriginalPrompt] = useState('')
   const { incrementUsage, syncUsageData, incrementMultipleUsage } = useSubscriptionStore()
+  const { incrementUsageAndSync } = useUsageSync()
 
   const handleGeneratorUsageUpdate = useCallback((newUsage: number) => {
     console.log("New generator usage:", newUsage);
@@ -220,14 +222,11 @@ export default function FluxAIImageGenerator() {
 
       if (results.length > 0) {
         if (!isSimulationMode) {
-          // Update usage for generator and enhance_prompt if successful
-          await Promise.all([
-            checkAndUpdateGeneratorLimit(numOutputs, true),
-            enhancementSuccessful ? checkAndUpdateEnhancePromptLimit(1, true) : Promise.resolve()
-          ]);
-          
-          // Sync the updated usage data
-          await syncUsageData();
+          // Increment usage and sync only after successful generation
+          await incrementUsageAndSync('generator', numOutputs);
+          if (enhancementSuccessful) {
+            await incrementUsageAndSync('enhance_prompt', 1);
+          }
         }
 
         const newImageResults = results.map((result, index) => ({
