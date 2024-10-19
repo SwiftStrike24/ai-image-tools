@@ -31,7 +31,6 @@ export const LoadingBeam: React.FC<LoadingBeamProps> = ({
         className
       )}
       disabled={disabled || isLoading}
-      aria-busy={isLoading ? "true" : "false"}
       {...props}
     >
       {isLoading && (
@@ -47,10 +46,12 @@ export const LoadingBeam: React.FC<LoadingBeamProps> = ({
           }}
         >
           <div
-            className="h-full w-full opacity-25"
+            className={cn(
+              "h-full opacity-25",
+              `w-[${waveWidth}%]`
+            )}
             style={{
               background: `linear-gradient(90deg, transparent 0%, ${waveColor} 50%, transparent 100%)`,
-              width: `${waveWidth}%`,
             }}
           />
         </motion.div>

@@ -9,7 +9,7 @@ export default function ClientInitializer() {
   const { isLoaded, userId } = useAuth();
   const initializeStore = useSubscriptionStore((state) => state.initializeStore);
 
-  useUsageSync(userId || null);
+  useUsageSync(); // Remove the argument
 
   useEffect(() => {
     if (isLoaded && userId) {
