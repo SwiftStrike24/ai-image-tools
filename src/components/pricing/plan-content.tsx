@@ -207,10 +207,10 @@ export function PlanContent({
 
   const getButtonStyle = () => {
     if (!isSignedIn) {
-      return buttonProps.style;
+      return 'bg-purple-600 hover:bg-purple-700';
     }
-    if (plan.name === 'Basic') {
-      return 'bg-gray-500 cursor-not-allowed opacity-50';
+    if (plan.name.toLowerCase() === currentSubscription.toLowerCase()) {
+      return 'bg-orange-500 hover:bg-orange-600 cursor-not-allowed';
     }
     if (pendingDowngrade && pendingDowngrade.toLowerCase() === plan.name.toLowerCase()) {
       return 'bg-gray-500 cursor-not-allowed';
@@ -218,10 +218,29 @@ export function PlanContent({
     if (pendingUpgrade && pendingUpgrade.toLowerCase() === plan.name.toLowerCase()) {
       return 'bg-gray-500 cursor-not-allowed';
     }
-    if (buttonProps.text === 'Current Plan') {
-      return 'bg-purple-700 cursor-not-allowed';
+    if (plan.name === 'Basic') {
+      return 'bg-gray-500 cursor-not-allowed opacity-50';
     }
-    return buttonProps.style;
+    // Downgrade button style
+    if (plans.findIndex(p => p.name.toLowerCase() === plan.name.toLowerCase()) < 
+        plans.findIndex(p => p.name.toLowerCase() === currentSubscription.toLowerCase())) {
+      return 'bg-gray-400 hover:bg-gray-500 text-gray-800';
+    }
+    // Upgrade button style
+    return 'bg-purple-600 hover:bg-purple-700';
+  };
+
+  const getButtonText = () => {
+    if (!isSignedIn) return 'Sign In to Subscribe';
+    if (plan.name.toLowerCase() === currentSubscription.toLowerCase()) return 'Current Plan';
+    if (pendingDowngrade && pendingDowngrade.toLowerCase() === plan.name.toLowerCase()) return 'Downgrade in Progress';
+    if (pendingUpgrade && pendingUpgrade.toLowerCase() === plan.name.toLowerCase()) return 'Upgrade Scheduled';
+    if (plan.name === 'Basic') return 'Free Plan';
+    if (plans.findIndex(p => p.name.toLowerCase() === plan.name.toLowerCase()) < 
+        plans.findIndex(p => p.name.toLowerCase() === currentSubscription.toLowerCase())) {
+      return 'Downgrade';
+    }
+    return 'Upgrade';
   };
 
   return (
@@ -252,30 +271,22 @@ export function PlanContent({
       </ul>
       <div className="mt-auto">
         <motion.button
-          whileHover={{ scale: !isSignedIn || (buttonProps.text !== 'Current Plan' && plan.name !== 'Basic' && !pendingDowngrade && !pendingUpgrade) ? 1.05 : 1 }}
-          whileTap={{ scale: !isSignedIn || (buttonProps.text !== 'Current Plan' && plan.name !== 'Basic' && !pendingDowngrade && !pendingUpgrade) ? 0.95 : 1 }}
+          whileHover={{ scale: !isSignedIn || (getButtonText() !== 'Current Plan' && plan.name !== 'Basic' && !pendingDowngrade && !pendingUpgrade) ? 1.05 : 1 }}
+          whileTap={{ scale: !isSignedIn || (getButtonText() !== 'Current Plan' && plan.name !== 'Basic' && !pendingDowngrade && !pendingUpgrade) ? 0.95 : 1 }}
           onClick={handleUpgradeOrSubscribe}
           className={`w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-100 ${
             getButtonStyle()
           } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors duration-200`}
           disabled={!!(
             isSignedIn && (
-              buttonProps.text === 'Current Plan' ||
+              getButtonText() === 'Current Plan' ||
               plan.name === 'Basic' ||
               pendingDowngrade ||
               pendingUpgrade
             )
           )}
         >
-          {isSignedIn
-            ? (pendingDowngrade && pendingDowngrade.toLowerCase() === plan.name.toLowerCase()
-              ? 'Downgrade in Progress'
-              : pendingUpgrade && pendingUpgrade.toLowerCase() === plan.name.toLowerCase()
-              ? 'Upgrade Scheduled'
-              : plan.name === 'Basic' 
-              ? 'Free Plan' 
-              : buttonProps.text)
-            : 'Sign In to Subscribe'}
+          {getButtonText()}
         </motion.button>
         {isSignedIn && pendingUpgrade === plan.name.toLowerCase() && (
           <div className="mt-2 text-sm text-gray-300">
