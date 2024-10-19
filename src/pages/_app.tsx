@@ -1,10 +1,20 @@
 import { AppProps } from 'next/app'
 import { useUsageSync } from '@/utils/usageSync'
+import { ClerkProvider } from '@clerk/nextjs'
 
 function MyApp({ Component, pageProps }: AppProps) {
-  useUsageSync();  // This will set up the usage sync
+  return (
+    <ClerkProvider>
+      <UsageSyncWrapper>
+        <Component {...pageProps} />
+      </UsageSyncWrapper>
+    </ClerkProvider>
+  )
+}
 
-  return <Component {...pageProps} />
+function UsageSyncWrapper({ children }: { children: React.ReactNode }) {
+  useUsageSync();
+  return <>{children}</>;
 }
 
 export default MyApp
