@@ -19,29 +19,6 @@ export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseService
   },
 });
 
-export async function updateUserUsage(userId: string, usage: UsageData) {
-  const { data, error } = await supabaseAdmin
-    .from('usage_tracking')
-    .upsert(
-      {
-        clerk_id: userId,
-        generator: usage.generator,
-        upscaler: usage.upscaler,
-        enhance_prompt: usage.enhance_prompt,
-        updated_at: new Date().toISOString(),
-      },
-      { 
-        onConflict: 'clerk_id',
-        ignoreDuplicates: false,
-      }
-    )
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
 export async function getUserUsage(userId: string): Promise<UsageData | null> {
   const { data, error } = await supabaseAdmin
     .from('usage_tracking')
@@ -65,12 +42,65 @@ export async function getUserUsage(userId: string): Promise<UsageData | null> {
 
 export async function createUserUsage(userId: string): Promise<UsageData> {
   const initialUsage: UsageData = { generator: 0, upscaler: 0, enhance_prompt: 0 };
-  const result = await updateUserUsage(userId, initialUsage);
-  return {
-    generator: result.generator ?? 0,
-    upscaler: result.upscaler ?? 0,
-    enhance_prompt: result.enhance_prompt ?? 0
+  
+  const { data, error } = await supabaseAdmin
+    .from('usage_tracking')
+    .insert({
+      clerk_id: userId,
+      ...initialUsage,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating user usage:', error);
+    throw error;
+  }
+
+  return initialUsage; // Always return the initial usage with zeros
+}
+
+export async function updateUserUsage(userId: string, usage: UsageData) {
+  const { data: existingUser, error: fetchError } = await supabaseAdmin
+    .from('usage_tracking')
+    .select('*')
+    .eq('clerk_id', userId)
+    .single();
+
+  if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
+
+  let updateData: {
+    clerk_id: string;
+    generator: number;
+    upscaler: number;
+    enhance_prompt: number;
+    updated_at: string;
+    created_at?: string;
+  } = {
+    clerk_id: userId,
+    generator: usage.generator,
+    upscaler: usage.upscaler,
+    enhance_prompt: usage.enhance_prompt,
+    updated_at: new Date().toISOString(),
   };
+
+  if (!existingUser) {
+    updateData.created_at = new Date().toISOString();
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('usage_tracking')
+    .upsert(updateData, { 
+      onConflict: 'clerk_id',
+      ignoreDuplicates: false,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
 }
 
 export async function saveUserToSupabase(userId: string) {

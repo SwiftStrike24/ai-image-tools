@@ -343,85 +343,53 @@ export async function incrementRateLimit(): Promise<{ usageCount: number; resets
   return { usageCount: currentUsage, resetsIn };
 }
 
-export async function getUserUsage(): Promise<{ usageCount: number; resetsIn: string }> {
-  const userId = await getUserId();
-  
+async function getUserUsage(userId?: string): Promise<UsageData | { usageCount: number; resetsIn: string }> {
   if (!userId) {
-    return { usageCount: 0, resetsIn: "N/A" };
+    const fetchedUserId = await getUserId();
+    
+    if (!fetchedUserId) {
+      return { usageCount: 0, resetsIn: "N/A" };
+    }
+    
+    userId = fetchedUserId;
   }
 
   const subscription = await getUserSubscription(userId);
-  const key = `${UPSCALER_KEY_PREFIX}${userId}`;
-  let usageCount, lastUsageDate;
-
-  try {
-    const redisClient = await getRedisClient();
-    [usageCount, lastUsageDate] = await Promise.all([
-      redisClient.get(key),
-      redisClient.get(`${key}:date`)
-    ]);
-  } catch (redisError) {
-    console.error("Error accessing Redis for usage:", redisError);
-    // Fallback to default values
-    usageCount = 0;
-    lastUsageDate = null;
-  }
-
-  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
-
-  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
-    currentUsage = 0;
-    const redisClient = await getRedisClient();
-    await redisClient.set(key, '0');
-  }
-
-  const resetsIn = getTimeUntilReset(subscription !== 'basic');
-  return { usageCount: currentUsage, resetsIn };
-}
-
-export async function checkAndUpdateGeneratorLimit(
-  imagesToGenerate: number, 
-  updateUsage: boolean = false,
-  incrementUsageAndSync?: (type: keyof UsageData, count: number) => Promise<void>
-): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
-  const userId = await getUserId();
-  
-  if (!userId) {
-    return { canProceed: false, usageCount: 0, resetsIn: "N/A" };
-  }
-
-  const subscription = await getUserSubscription(userId);
+  const redisClient = await getRedisClient();
   const key = `${GENERATOR_KEY_PREFIX}${userId}`;
   
-  let usageCount, lastUsageDate;
+  let usageCount = await redisClient.get(key);
+  let lastUsageDate = await redisClient.get(`${key}:date`);
   
-  try {
-    const redisClient = await getRedisClient();
-    [usageCount, lastUsageDate] = await Promise.all([
-      redisClient.get(key),
-      redisClient.get(`${key}:date`)
+  if (usageCount === null) {
+    // New user, initialize with zero usage
+    const newUsage: UsageData = {
+      generator: 0,
+      upscaler: 0,
+      enhance_prompt: 0
+    };
+    await redisClient.mSet([
+      `${GENERATOR_KEY_PREFIX}${userId}`, '0',
+      `${UPSCALER_KEY_PREFIX}${userId}`, '0',
+      `${ENHANCE_PROMPT_KEY_PREFIX}${userId}`, '0',
+      `${key}:date`, new Date().toUTCString()
     ]);
-  } catch (redisError) {
-    console.error("Error accessing Redis for usage:", redisError);
-    usageCount = 0;
-    lastUsageDate = null;
+    return newUsage;
   }
   
-  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
-  let limit = await getLimitForTier(subscription, 'generator');
+  const usage: UsageData = {
+    generator: parseInt(usageCount, 10),
+    upscaler: parseInt(await redisClient.get(`${UPSCALER_KEY_PREFIX}${userId}`) || '0', 10),
+    enhance_prompt: parseInt(await redisClient.get(`${ENHANCE_PROMPT_KEY_PREFIX}${userId}`) || '0', 10)
+  };
 
-  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
-    currentUsage = 0;
+  if (arguments.length === 0) {
+    // This is the case for the original getUserUsage without parameters
+    const resetsIn = getTimeUntilReset(subscription !== 'basic');
+    return { usageCount: usage.generator, resetsIn };
   }
 
-  const canProceed = currentUsage + imagesToGenerate <= limit;
-  const resetsIn = getTimeUntilReset(subscription !== 'basic');
-
-  if (canProceed && updateUsage && incrementUsageAndSync) {
-    await incrementUsageAndSync('generator', imagesToGenerate);
-  }
-
-  return { canProceed, usageCount: currentUsage, resetsIn };
+  return usage;
 }
 
 export async function getGeneratorUsage(): Promise<{ usageCount: number; resetsIn: string; totalGenerated: number }> {
@@ -431,34 +399,11 @@ export async function getGeneratorUsage(): Promise<{ usageCount: number; resetsI
     return { usageCount: 0, resetsIn: "N/A", totalGenerated: 0 };
   }
 
-  const subscription = await getUserSubscription(userId);
-  const key = `${GENERATOR_KEY_PREFIX}${userId}`;
-  let usageCount, lastUsageDate, totalGenerated;
+  const usage = await getUserUsage(userId) as UsageData;
+  const resetsIn = getTimeUntilReset(await getUserSubscription(userId) !== 'basic');
+  const totalGenerated = parseInt(await (await getRedisClient()).get(`${GENERATOR_KEY_PREFIX}${userId}:total`) || '0', 10);
 
-  try {
-    const redisClient = await getRedisClient();
-    [usageCount, lastUsageDate, totalGenerated] = await Promise.all([
-      redisClient.get(key),
-      redisClient.get(`${key}:date`),
-      redisClient.get(`${key}:total`)
-    ]);
-  } catch (redisError) {
-    console.error("Error accessing Redis for usage:", redisError);
-    // Fallback to default values
-    usageCount = 0;
-    lastUsageDate = null;
-    totalGenerated = 0;
-  }
-
-  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
-  let total = typeof totalGenerated === 'string' ? parseInt(totalGenerated, 10) : 0;
-
-  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
-    currentUsage = 0;
-  }
-
-  const resetsIn = getTimeUntilReset(subscription !== 'basic');
-  return { usageCount: currentUsage, resetsIn, totalGenerated: total };
+  return { usageCount: usage.generator, resetsIn, totalGenerated };
 }
 
 // New function to check if prompt enhancement is allowed
@@ -579,6 +524,51 @@ export async function getEnhancePromptUsage(): Promise<{ usageCount: number; res
 
   const resetsIn = getTimeUntilReset(subscription !== 'basic');
   return { usageCount: currentUsage, resetsIn, totalEnhanced: total };
+}
+
+export async function checkAndUpdateGeneratorLimit(
+  imagesToGenerate: number, 
+  updateUsage: boolean = false,
+  incrementUsageAndSync?: (type: keyof UsageData, count: number) => Promise<void>
+): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
+  const userId = await getUserId();
+  
+  if (!userId) {
+    return { canProceed: false, usageCount: 0, resetsIn: "N/A" };
+  }
+
+  const subscription = await getUserSubscription(userId);
+  const key = `${GENERATOR_KEY_PREFIX}${userId}`;
+  
+  let usageCount, lastUsageDate;
+  
+  try {
+    const redisClient = await getRedisClient();
+    [usageCount, lastUsageDate] = await Promise.all([
+      redisClient.get(key),
+      redisClient.get(`${key}:date`)
+    ]);
+  } catch (redisError) {
+    console.error("Error accessing Redis for usage:", redisError);
+    usageCount = 0;
+    lastUsageDate = null;
+  }
+  
+  let currentUsage = typeof usageCount === 'string' ? parseInt(usageCount, 10) : 0;
+  let limit = await getLimitForTier(subscription, 'generator');
+
+  if (isNewPeriod(lastUsageDate as string | null, subscription !== 'basic')) {
+    currentUsage = 0;
+  }
+
+  const canProceed = currentUsage + imagesToGenerate <= limit;
+  const resetsIn = getTimeUntilReset(subscription !== 'basic');
+
+  if (canProceed && updateUsage && incrementUsageAndSync) {
+    await incrementUsageAndSync('generator', imagesToGenerate);
+  }
+
+  return { canProceed, usageCount: currentUsage, resetsIn };
 }
 
 export async function checkAndUpdateUpscalerLimit(imagesToUpscale: number, updateUsage: boolean = false): Promise<{ canProceed: boolean; usageCount: number; resetsIn: string }> {
