@@ -47,8 +47,8 @@ export default function PricingPage() {
 
   const dockItems = [
     { icon: Home, label: "Home", onClick: () => router.push('/') },
-    { icon: Sparkles, label: "Generator", onClick: () => router.push('/generator') },
     { icon: Zap, label: "Upscaler", onClick: () => router.push('/upscaler') },
+    { icon: Sparkles, label: "Generator", onClick: () => router.push('/generator') },
   ]
 
   const handleLoginClick = async () => {
