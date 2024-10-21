@@ -14,6 +14,7 @@ import { PlanContent } from '@/components/pricing/plan-content'
 import { plans, featureComparison } from '@/data/plans'
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
 import { getPusherClient } from '@/lib/pusher'
+import { LoadingBeam } from '@/components/loading-beam'
 
 export function PricingComponentComponent() {
   const [isMonthly, setIsMonthly] = useState(true)
@@ -22,6 +23,7 @@ export function PricingComponentComponent() {
   const [isProcessing, setIsProcessing] = useState(false)
   const { toast } = useToast()
   const router = useRouter()
+  const [isManageLoading, setIsManageLoading] = useState(false)
 
   const {
     currentSubscription,
@@ -160,6 +162,7 @@ export function PricingComponentComponent() {
   }
 
   const handleManageSubscription = async () => {
+    setIsManageLoading(true)
     try {
       const response = await fetch('/api/subscription/create-portal-session', {
         method: 'POST',
@@ -167,6 +170,7 @@ export function PricingComponentComponent() {
       if (!response.ok) throw new Error('Failed to create portal session');
       const { url } = await response.json();
       window.location.href = url;
+      // Don't set isManageLoading to false here, as we're redirecting
     } catch (error) {
       console.error('Error creating portal session:', error);
       toast({
@@ -174,6 +178,7 @@ export function PricingComponentComponent() {
         description: "Failed to open subscription management. Please try again.",
         variant: "destructive",
       });
+      setIsManageLoading(false)  // Set loading to false only if there's an error
     }
   };
 
@@ -282,14 +287,13 @@ export function PricingComponentComponent() {
                     )}
                   </div>
                   {displayCurrentSubscription !== 'basic' && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-2 text-white bg-purple-600 hover:bg-purple-700"
+                    <LoadingBeam
+                      isLoading={isManageLoading}
                       onClick={handleManageSubscription}
+                      className="mt-2 text-white bg-purple-600 hover:bg-purple-700"
                     >
                       Manage Subscription
-                    </Button>
+                    </LoadingBeam>
                   )}
                 </div>
               </div>

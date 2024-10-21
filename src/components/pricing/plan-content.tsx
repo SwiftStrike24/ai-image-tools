@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
 import { Plan, plans } from '@/data/plans'  // Import both Plan type and plans array
+import { LoadingBeam } from '@/components/loading-beam'  // Import LoadingBeam
 
 interface PlanContentProps {
   plan: Plan;
@@ -35,6 +36,7 @@ export function PlanContent({
   const [proratedAmount, setProratedAmount] = useState<number | null>(null)
   const [isConfirmingUpgrade, setIsConfirmingUpgrade] = useState(false)
   const [isScheduleUpgradeModalOpen, setIsScheduleUpgradeModalOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)  // Add loading state
 
   const {
     setSubscriptionData,
@@ -47,11 +49,21 @@ export function PlanContent({
       return;
     }
 
-    if (currentSubscription === 'basic' || currentSubscription === 'inactive') {
-      await handleSubscribe();
-    } else {
-      // For paid plans, redirect to Stripe Customer Portal
-      await handleManageSubscription();
+    setIsLoading(true)  // Set loading to true when action starts
+    try {
+      if (currentSubscription === 'basic' || currentSubscription === 'inactive') {
+        await handleSubscribe();
+      } else {
+        await handleManageSubscription();
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred. Please try again.",
+        variant: "destructive",
+      });
+      setIsLoading(false)  // Only set loading to false if there's an error
     }
   };
 
@@ -63,6 +75,7 @@ export function PlanContent({
       if (!response.ok) throw new Error('Failed to create portal session');
       const { url } = await response.json();
       window.location.href = url;
+      // Don't set isLoading to false here, as we're redirecting
     } catch (error) {
       console.error('Error creating portal session:', error);
       toast({
@@ -70,6 +83,7 @@ export function PlanContent({
         description: "Failed to open subscription management. Please try again.",
         variant: "destructive",
       });
+      setIsLoading(false)  // Set loading to false only if there's an error
     }
   };
 
@@ -80,6 +94,7 @@ export function PlanContent({
         description: "You're already on the Basic plan or can access these features for free.",
         variant: "default",
       });
+      setIsLoading(false)  // Set loading to false for Basic plan
       return;
     }
 
@@ -102,6 +117,7 @@ export function PlanContent({
         
         if (data.url) {
           window.location.href = data.url;
+          // Don't set isLoading to false here, as we're redirecting
         } else {
           throw new Error('No checkout URL returned');
         }
@@ -112,6 +128,7 @@ export function PlanContent({
           description: error instanceof Error ? error.message : "An error occurred. Please try again.",
           variant: "destructive",
         });
+        setIsLoading(false)  // Set loading to false only if there's an error
       }
     }
   };
@@ -126,6 +143,7 @@ export function PlanContent({
       return;
     }
 
+    setIsLoading(true)  // Set loading to true when action starts
     try {
       const response = await fetch('/api/subscription/subscription-management', {
         method: 'POST',
@@ -162,10 +180,13 @@ export function PlanContent({
         description: error instanceof Error ? error.message : "An error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false)  // Set loading to false when action completes
     }
   };
 
   const handleDowngradeClick = async () => {
+    setIsLoading(true)  // Set loading to true when action starts
     try {
       const response = await fetch('/api/subscription/subscription-management', {
         method: 'POST',
@@ -202,6 +223,8 @@ export function PlanContent({
         description: error instanceof Error ? error.message : "An error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false)  // Set loading to false when action completes
     }
   };
 
@@ -270,9 +293,8 @@ export function PlanContent({
         ))}
       </ul>
       <div className="mt-auto">
-        <motion.button
-          whileHover={{ scale: !isSignedIn || (getButtonText() !== 'Current Plan' && plan.name !== 'Basic' && !pendingDowngrade && !pendingUpgrade) ? 1.05 : 1 }}
-          whileTap={{ scale: !isSignedIn || (getButtonText() !== 'Current Plan' && plan.name !== 'Basic' && !pendingDowngrade && !pendingUpgrade) ? 0.95 : 1 }}
+        <LoadingBeam
+          isLoading={isLoading}
           onClick={handleUpgradeOrSubscribe}
           className={`w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-100 ${
             getButtonStyle()
@@ -287,7 +309,7 @@ export function PlanContent({
           )}
         >
           {getButtonText()}
-        </motion.button>
+        </LoadingBeam>
         {isSignedIn && pendingUpgrade === plan.name.toLowerCase() && (
           <div className="mt-2 text-sm text-gray-300">
             <CalendarIcon className="inline-block mr-1" size={16} />

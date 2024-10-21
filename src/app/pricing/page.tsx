@@ -11,12 +11,14 @@ import { useRouter } from 'next/navigation'
 import { Dock, DockIcon } from "@/components/ui/dock"
 import { useAuth, UserButton } from "@clerk/nextjs"
 import ShimmerButton from "@/components/magicui/shimmer-button"
+import { LoadingBeam } from '@/components/loading-beam'
 
 export default function PricingPage() {
   const router = useRouter()
   const { isLoaded, isSignedIn } = useAuth()
   const controls = useAnimation()
   const [isClientSide, setIsClientSide] = useState(false)
+  const [isLoginLoading, setIsLoginLoading] = useState(false)
 
   useEffect(() => {
     setIsClientSide(true)
@@ -52,12 +54,19 @@ export default function PricingPage() {
   ]
 
   const handleLoginClick = async () => {
-    await controls.start({
-      scale: [1, 0.9, 1.1, 1],
-      rotate: [0, -10, 10, 0],
-      transition: { duration: 0.4 }
-    })
-    router.push('/sign-in?redirect=/pricing')
+    setIsLoginLoading(true)
+    try {
+      await controls.start({
+        scale: [1, 0.9, 1.1, 1],
+        rotate: [0, -10, 10, 0],
+        transition: { duration: 0.4 }
+      })
+      router.push('/sign-in?redirect=/pricing')
+      // Don't set isLoginLoading to false here, as we're redirecting
+    } catch (error) {
+      console.error('Error during login animation:', error);
+      setIsLoginLoading(false)  // Set loading to false only if there's an error
+    }
   }
 
   if (!isClientSide || !isLoaded) {
@@ -97,21 +106,16 @@ export default function PricingPage() {
                 whileTap={{ scale: 0.95 }}
                 animate={controls}
               >
-                <ShimmerButton
+                <LoadingBeam
+                  isLoading={isLoginLoading}
                   onClick={handleLoginClick}
                   className="px-6 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-full flex items-center justify-center overflow-hidden relative"
-                  shimmerColor="#ffffff33"
-                  background="rgba(124, 58, 237, 0.5)"
                 >
-                  <motion.div
-                    className="absolute inset-0 bg-white opacity-0"
-                    whileTap={{ opacity: 0.3, transition: { duration: 0.1 } }}
-                  />
                   <motion.div className="flex items-center justify-center relative z-10">
                     <LogIn className="w-4 h-4 mr-2" />
                     <span className="font-medium">Login</span>
                   </motion.div>
-                </ShimmerButton>
+                </LoadingBeam>
               </motion.div>
             </motion.div>
           ) : (
