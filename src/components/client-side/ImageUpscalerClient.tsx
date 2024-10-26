@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { Upload, Loader2, Info, Trash2, ZoomIn, ZoomOut, Maximize, AlertCircle, X, Download } from 'lucide-react'
+import { Upload, Loader2, Info, Trash2, ZoomIn, ZoomOut, Maximize, AlertCircle, X, Download, Lock, Sparkles, Zap } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
@@ -34,6 +34,7 @@ import { checkAndUpdateUpscalerLimit } from "@/actions/rateLimit"
 import { useSubscriptionStore } from '@/stores/subscriptionStore'
 import { LoadingBeam } from "@/components/loading-beam"
 import { useUsageSync } from '@/utils/usageSync'
+import Link from 'next/link'
 
 // Constants
 const MAX_FILE_SIZE_MB = 50; // 50MB
@@ -68,6 +69,7 @@ function ImageUpscalerComponent() {
   const [isAuthenticated, setIsAuthenticated] = useState(true)
   const [upscalerUpdateTrigger, setUpscalerUpdateTrigger] = useState(0)
   const { incrementUsage, syncUsageData, incrementMultipleUsage } = useSubscriptionStore()
+  const [isUpgrading, setIsUpgrading] = useState(false);
 
   const { 
     subscriptionType: upscalerSubscriptionType,
@@ -367,7 +369,29 @@ function ImageUpscalerComponent() {
     }
   }, [uploadedImage, upscaleOption, faceEnhance])
 
-  const upscaleOptions = ['2x', '4x', '6x', '8x', '10x']
+  const getAvailableUpscaleOptions = (subscriptionType: string) => {
+    switch (subscriptionType) {
+      case 'ultimate':
+      case 'premium':
+        return ['2x', '4x', '6x', '8x', '10x'];
+      case 'pro':
+        return ['2x', '4x', '6x', '8x'];
+      default: // basic plan
+        return ['2x', '4x'];
+    }
+  };
+
+  const getUpgradeMessage = (option: string, currentPlan: string) => {
+    switch (option) {
+      case '10x':
+        return 'Upgrade to Premium or Ultimate to unlock 10x upscaling';
+      case '8x':
+      case '6x':
+        return 'Upgrade to Pro or higher to unlock advanced upscaling options';
+      default:
+        return `Upgrade your plan to unlock ${option} upscaling`;
+    }
+  };
 
   useEffect(() => {
     if (!isSimulationMode) {
@@ -540,15 +564,113 @@ function ImageUpscalerComponent() {
               <div>
                 <Label className="text-white mb-2 block">Upscale Factor</Label>
                 <div className="grid grid-cols-5 gap-2">
-                  {upscaleOptions.map((option) => (
-                    <Button
-                      key={option}
-                      onClick={() => setUpscaleOption(option)}
-                      variant={upscaleOption === option ? "default" : "secondary"}
-                    >
-                      {option}
-                    </Button>
-                  ))}
+                  {['2x', '4x', '6x', '8x', '10x'].map((option) => {
+                    const isAvailable = getAvailableUpscaleOptions(upscalerSubscriptionType).includes(option);
+                    
+                    return (
+                      <TooltipProvider key={option}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="relative">
+                              <Button
+                                onClick={() => isAvailable && setUpscaleOption(option)}
+                                variant={upscaleOption === option ? "default" : "secondary"}
+                                className={cn(
+                                  !isAvailable && "opacity-50 cursor-not-allowed bg-gray-700 hover:bg-gray-700",
+                                  "relative w-full"
+                                )}
+                                disabled={!isAvailable}
+                              >
+                                {option}
+                                {!isAvailable && (
+                                  <Lock className="w-3 h-3 absolute top-1 right-1 text-yellow-500" />
+                                )}
+                              </Button>
+                            </div>
+                          </TooltipTrigger>
+                          {!isAvailable && (
+                            <TooltipContent 
+                              side="top" 
+                              className="bg-purple-900/90 border-purple-500 p-3" // Added padding
+                              sideOffset={5} // Added offset for better positioning
+                            >
+                              <div className="space-y-2"> {/* Added container with spacing */}
+                                <p className="text-sm">
+                                  {getUpgradeMessage(option, upscalerSubscriptionType)}
+                                </p>
+                                <p className="text-xs text-purple-300">
+                                  Unlock more powerful upscaling options! 🚀
+                                </p>
+                                <Link 
+                                  href="/pricing" 
+                                  className={cn(
+                                    "group inline-flex items-center justify-center px-4 py-1.5 mt-2",
+                                    "text-sm font-medium text-white",
+                                    "bg-gradient-to-r from-purple-500 to-pink-500",
+                                    "rounded-md shadow-sm",
+                                    "transition-all duration-300",
+                                    "hover:from-purple-600 hover:to-pink-600",
+                                    "focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1",
+                                    "active:from-purple-700 active:to-pink-700",
+                                    "relative overflow-hidden",
+                                    isUpgrading && "cursor-not-allowed opacity-80"
+                                  )}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    if (isUpgrading) return;
+                                    
+                                    setIsUpgrading(true);
+                                    const button = e.currentTarget;
+                                    button.classList.add('upgrading');
+                                    
+                                    // Add sparkle effect
+                                    const sparkle = document.createElement('div');
+                                    sparkle.className = 'absolute inset-0 bg-gradient-to-r from-purple-400/20 to-pink-400/20 animate-pulse';
+                                    button.appendChild(sparkle);
+                                    
+                                    setTimeout(() => {
+                                      window.location.href = '/pricing';
+                                    }, 600);
+                                  }}
+                                >
+                                  <span className="relative z-10 flex items-center">
+                                    {isUpgrading ? (
+                                      <>
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />
+                                        <span>Redirecting...</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span>Upgrade Now</span>
+                                        <Zap className="ml-1.5 w-3.5 h-3.5 text-yellow-300 animate-pulse" />
+                                        <svg 
+                                          className="ml-1.5 -mr-1 w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" 
+                                          fill="none" 
+                                          stroke="currentColor" 
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <path 
+                                            strokeLinecap="round" 
+                                            strokeLinejoin="round" 
+                                            strokeWidth={2} 
+                                            d="M13 7l5 5m0 0l-5 5m5-5H6" 
+                                          />
+                                        </svg>
+                                      </>
+                                    )}
+                                  </span>
+                                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600/0 via-pink-500/10 to-purple-600/0 group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+                                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    <div className="absolute inset-0 bg-gradient-to-r from-purple-400/10 via-pink-400/10 to-purple-400/10 animate-shimmer" />
+                                  </div>
+                                </Link>
+                              </div>
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
+                      </TooltipProvider>
+                    );
+                  })}
                 </div>
               </div>
               <div className="flex items-center space-x-2 text-white">
