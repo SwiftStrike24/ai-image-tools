@@ -438,9 +438,9 @@ async function updateUserSubscription(userId: string, subscription: Stripe.Subsc
 
 function getPlanIdFromName(planName: string): string | null {
   const planMap: { [key: string]: string } = {
-    'Pro': 'price_1Q3AztHYPfrMrymk4VqOuNAD',
-    'Premium': 'price_1Q3B16HYPfrMrymkgzihBxJR',
-    'Ultimate': 'price_1Q3B2gHYPfrMrymkYyJgjmci',
+    'Pro': process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID || '',
+    'Premium': process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID || '',
+    'Ultimate': process.env.NEXT_PUBLIC_STRIPE_ULTIMATE_PRICE_ID || '',
   };
   return planMap[planName] || null;
 }

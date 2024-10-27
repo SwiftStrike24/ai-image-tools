@@ -18,7 +18,7 @@ export const plans: Plan[] = [
       'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
     ],
     cta: 'Get Started',
-    priceId: null, // No priceId for the free plan
+    priceId: null,
   },
   {
     name: 'Pro',
@@ -31,7 +31,7 @@ export const plans: Plan[] = [
     ],
     cta: 'Upgrade to Pro',
     popular: true,
-    priceId: 'price_1Q3AztHYPfrMrymk4VqOuNAD',
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID || '',
   },
   {
     name: 'Premium',
@@ -43,7 +43,7 @@ export const plans: Plan[] = [
       'AI model choice: Meta-Llama 3 (8B) or GPT-4o-mini',
     ],
     cta: 'Go Premium',
-    priceId: 'price_1Q3B16HYPfrMrymkgzihBxJR',
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID || '',
   },
   {
     name: 'Ultimate',
@@ -55,7 +55,7 @@ export const plans: Plan[] = [
       'Exclusive access to GPT-4o for prompt enhancements',
     ],
     cta: 'Go Ultimate',
-    priceId: 'price_1Q3B2gHYPfrMrymkYyJgjmci',
+    priceId: process.env.NEXT_PUBLIC_STRIPE_ULTIMATE_PRICE_ID || '',
   },
 ]
 
